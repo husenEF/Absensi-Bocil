@@ -1,0 +1,6 @@
+{
+  "name": "AbsenBocil 😊",
+  "description": "Aplikasi pencatatan absensi peserta didik dengan database lokal IndexedDB offline-first, dilengkapi generator pembuat laporan mingguan otomatis.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
