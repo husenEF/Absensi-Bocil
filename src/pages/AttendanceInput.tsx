@@ -314,7 +314,7 @@ export const AttendanceInput: React.FC = () => {
             )}
 
             {/* Quick manual additions directly to textarea */}
-            <div className="mt-3.5 flex items-center gap-2 max-w-sm">
+            <div className="mt-4 flex items-center gap-2 max-w-sm">
               <input
                 type="text"
                 id="quick_add_name"
