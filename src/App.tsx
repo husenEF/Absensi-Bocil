@@ -1,4 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import QRCode from 'qrcode';
+import jsQR from 'jsqr';
 import { 
   Calendar, 
   Users, 
@@ -32,7 +35,13 @@ import {
   ExternalLink,
   AlertTriangle,
   Volume2,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Upload,
+  Share2,
+  Wifi,
+  Camera,
+  QrCode,
+  Link2
 } from 'lucide-react';
 import { db, AbsensiRecord, ScheduleRecord } from './db';
 import { formatIndonesianDate, formatDateShort } from './utils/date';
@@ -147,6 +156,23 @@ export default function App() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [onlineStatus, setOnlineStatus] = useState<boolean>(navigator.onLine);
 
+  // Dismissable notices states
+  const [hideDbNotice, setHideDbNotice] = useState<boolean>(() => localStorage.getItem('hide_db_notice_v3') === 'true');
+  const [hideWeekReminder, setHideWeekReminder] = useState<boolean>(() => localStorage.getItem('hide_week_reminder_v3') === 'true');
+
+  // Cross-device serverless sync states
+  const [syncHashOutput, setSyncHashOutput] = useState<string>('');
+  const [syncInputText, setSyncInputText] = useState<string>('');
+
+  // QR & Live Camera Scan States
+  const [showQrModal, setShowQrModal] = useState<boolean>(false);
+  const [generatedQrUrl, setGeneratedQrUrl] = useState<string>('');
+  const [isScanning, setIsScanning] = useState<boolean>(false);
+  const [scanError, setScanError] = useState<string>('');
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+
   // Toast notifications state
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
@@ -231,6 +257,30 @@ export default function App() {
   useEffect(() => {
     loadRecords();
     loadSchedules();
+
+    // Cek jika ada input kode sinkronisasi langsung dari query link (?sync=...)
+    const urlParams = new URLSearchParams(window.location.search);
+    const syncToken = urlParams.get('sync');
+    if (syncToken) {
+      // Hapus token dari query parameter agar tidak berulang saat di-refresh
+      const cleanUrl = window.location.origin + window.location.pathname;
+      window.history.replaceState({}, document.title, cleanUrl);
+
+      // Berikan penawaran konfirmasi kepada user sebelum penggabungan data dilakukan
+      setTimeout(() => {
+        const conf = window.confirm("Ditemukan berkas integrasi presensi masuk dari HP tujuan via tautan! Apakah Anda setuju menggabungkannya ke database lokal IndexedDB secara pintar tanpa menimpa data yang ada?");
+        if (conf) {
+          try {
+            const decodedString = decodeURIComponent(escape(atob(syncToken)));
+            const jsonData = JSON.parse(decodedString);
+            handleSmartMergeImport(jsonData);
+          } catch (err) {
+            console.error('[Decode Sync URL Param Error]', err);
+            showToast('Tautan sinkronisasi terkompresi rusak atau tidak terbaca.', 'error');
+          }
+        }
+      }, 800);
+    }
   }, []);
 
   // Request browser Notification permissions
@@ -891,6 +941,328 @@ export default function App() {
       .catch(() => showToast('Gagal menyalin teks.', 'error'));
   };
 
+  // Dismiss notice handlers
+  const handleDismissDbNotice = () => {
+    setHideDbNotice(true);
+    localStorage.setItem('hide_db_notice_v3', 'true');
+    showToast('Info penyimpanan terproteksi disembunyikan.', 'info');
+  };
+
+  const handleDismissWeekReminder = () => {
+    setHideWeekReminder(true);
+    localStorage.setItem('hide_week_reminder_v3', 'true');
+    showToast('Pengingat pekan ke-3 disembunyikan.', 'info');
+  };
+
+  // Cross-device serverless sync logic
+  const handleFullBackupExport = async () => {
+    try {
+      const allAbsensi = await db.absensi.toArray();
+      const allSchedules = await db.schedules.toArray();
+      const backupData = {
+        app: 'AbsenBocil',
+        version: '2.1',
+        exportedAt: Date.now(),
+        absensi: allAbsensi,
+        schedules: allSchedules
+      };
+      const jsonContent = JSON.stringify(backupData, null, 2);
+      downloadFile(jsonContent, `absenbocil-cadangan-lengkap-${new Date().toISOString().split('T')[0]}.json`, 'application/json;charset=utf-8;');
+      showToast('Cadangan database penuh berhasil diekspor!', 'success');
+    } catch (err) {
+      console.error('[Export Full Backup Error]', err);
+      showToast('Gagal mengekspor data cadangan penuh.', 'error');
+    }
+  };
+
+  const handleSmartMergeImport = async (jsonData: any) => {
+    try {
+      if (!jsonData || jsonData.app !== 'AbsenBocil') {
+        showToast('Format tidak valid atau bukan dari aplikasi AbsenBocil.', 'error');
+        return;
+      }
+
+      let mergedAbsensiCount = 0;
+      let mergedSchedulesCount = 0;
+
+      // 1. Process Schedules (Smart Merge)
+      if (Array.isArray(jsonData.schedules)) {
+        const allLocalSchedules = await db.schedules.toArray();
+        for (const s of jsonData.schedules) {
+          const match = allLocalSchedules.find(item => 
+            item.hari === s.hari && 
+            item.waktu === s.waktu && 
+            item.title === s.title
+          );
+
+          if (!match) {
+            const { id, ...cleanSchedule } = s;
+            await db.schedules.add(cleanSchedule);
+            mergedSchedulesCount++;
+          }
+        }
+      }
+
+      // 2. Process Absensi Records (Smart Merge participants per date & schedule)
+      if (Array.isArray(jsonData.absensi)) {
+        for (const r of jsonData.absensi) {
+          const existing = await db.absensi.where('tanggal').equals(r.tanggal).first();
+          if (existing) {
+            const combinedNames = Array.from(new Set([...existing.peserta, ...r.peserta]));
+            if (combinedNames.length > existing.peserta.length) {
+              await db.absensi.update(existing.id!, { peserta: combinedNames });
+              mergedAbsensiCount++;
+            }
+          } else {
+            const { id, ...cleanRecord } = r;
+            await db.absensi.add(cleanRecord);
+            mergedAbsensiCount++;
+          }
+        }
+      }
+
+      showToast(`Sinkronisasi Berhasil! ${mergedSchedulesCount} jadwal ditambahkan & ${mergedAbsensiCount} presensi digabungkan secara pintar tanpa duplikasi.`, 'success');
+      
+      // Reload records in-app
+      loadRecords();
+      // Reload schedule listings
+      const loadedScheds = await db.schedules.toArray();
+      setSchedules(loadedScheds);
+    } catch (err) {
+      console.error('[Smart Merge Error]', err);
+      showToast('Gagal memproses sinkronisasi data.', 'error');
+    }
+  };
+
+  const handleGenerateSyncHash = async () => {
+    try {
+      const allAbsensi = await db.absensi.toArray();
+      const allSchedules = await db.schedules.toArray();
+      
+      if (allAbsensi.length === 0 && allSchedules.length === 0) {
+        showToast('Database lokal Anda masih kosong, tidak ada data untuk disinkronisasi.', 'error');
+        return;
+      }
+
+      const backupData = {
+        app: 'AbsenBocil',
+        version: '2.1',
+        exportedAt: Date.now(),
+        absensi: allAbsensi,
+        schedules: allSchedules
+      };
+      
+      const jsonString = JSON.stringify(backupData);
+      const u8String = unescape(encodeURIComponent(jsonString));
+      const b64 = btoa(u8String);
+      setSyncHashOutput(b64);
+      showToast('Kode Sinkronisasi Instan berhasil dibuat! Silakan salin.', 'success');
+    } catch (err) {
+      console.error('[Generate Sync Hash Error]', err);
+      showToast('Gagal menciptakan kode sinkronisasi.', 'error');
+    }
+  };
+
+  const handleImportSyncHash = async () => {
+    if (!syncInputText || syncInputText.trim() === '') {
+      showToast('Masukkan kode sinkronisasi terlebih dahulu.', 'error');
+      return;
+    }
+    
+    try {
+      const cleanHash = syncInputText.trim();
+      const decodedString = decodeURIComponent(escape(atob(cleanHash)));
+      const jsonData = JSON.parse(decodedString);
+      
+      await handleSmartMergeImport(jsonData);
+      setSyncInputText('');
+      setSyncHashOutput('');
+    } catch (err) {
+      console.error('[Decode Sync Hash Error]', err);
+      showToast('Kode sinkronisasi salah atau tidak dapat dibaca.', 'error');
+    }
+  };
+
+  // Start Camera QR Code Scanner with canvas processing
+  const startCameraScanner = async () => {
+    setIsScanning(true);
+    setScanError('');
+    try {
+      // Direct access request to backward-facing camera
+      const constraints = {
+        video: { facingMode: 'environment' }
+      };
+      const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+      streamRef.current = mediaStream;
+      
+      if (videoRef.current) {
+        videoRef.current.srcObject = mediaStream;
+        videoRef.current.setAttribute('playsinline', 'true'); // Required for iOS support
+        videoRef.current.play();
+        requestAnimationFrame(scannerTick);
+      }
+    } catch (err: any) {
+      console.error('[Camera Access Error]', err);
+      setScanError('Gagal mengakses kamera. Mohon pastikan izin akses kamera aktif.');
+      showToast('Gagal membuka kamera perangkat.', 'error');
+    }
+  };
+
+  const stopCameraScanner = () => {
+    setIsScanning(false);
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+  };
+
+  // Keep scanning frames recursively from webcam to canvas
+  const scannerTick = () => {
+    if (!videoRef.current || !canvasRef.current || videoRef.current.paused || videoRef.current.ended) {
+      return;
+    }
+
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+    if (ctx && video.readyState === video.HAVE_ENOUGH_DATA) {
+      canvas.height = video.videoHeight;
+      canvas.width = video.videoWidth;
+      
+      // Draw webcam frame onto temporary canvas
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      
+      // Extract frame pixels
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      
+      // Scan via pure JS QR Code library: JSQR
+      const decodedResult = jsQR(imageData.data, imageData.width, imageData.height, {
+        inversionAttempts: 'dontInvert',
+      });
+
+      if (decodedResult && decodedResult.data) {
+        const scannedDataStr = decodedResult.data;
+        try {
+          const decryptedString = decodeURIComponent(escape(atob(scannedDataStr)));
+          const parsedJson = JSON.parse(decryptedString);
+          
+          if (parsedJson && parsedJson.app === 'AbsenBocil') {
+            // Stop scanning and camera immediately
+            stopCameraScanner();
+            
+            // Perform Smart-Merge!
+            handleSmartMergeImport(parsedJson);
+            return;
+          }
+        } catch (decodeErr) {
+          console.warn('QR Code scanned but is not valid compressed AbsenBocil data.', decodeErr);
+        }
+      }
+    }
+
+    // Call recursively on next paint loop
+    if (streamRef.current) {
+      requestAnimationFrame(scannerTick);
+    }
+  };
+
+  // Generate Data URL for QR Code containing current local database
+  const handleGenerateQrCode = async () => {
+    try {
+      const allAbsensi = await db.absensi.toArray();
+      const allSchedules = await db.schedules.toArray();
+      
+      if (allAbsensi.length === 0 && allSchedules.length === 0) {
+        showToast('Database lokal Anda kosong. Tidak ada data untuk dibagikan!', 'error');
+        return;
+      }
+
+      const backupData = {
+        app: 'AbsenBocil',
+        version: '2.1',
+        exportedAt: Date.now(),
+        absensi: allAbsensi,
+        schedules: allSchedules
+      };
+
+      const jsonString = JSON.stringify(backupData);
+      
+      if (jsonString.length > 3900) {
+        showToast('Data Anda terlalu besar untuk QR Code! Mohon gunakan Metode 3 (Ekspor Berkas JSON) agar aman.', 'error');
+        return;
+      }
+
+      const u8String = unescape(encodeURIComponent(jsonString));
+      const b64 = btoa(u8String);
+      
+      const dataUrl = await QRCode.toDataURL(b64, {
+        errorCorrectionLevel: 'L',
+        margin: 1.5,
+        width: 320,
+        color: {
+          dark: '#0d9488', // teal-600
+          light: '#ffffff'
+        }
+      });
+      
+      setGeneratedQrUrl(dataUrl);
+      setShowQrModal(true);
+      showToast('QR Code berhasil diciptakan! Siap di-scan.', 'success');
+    } catch (err: any) {
+      console.error('[QR Generation Error]', err);
+      showToast('Gagal menyusun QR Code. Gunakan ekspor file untuk kapasitas data yang besar.', 'error');
+    }
+  };
+
+  const handleCopyDirectSyncLink = async () => {
+    try {
+      const allAbsensi = await db.absensi.toArray();
+      const allSchedules = await db.schedules.toArray();
+      
+      if (allAbsensi.length === 0 && allSchedules.length === 0) {
+        showToast('Database lokal kosong. Belum ada data untuk dipasang ke tautan!', 'error');
+        return;
+      }
+
+      const backupData = {
+        app: 'AbsenBocil',
+        version: '2.1',
+        exportedAt: Date.now(),
+        absensi: allAbsensi,
+        schedules: allSchedules
+      };
+
+      const jsonString = JSON.stringify(backupData);
+      const u8String = unescape(encodeURIComponent(jsonString));
+      const b64 = btoa(u8String);
+
+      // Create landing link URL
+      const syncUrl = `${window.location.origin}${window.location.pathname}?sync=${encodeURIComponent(b64)}`;
+      
+      navigator.clipboard.writeText(syncUrl)
+        .then(() => {
+          showToast('Tautan Sinkronisasi Instan disalin ke Clipboard! Kirim link ini ke WA HP tujuan.', 'success');
+        })
+        .catch(() => {
+          setSyncHashOutput(syncUrl);
+          showToast('Tautan gagal otomatis disalin. Silakan gunakan tab Teks untuk menyalinnya.', 'info');
+        });
+    } catch (error) {
+      console.error('[Copy Sync Link Tool Error]', error);
+      showToast('Gagal memproses instan tautan.', 'error');
+    }
+  };
+
+  // Watch scanner effect for automatic camera shutdown on scanner close
+  useEffect(() => {
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
+
   // Pre-seed mock data for May-June 2026 for review and fast testing
   const handleLoadSampleData = async () => {
     const baseTime = 1780447307000; // June 2026 Epoch
@@ -1027,34 +1399,43 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col antialiased transition-colors duration-200">
+    <div className="min-h-screen bg-[slate-50] dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col antialiased transition-colors duration-200 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] dark:bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:24px_24px] bg-fixed">
       {/* Toast Alert */}
       {toast && (
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 animate-bounce duration-300">
-          <div className={`flex items-center gap-3 px-5 py-3 rounded-xl shadow-lg border text-sm font-medium ${
-            toast.type === 'success' ? 'bg-teal-50 dark:bg-teal-950 text-teal-800 dark:text-teal-250 border-teal-200/80 dark:border-teal-900/50' : 
-            toast.type === 'error' ? 'bg-rose-50 dark:bg-rose-950 text-rose-800 dark:text-rose-250 border-rose-200/80 dark:border-rose-900/50' : 
-            'bg-slate-800 dark:bg-slate-900 text-white border-slate-700 dark:border-slate-800'
-          }`}>
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50">
+          <motion.div 
+            initial={{ opacity: 0, y: -20, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.9 }}
+            className={`flex items-center gap-3 px-5 py-3 rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.08)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.3)] border text-sm font-semibold select-none ${
+              toast.type === 'success' ? 'bg-teal-500/10 text-teal-800 dark:text-teal-200 border-teal-500/20 backdrop-blur-md' : 
+              toast.type === 'error' ? 'bg-rose-500/10 text-rose-800 dark:text-rose-200 border-rose-500/20 backdrop-blur-md' : 
+              'bg-slate-900/90 text-white border-slate-800 backdrop-blur-md'
+            }`}
+          >
             {toast.type === 'success' && <CheckCircle2 className="w-5 h-5 text-teal-600 dark:text-teal-400" />}
-            {toast.type === 'error' && <AlertCircle className="w-5 h-5 text-rose-600" />}
+            {toast.type === 'error' && <AlertCircle className="w-5 h-5 text-rose-500" />}
             {toast.type === 'info' && <Info className="w-5 h-5 text-teal-400" />}
             <span>{toast.message}</span>
-          </div>
+          </motion.div>
         </div>
       )}
 
-      {/* Hero Header Area - Clean Minimalism Theme style */}
-      <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 py-6 transition-colors duration-200">
+      {/* Hero Header Area - Frosted Glass & Sophisticated Gradient Theme */}
+      <header className="bg-white/80 dark:bg-slate-900/70 backdrop-blur-md border-b border-slate-200/50 dark:border-slate-800/60 py-5 sticky top-0 z-40 transition-colors duration-250">
         <div className="max-w-4xl mx-auto px-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             
             {/* Logo and App Title */}
             <div>
-              <h1 className="text-lg font-extrabold text-teal-600 dark:text-teal-400 tracking-tight flex items-center gap-1.5">
-                <span>AbsenBocil 😊</span>
-              </h1>
-              <p className="text-xs text-slate-505 dark:text-slate-400 mt-1 select-none font-medium">Sistem Pencatatan Offline & Laporan Otomatis</p>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl font-black bg-gradient-to-r from-teal-650 via-emerald-600 to-teal-555 dark:from-teal-400 dark:via-emerald-400 dark:to-teal-300 bg-clip-text text-transparent tracking-tight flex items-center gap-1.5 select-none animate-fade-in">
+                  <span>AbsenBocil</span>
+                  <span className="text-slate-950 dark:text-slate-100">😊</span>
+                </h1>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-teal-550/10 dark:bg-teal-450/20 text-teal-700 dark:text-teal-350 border border-teal-550/15 dark:border-teal-405/10 select-none tracking-tight">v2.1</span>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 select-none font-medium">Sistem Pencatatan Offline &amp; Laporan Otomatis</p>
             </div>
 
             {/* Offline, Dark Mode and Install Status Panel */}
@@ -1063,7 +1444,7 @@ export default function App() {
               <button
                 type="button"
                 onClick={() => setDarkMode(prev => !prev)}
-                className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-350 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+                className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-350 hover:bg-slate-200/70 dark:hover:bg-slate-700/80 transition-colors cursor-pointer"
                 title={darkMode ? "Ganti ke Mode Terang" : "Ganti ke Mode Gelap"}
               >
                 {darkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
@@ -1082,7 +1463,7 @@ export default function App() {
               {/* Install PWA Button if available */}
               <button
                 onClick={executePWAPrompt}
-                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-teal-600 hover:bg-teal-700 text-white transition-colors cursor-pointer shadow-xs active:scale-95"
+                className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-black bg-teal-600 hover:bg-teal-700 text-white transition-all cursor-pointer shadow-xs active:scale-95 hover:shadow-md hover:shadow-teal-500/10"
               >
                 <Smartphone className="w-3.5 h-3.5" />
                 <span>Pasang Aplikasi</span>
@@ -1097,126 +1478,199 @@ export default function App() {
       <main className="flex-1 max-w-4xl w-full mx-auto px-4 py-8">
         
         {/* Helper quick notice for Offline mode / Database */}
-        <div className="mb-6 p-4 rounded-xl bg-teal-50/40 dark:bg-teal-950/15 border border-teal-100 dark:border-teal-900/40 flex items-start gap-3 transition-colors duration-200">
-          <Database className="w-5 h-5 text-teal-600 dark:text-teal-400 mt-0.5 flex-shrink-0" />
-          <div className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
-            <span className="font-bold text-teal-900 dark:text-teal-350">Penyimpanan Terproteksi Lokal:</span> Laporan ini diproses di database <span className="font-semibold text-teal-950 dark:text-teal-200">IndexedDB</span> internal browser Anda. Data bersifat lokal dan super aman.
+        {!hideDbNotice && (
+          <div className="mb-6 p-3.5 rounded-2xl bg-teal-500/[0.03] dark:bg-teal-950/[0.12] border border-teal-500/15 dark:border-teal-900/30 flex items-center justify-between gap-3 transition-colors duration-200 shadow-3xs">
+            <div className="flex items-center gap-2.5">
+              <Database className="w-4 h-4 text-teal-600 dark:text-teal-400 shrink-0 animate-pulse" />
+              <div className="text-2xs sm:text-xs text-slate-650 dark:text-slate-300 font-medium">
+                <span className="font-bold text-teal-900 dark:text-teal-300">Penyimpanan Terproteksi:</span> Semua data Anda tersimpan aman secara lokal di browser ini saja (IndexedDB).
+              </div>
+            </div>
+            <button
+              onClick={handleDismissDbNotice}
+              className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-400 cursor-pointer transition-colors"
+              title="Sembunyikan info"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
           </div>
-        </div>
+        )}
 
         {/* Dynamic Reminder for Week 3 Report */}
-        {todayIsThirdWeek && (
-          <div className="mb-6 p-4 rounded-xl bg-amber-500/10 dark:bg-amber-500/5 text-amber-800 dark:text-amber-400 border border-amber-500/20 flex items-start gap-3 transition-colors">
-            <Bell className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
-            <div className="text-xs sm:text-sm leading-relaxed flex-1">
-              <span className="font-bold text-amber-900 dark:text-amber-350">⚠️ PENGINGAT PEKAN KE-3 PEKANAN:</span> Saat ini adalah pekan ke-3 (rentang tanggal 15 s.d 21). Jangan lupa memproses dan mengirimkan <b>Laporan Mingguan</b> bulan ini ke pihak koordinator / wali murid!
-              <div className="mt-2 flex items-center gap-2">
-                <button 
-                  onClick={() => setActiveTab('laporan')}
-                  className="px-2.5 py-1 text-2xs font-bold text-teal-700 dark:text-teal-400 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md hover:teal-50 transition-colors cursor-pointer inline-flex items-center gap-1"
-                >
-                  <span>Mulai Buat Laporan</span>
-                  <ChevronRight className="w-3 h-3" />
-                </button>
+        {todayIsThirdWeek && !hideWeekReminder && (
+          <div className="mb-6 p-3.5 rounded-2xl bg-amber-500/[0.04] dark:bg-amber-500/[0.02] text-amber-800 dark:text-amber-400 border border-amber-500/15 flex items-center justify-between gap-3 transition-all shadow-3xs">
+            <div className="flex items-center gap-2.5">
+              <Bell className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+              <div className="text-2xs sm:text-xs font-medium">
+                <span className="font-bold text-amber-900 dark:text-amber-350">⚠️ Pengingat Pekan ke-3:</span> Saat ini pekan ke-3. Jangan lupa menyusun Laporan Mingguan bulan ini!
               </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => setActiveTab('laporan')}
+                className="px-2.5 py-1 text-[10px] font-black tracking-wide uppercase text-teal-750 dark:text-teal-400 bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-850 rounded-lg hover:bg-teal-500/5 transition-colors cursor-pointer"
+              >
+                Buat Laporan
+              </button>
+              <button
+                onClick={handleDismissWeekReminder}
+                className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-400 cursor-pointer transition-colors"
+                title="Sembunyikan pengingat"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
             </div>
           </div>
         )}
 
         {/* Dynamic Global Dashboard Statistics */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-          <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center justify-between transition-colors duration-200">
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            className="bg-white/80 dark:bg-slate-900/60 backdrop-blur-xs p-5 rounded-2xl border border-slate-200/50 dark:border-slate-800/80 shadow-[0_8px_30px_rgb(0,0,0,0.01)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.15)] flex items-center justify-between transition-all duration-300 hover:-translate-y-1 hover:border-teal-500/20 dark:hover:border-teal-500/20 hover:shadow-[0_12px_40px_rgba(20,184,166,0.03)]"
+          >
             <div>
-              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Hari Tercatat</p>
-              <h3 className="text-2.5xl font-bold text-slate-905 dark:text-white mt-1">{records.length} <span className="text-xs font-normal text-slate-500">hari</span></h3>
+              <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Total Hari Tercatat</p>
+              <h3 className="text-2xl font-black text-slate-850 dark:text-white mt-1.5 tracking-tight">
+                {records.length} <span className="text-xs font-medium text-slate-500 dark:text-slate-400">hari</span>
+              </h3>
             </div>
-            <div className="p-3 bg-teal-50 dark:bg-teal-950/50 text-teal-600 dark:text-teal-400 rounded-lg">
+            <div className="p-3 bg-teal-500/10 text-teal-600 dark:text-teal-400 rounded-xl border border-teal-500/10">
               <Calendar className="w-5 h-5" />
             </div>
-          </div>
+          </motion.div>
 
-          <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center justify-between transition-colors duration-200">
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.05 }}
+            className="bg-white/80 dark:bg-slate-900/60 backdrop-blur-xs p-5 rounded-2xl border border-slate-200/50 dark:border-slate-800/80 shadow-[0_8px_30px_rgb(0,0,0,0.01)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.15)] flex items-center justify-between transition-all duration-300 hover:-translate-y-1 hover:border-teal-500/20 dark:hover:border-teal-500/20 hover:shadow-[0_12px_40px_rgba(20,184,166,0.03)]"
+          >
             <div>
-              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Daftar Siswa/Peserta</p>
-              <h3 className="text-2.5xl font-bold text-slate-905 dark:text-white mt-1">{allRegisteredStudents.length} <span className="text-xs font-normal text-slate-500">orang</span></h3>
+              <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Daftar Siswa Aktif</p>
+              <h3 className="text-2xl font-black text-slate-850 dark:text-white mt-1.5 tracking-tight">
+                {allRegisteredStudents.length} <span className="text-xs font-medium text-slate-500 dark:text-slate-400">orang</span>
+              </h3>
             </div>
-            <div className="p-3 bg-teal-50 dark:bg-teal-950/50 text-teal-600 dark:text-teal-400 rounded-lg">
+            <div className="p-3 bg-teal-500/10 text-teal-600 dark:text-teal-400 rounded-xl border border-teal-500/10">
               <Users className="w-5 h-5" />
             </div>
-          </div>
+          </motion.div>
 
-          <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center justify-between transition-colors duration-200">
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.1 }}
+            className="bg-white/80 dark:bg-slate-900/60 backdrop-blur-xs p-5 rounded-2xl border border-slate-200/50 dark:border-slate-800/80 shadow-[0_8px_30px_rgb(0,0,0,0.01)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.15)] flex items-center justify-between transition-all duration-300 hover:-translate-y-1 hover:border-teal-500/10 dark:hover:border-teal-500/10 hover:shadow-[0_12px_40px_rgba(20,184,166,0.02)]"
+          >
             <div>
-              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Demo / Reviewer</p>
+              <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Simulasi Data</p>
               <button
+                type="button"
                 onClick={handleLoadSampleData}
-                className="mt-1 inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-850 hover:bg-slate-800 text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer"
+                className="mt-1.5 inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white text-[10px] font-black tracking-wider uppercase rounded-xl transition-all shadow-xs active:scale-95 cursor-pointer"
               >
-                <RefreshCw className="w-3.5 h-3.5 animate-spin-slow" />
-                <span>Isi Data Contoh 2026</span>
+                <RefreshCw className="w-3.5 h-3.5 text-teal-450 animate-spin-slow" />
+                <span>Isi Data 2026</span>
               </button>
             </div>
-            <div className="p-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-lg">
+            <div className="p-3 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-xl border border-slate-200/20 dark:border-slate-750">
               <Info className="w-5 h-5" />
             </div>
-          </div>
+          </motion.div>
         </div>
 
         {/* Navigation Tabs Controller */}
-        <div className="flex border-b border-slate-200 dark:border-slate-800 mb-6 font-medium text-sm overflow-x-auto gap-2">
+        <div className="bg-slate-100/70 dark:bg-slate-900/50 p-1 rounded-2xl border border-slate-200/40 dark:border-slate-800/60 flex overflow-x-auto gap-1 mb-8 shadow-[inset_0_2px_4px_rgba(0,0,0,0.015)] dark:shadow-none scrollbar-none [scrollbar-with:none]">
           <button
+            type="button"
             onClick={() => setActiveTab('input')}
-            className={`flex items-center gap-2 px-4 py-3 border-b-2 font-bold transition-all whitespace-nowrap cursor-pointer ${
+            className={`relative flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer z-10 flex-1 sm:flex-none ${
               activeTab === 'input'
-                ? 'border-teal-600 dark:border-teal-500 text-teal-700 dark:text-teal-400'
-                : 'border-transparent text-slate-505 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:border-slate-300 dark:hover:border-slate-700'
+                ? 'text-teal-750 dark:text-teal-400 font-extrabold'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-850 dark:hover:text-slate-200'
             }`}
           >
+            {activeTab === 'input' && (
+              <motion.span
+                layoutId="activeTabPill"
+                className="absolute inset-0 bg-white dark:bg-slate-950 border border-slate-200/20 dark:border-slate-800/80 shadow-[0_2px_8px_rgba(0,0,0,0.03)] rounded-xl -z-10"
+                transition={{ type: "spring", stiffness: 380, damping: 30 }}
+              />
+            )}
             <UserPlus className="w-4 h-4" />
             <span>Mulai Presensi</span>
           </button>
           
           <button
+            type="button"
             onClick={() => setActiveTab('riwayat')}
-            className={`flex items-center gap-2 px-4 py-3 border-b-2 font-bold transition-all whitespace-nowrap cursor-pointer ${
+            className={`relative flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer z-10 flex-1 sm:flex-none ${
               activeTab === 'riwayat'
-                ? 'border-teal-600 dark:border-teal-500 text-teal-700 dark:text-teal-400'
-                : 'border-transparent text-slate-505 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:border-slate-300 dark:hover:border-slate-700'
+                ? 'text-teal-750 dark:text-teal-400 font-extrabold'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-850 dark:hover:text-slate-200'
             }`}
           >
+            {activeTab === 'riwayat' && (
+              <motion.span
+                layoutId="activeTabPill"
+                className="absolute inset-0 bg-white dark:bg-slate-950 border border-slate-200/20 dark:border-slate-800/80 shadow-[0_2px_8px_rgba(0,0,0,0.03)] rounded-xl -z-10"
+                transition={{ type: "spring", stiffness: 380, damping: 30 }}
+              />
+            )}
             <Clock className="w-4 h-4" />
             <span>Riwayat Absensi</span>
             {records.length > 0 && (
-              <span className="ml-1 px-1.5 py-0.5 text-3xs font-bold leading-none bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-300 rounded-full">
+              <span className={`ml-1 px-1.5 py-0.5 text-[9px] font-black leading-none rounded-full transition-colors ${
+                activeTab === 'riwayat' ? 'bg-teal-500/10 text-teal-600 dark:text-teal-400' : 'bg-slate-200/90 dark:bg-slate-800 text-slate-700 dark:text-slate-400'
+              }`}>
                 {records.length}
               </span>
             )}
           </button>
 
           <button
+            type="button"
             onClick={() => setActiveTab('laporan')}
-            className={`flex items-center gap-2 px-4 py-3 border-b-2 font-bold transition-all whitespace-nowrap cursor-pointer ${
+            className={`relative flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer z-10 flex-1 sm:flex-none ${
               activeTab === 'laporan'
-                ? 'border-teal-600 dark:border-teal-500 text-teal-700 dark:text-teal-400'
-                : 'border-transparent text-slate-505 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:border-slate-300 dark:hover:border-slate-700'
+                ? 'text-teal-750 dark:text-teal-400 font-extrabold'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-850 dark:hover:text-slate-200'
             }`}
           >
+            {activeTab === 'laporan' && (
+              <motion.span
+                layoutId="activeTabPill"
+                className="absolute inset-0 bg-white dark:bg-slate-950 border border-slate-200/20 dark:border-slate-800/80 shadow-[0_2px_8px_rgba(0,0,0,0.03)] rounded-xl -z-10"
+                transition={{ type: "spring", stiffness: 380, damping: 30 }}
+              />
+            )}
             <FileText className="w-4 h-4" />
-            <span>Generator Laporan Mingguan</span>
+            <span>Generator Laporan</span>
           </button>
 
           <button
+            type="button"
             onClick={() => setActiveTab('jadwal')}
-            className={`flex items-center gap-2 px-4 py-3 border-b-2 font-bold transition-all whitespace-nowrap cursor-pointer ${
+            className={`relative flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer z-10 flex-1 sm:flex-none ${
               activeTab === 'jadwal'
-                ? 'border-teal-600 dark:border-teal-500 text-teal-700 dark:text-teal-400'
-                : 'border-transparent text-slate-505 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:border-slate-300 dark:hover:border-slate-700'
+                ? 'text-teal-750 dark:text-teal-400 font-extrabold'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-850 dark:hover:text-slate-200'
             }`}
           >
+            {activeTab === 'jadwal' && (
+              <motion.span
+                layoutId="activeTabPill"
+                className="absolute inset-0 bg-white dark:bg-slate-950 border border-slate-200/20 dark:border-slate-800/80 shadow-[0_2px_8px_rgba(0,0,0,0.03)] rounded-xl -z-10"
+                transition={{ type: "spring", stiffness: 380, damping: 30 }}
+              />
+            )}
             <Bell className="w-4 h-4" />
-            <span>Jadwal & Pengingat</span>
+            <span>Jadwal &amp; Pengingat</span>
             {schedules.length > 0 && (
-              <span className="ml-1 px-1.5 py-0.5 text-3xs font-bold leading-none bg-teal-600 dark:bg-teal-500 text-white rounded-full">
+              <span className="ml-1 px-1.5 py-0.5 text-[9px] font-black leading-none bg-teal-600 dark:bg-teal-500 text-white rounded-full">
                 {schedules.filter(s => {
                   const now = new Date();
                   const [h, m] = s.waktu.split(':').map(Number);
@@ -1231,7 +1685,11 @@ export default function App() {
 
         {/* Tab 1: Form Input Presensi Harian */}
         {activeTab === 'input' && (
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs p-6 transition-colors duration-200">
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/50 dark:border-slate-800/80 shadow-[0_8px_30px_rgb(0,0,0,0.015)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.15)] p-6 transition-colors duration-200"
+          >
             <div className="mb-6">
               <h2 className="text-base font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wide">Input Absensi Peserta Didik</h2>
               <p className="text-xs text-slate-550 dark:text-slate-400 mt-1">
@@ -1424,12 +1882,16 @@ export default function App() {
               </div>
 
             </form>
-          </div>
+          </motion.div>
         )}
 
         {/* Tab 2: Riwayat Absensi & Manajemen Data */}
         {activeTab === 'riwayat' && (
-          <div className="space-y-4">
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-4"
+          >
             
             <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs p-6 mb-2">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -1719,12 +2181,251 @@ export default function App() {
                 })}
               </div>
             )}
-          </div>
+
+            {/* Serverless Multi-Device Sync Panel */}
+            <div className="mt-8 bg-zinc-50 dark:bg-slate-900/40 p-5 rounded-2xl border border-slate-200/50 dark:border-slate-800/80 transition-all duration-300">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-slate-200/60 dark:border-slate-800/60 mb-4">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 bg-teal-500/10 text-teal-600 dark:text-teal-400 rounded-lg border border-teal-500/10">
+                    <Wifi className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">Sistem Sinkronisasi Instan Tanpa Server (Offline-First)</h3>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400">Hubungkan &amp; gabungkan absensi antar HP wali murid/pengajar langsung tanpa perlu pendaftaran akun.</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Dynamic QR Scanner & QR Display Active states */}
+              {(isScanning || showQrModal) && (
+                <div className="mb-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Camera Scanner Container */}
+                  {isScanning && (
+                    <div className="bg-slate-950 text-white rounded-xl p-4 flex flex-col items-center justify-center space-y-3 relative overflow-hidden border border-slate-800/80 shadow-md">
+                      <div className="absolute top-2 right-2 z-10">
+                        <button
+                          type="button"
+                          onClick={stopCameraScanner}
+                          className="p-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-white transition-colors cursor-pointer"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 mb-1.5">
+                        <Camera className="w-4 h-4 text-emerald-400 animate-pulse" />
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Kamera Pemindai QR Aktif</span>
+                      </div>
+
+                      <div className="relative w-full aspect-video md:max-w-md bg-black rounded-lg overflow-hidden border border-white/10 flex items-center justify-center">
+                        <video
+                          ref={videoRef}
+                          className="w-full h-full object-cover"
+                        />
+                        {/* Custom Animated Scanning HUD Laser */}
+                        <div className="absolute inset-x-0 h-0.5 bg-emerald-400 animate-[bounce_2.5s_infinite] shadow-[0_0_10px_rgba(52,211,153,0.8)]" />
+                        <div className="absolute inset-0 border-2 border-dashed border-emerald-400/30 m-4 pointer-events-none rounded-lg" />
+                      </div>
+
+                      <canvas ref={canvasRef} className="hidden" />
+
+                      {scanError ? (
+                        <p className="text-[11px] text-rose-400 text-center px-4 font-medium">{scanError}</p>
+                      ) : (
+                        <p className="text-[10px] text-slate-400 text-center px-4 leading-relaxed">
+                          Arahkan kamera ke <b>QR Code Perangkat Utama</b> untuk membaca dan menyatukan seluruh database data presensi &amp; kelas secara instan.
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* QR Generator View Container */}
+                  {showQrModal && generatedQrUrl && (
+                    <div className="bg-white dark:bg-slate-950 rounded-xl p-4 flex flex-col items-center justify-center text-center space-y-3 border border-slate-200 dark:border-slate-800/80 shadow-md">
+                      <div className="flex items-center justify-between w-full">
+                        <span className="text-xs font-bold text-teal-700 dark:text-teal-400 flex items-center gap-1.5">
+                          <QrCode className="w-4 h-4" />
+                          <span>QR Code Sinkronisasi Anda</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowQrModal(false);
+                            setGeneratedQrUrl('');
+                          }}
+                          className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-400 transition-colors cursor-pointer"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      <div className="p-2.5 bg-slate-50 dark:bg-white rounded-2xl border border-slate-200 dark:border-slate-100 flex items-center justify-center shadow-xs">
+                        <img
+                          src={generatedQrUrl}
+                          alt="AbsenBocil Sync QR"
+                          className="w-44 h-44 object-contain"
+                        />
+                      </div>
+
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400 max-w-xs leading-relaxed">
+                        Pindai kode di atas menggunakan menu <b>Pindai QR Perangkat Lain</b> untuk transfer data langsung tanpa perlu koneksi internet.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Metode Utama: QR Instant Connection */}
+                <div className="bg-white dark:bg-slate-900 border border-slate-200/40 dark:border-slate-800/60 p-4 rounded-xl flex flex-col justify-between space-y-4 shadow-3xs">
+                  <div>
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-teal-500/10 text-teal-600 dark:text-teal-450 rounded-md">Metode Utama</span>
+                      <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">Koneksi Layar ke Layar (Scan QR)</h4>
+                    </div>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                      Sebab aplikasi ini seratus persen offline-first demi keamanan, Anda bisa langsung mentransfer data presensi dari layar HP pengirim dengan menyalakan kamera pemindai di HP penerima.
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <button
+                      type="button"
+                      onClick={handleGenerateQrCode}
+                      className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-slate-50 dark:bg-slate-850 hover:bg-teal-500/5 hover:text-teal-600 dark:hover:text-teal-400 text-slate-700 dark:text-slate-300 text-xs font-bold rounded-lg cursor-pointer border border-slate-200/50 dark:border-slate-800 transition-all"
+                    >
+                      <QrCode className="w-3.5 h-3.5 text-teal-500" />
+                      <span>Tampilkan QR</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (isScanning) stopCameraScanner();
+                        else startCameraScanner();
+                      }}
+                      className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-lg cursor-pointer transition-colors shadow-2xs"
+                    >
+                      <Camera className="w-3.5 h-3.5 shrink-0" />
+                      <span>{isScanning ? 'Mati Kamera' : 'Pindai QR'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Metode Alternatif: Tautan Bagikan Jarak Jauh (WhatsApp) */}
+                <div className="bg-white dark:bg-slate-900 border border-slate-200/40 dark:border-slate-800/60 p-4 rounded-xl flex flex-col justify-between space-y-4 shadow-3xs">
+                  <div>
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-amber-500/10 text-amber-605 dark:text-amber-400 rounded-md">Jarak Jauh</span>
+                      <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">Bagikan Instan Tautan (WhatsApp)</h4>
+                    </div>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                      Tidak saling berdekatan? Cukup salin tautan terenkripsi gratis ini, kirim via chat WhatsApp ke HP pihak tujuan. Setelah di-klik, data otomatis terhubung!
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={handleCopyDirectSyncLink}
+                      className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-slate-50 dark:bg-slate-850 hover:bg-amber-500/5 text-slate-750 dark:text-slate-300 hover:text-amber-600 dark:hover:text-amber-400 text-xs font-bold rounded-lg border border-slate-200/50 dark:border-slate-800 cursor-pointer transition-colors"
+                    >
+                      <Link2 className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                      <span>Salin Tautan Integrasi (.link)</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Advanced Fail-safe Panel: Backup manual (.json / base64 code) */}
+              <div className="mt-4 pt-3.5 border-t border-slate-200/50 dark:border-slate-800/60 grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* File fallback */}
+                <div className="flex items-center justify-between text-2xs">
+                  <span className="text-slate-500 dark:text-slate-400 font-medium">Butuh cadangan berkas fisik (.json)?</span>
+                  <div className="flex gap-2.5">
+                    <button
+                      type="button"
+                      onClick={handleFullBackupExport}
+                      className="text-teal-600 dark:text-teal-450 hover:underline font-bold cursor-pointer"
+                    >
+                      Ekspor File
+                    </button>
+                    <label className="text-slate-600 dark:text-slate-300 font-bold hover:underline cursor-pointer">
+                      <span>Impor File</span>
+                      <input 
+                        type="file" 
+                        accept=".json" 
+                        className="hidden" 
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          const reader = new FileReader();
+                          reader.onload = (event) => {
+                            try {
+                              const parsed = JSON.parse(event.target?.result as string);
+                              handleSmartMergeImport(parsed);
+                            } catch (error) {
+                              showToast('Gagal membaca berkas JSON.', 'error');
+                            }
+                          };
+                          reader.readAsText(file);
+                        }}
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                {/* Text string fallback */}
+                <div className="flex items-center justify-between text-2xs space-x-2">
+                  <span className="text-slate-500 dark:text-slate-400 font-medium truncate shrink">Atau tempel kode teks manual?</span>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={handleGenerateSyncHash}
+                      className="text-slate-600 dark:text-slate-300 hover:underline font-bold cursor-pointer shrink-0"
+                    >
+                      Buat Kode
+                    </button>
+                    {syncHashOutput && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(syncHashOutput);
+                          showToast('Kode disalin!', 'success');
+                        }}
+                        className="text-amber-600 font-bold cursor-pointer animate-pulse shrink-0"
+                      >
+                        (Salin)
+                      </button>
+                    )}
+                    <input
+                      type="text"
+                      placeholder="Tempel kode..."
+                      value={syncInputText}
+                      onChange={(e) => setSyncInputText(e.target.value)}
+                      className="w-20 px-1 py-0.5 text-[8px] border border-slate-200 dark:border-slate-800 dark:bg-slate-950 font-mono rounded"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleImportSyncHash}
+                      className="px-1.5 py-0.5 bg-slate-200 dark:bg-slate-800 rounded font-bold text-slate-700 dark:text-slate-300 cursor-pointer"
+                    >
+                      OK
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
         )}
 
         {/* Tab 3: Generator Laporan Mingguan */}
         {activeTab === 'laporan' && (
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs p-6 transition-colors duration-200">
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/50 dark:border-slate-800/80 shadow-[0_8px_30px_rgb(0,0,0,0.015)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.15)] p-6 transition-colors duration-200"
+          >
             
             {/* Context Heading */}
             <div className="mb-6">
@@ -1988,12 +2689,16 @@ export default function App() {
               </div>
             )}
 
-          </div>
+          </motion.div>
         )}
 
         {/* Tab 4: Jadwal & Pengingat */}
         {activeTab === 'jadwal' && (
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs p-6 transition-colors duration-200">
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/50 dark:border-slate-800/80 shadow-[0_8px_30px_rgb(0,0,0,0.015)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.15)] p-6 transition-colors duration-200"
+          >
             {/* Header description */}
             <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
               <div>
@@ -2261,7 +2966,7 @@ export default function App() {
               </div>
 
             </div>
-          </div>
+          </motion.div>
         )}
 
       </main>
