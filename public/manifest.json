@@ -1,7 +1,7 @@
 {
-  "short_name": "Presensi Kelas",
-  "name": "Aplikasi Presensi Kelas & Laporan Mingguan",
-  "description": "Pencatatan absensi peserta didik, kelas, atau kegiatan mengaji dengan ekspor laporan otomatis.",
+  "short_name": "AbsenBocil",
+  "name": "AbsenBocil 😊",
+  "description": "Pencatatan absensi peserta didik dengan database lokal IndexedDB offline-first, dilengkapi generator pembuat laporan mingguan otomatis.",
   "icons": [
     {
       "src": "/icon.svg",
@@ -13,6 +13,18 @@
       "src": "/icon.svg",
       "sizes": "512x512",
       "type": "image/svg+xml",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
       "purpose": "maskable"
     }
   ],

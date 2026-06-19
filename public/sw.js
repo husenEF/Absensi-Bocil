@@ -3,7 +3,8 @@ const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/icon.svg'
+  '/icon.svg',
+  '/icon-512.png'
 ];
 
 // Install Event
