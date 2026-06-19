@@ -90,9 +90,69 @@ const getOccurrenceThisWeek = (hariName: string, waktuStr: string) => {
   return occurrence;
 };
 
+const getWeekdayOccurrences = (hariName: string, countPast: number = 8, countFuture: number = 1) => {
+  const INDO_DAYS = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+  const dayIndex = INDO_DAYS.indexOf(hariName);
+  if (dayIndex === -1) return [];
+
+  const now = new Date();
+  const currentDayIndex = now.getDay();
+  const daysDiff = dayIndex - currentDayIndex;
+
+  const thisWeekOcc = new Date();
+  thisWeekOcc.setDate(now.getDate() + daysDiff);
+  
+  const list = [];
+  
+  const formatYMD = (d: Date) => {
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
+  // Future occurrences (next 1 week)
+  for (let i = countFuture; i >= 1; i--) {
+    const d = new Date(thisWeekOcc);
+    d.setDate(thisWeekOcc.getDate() + (i * 7));
+    const dateStr = formatYMD(d);
+    list.push({
+      dateStr,
+      labelFormatted: `Pekan Depan: ${formatIndonesianDate(dateStr)}`
+    });
+  }
+
+  // Current week occurrence
+  const twStr = formatYMD(thisWeekOcc);
+  list.push({
+    dateStr: twStr,
+    labelFormatted: `Pekan Ini (Default): ${formatIndonesianDate(twStr)}`
+  });
+
+  // Past occurrences (last 8 weeks)
+  for (let i = 1; i <= countPast; i++) {
+    const d = new Date(thisWeekOcc);
+    d.setDate(thisWeekOcc.getDate() - (i * 7));
+    const dateStr = formatYMD(d);
+    
+    let relLabel = '';
+    if (i === 1) relLabel = 'Pekan Lalu';
+    else if (i === 2) relLabel = '2 Pekan Lalu';
+    else if (i === 3) relLabel = '3 Pekan Lalu';
+    else relLabel = `${i} Pekan Lalu`;
+
+    list.push({
+      dateStr,
+      labelFormatted: `${relLabel}: ${formatIndonesianDate(dateStr)}`
+    });
+  }
+
+  return list;
+};
+
 export default function App() {
   // Navigation tabs
-  const [activeTab, setActiveTab] = useState<'input' | 'riwayat' | 'laporan' | 'jadwal'>('input');
+  const [activeTab, setActiveTab ] = useState<'input' | 'riwayat' | 'laporan' | 'jadwal' | 'sinkronisasi'>('input');
 
   // Theme state
   const [darkMode, setDarkMode] = useState<boolean>(() => {
@@ -984,10 +1044,11 @@ export default function App() {
 
       let mergedAbsensiCount = 0;
       let mergedSchedulesCount = 0;
+      const scheduleIdMap = new Map<number, number>();
 
-      // 1. Process Schedules (Smart Merge)
+      // 1. Process Schedules (Smart Merge & Id Resolve mapping)
+      const allLocalSchedules = await db.schedules.toArray();
       if (Array.isArray(jsonData.schedules)) {
-        const allLocalSchedules = await db.schedules.toArray();
         for (const s of jsonData.schedules) {
           const match = allLocalSchedules.find(item => 
             item.hari === s.hari && 
@@ -995,18 +1056,47 @@ export default function App() {
             item.title === s.title
           );
 
-          if (!match) {
-            const { id, ...cleanSchedule } = s;
-            await db.schedules.add(cleanSchedule);
+          if (match) {
+            if (s.id && match.id) {
+              scheduleIdMap.set(s.id, match.id);
+            }
+          } else {
+            const { id: oldId, ...cleanSchedule } = s;
+            const newId = await db.schedules.add(cleanSchedule);
             mergedSchedulesCount++;
+            if (oldId) {
+              scheduleIdMap.set(oldId, newId);
+            }
           }
         }
       }
 
-      // 2. Process Absensi Records (Smart Merge participants per date & schedule)
+      // Populate any remaining ID mappings for existing schedules
+      const updatedLocalSchedules = await db.schedules.toArray();
+      if (Array.isArray(jsonData.schedules)) {
+        for (const s of jsonData.schedules) {
+          if (s.id && !scheduleIdMap.has(s.id)) {
+            const match = updatedLocalSchedules.find(item => 
+              item.hari === s.hari && 
+              item.waktu === s.waktu && 
+              item.title === s.title
+            );
+            if (match && match.id) {
+              scheduleIdMap.set(s.id, match.id);
+            }
+          }
+        }
+      }
+
+      // 2. Process Absensi Records (Smart Merge participants per date & mapped scheduleId)
       if (Array.isArray(jsonData.absensi)) {
         for (const r of jsonData.absensi) {
-          const existing = await db.absensi.where('tanggal').equals(r.tanggal).first();
+          const localScheduleId = r.scheduleId ? scheduleIdMap.get(r.scheduleId) : undefined;
+          
+          // Query records of this exact date to check against same mapped scheduleId
+          const existingOfDate = await db.absensi.where('tanggal').equals(r.tanggal).toArray();
+          const existing = existingOfDate.find(item => item.scheduleId === localScheduleId);
+
           if (existing) {
             const combinedNames = Array.from(new Set([...existing.peserta, ...r.peserta]));
             if (combinedNames.length > existing.peserta.length) {
@@ -1015,13 +1105,16 @@ export default function App() {
             }
           } else {
             const { id, ...cleanRecord } = r;
+            if (localScheduleId !== undefined) {
+              cleanRecord.scheduleId = localScheduleId;
+            }
             await db.absensi.add(cleanRecord);
             mergedAbsensiCount++;
           }
         }
       }
 
-      showToast(`Sinkronisasi Berhasil! ${mergedSchedulesCount} jadwal ditambahkan & ${mergedAbsensiCount} presensi digabungkan secara pintar tanpa duplikasi.`, 'success');
+      showToast(`Sinkronisasi Berhasil! ${mergedSchedulesCount} jadwal ditambahkan & ${mergedAbsensiCount} nama presensi digabungkan secara pintar tanpa duplikasi.`, 'success');
       
       // Reload records in-app
       loadRecords();
@@ -1476,48 +1569,47 @@ export default function App() {
 
       {/* Main Container */}
       <main className="flex-1 max-w-4xl w-full mx-auto px-4 py-8">
-        
         {/* Helper quick notice for Offline mode / Database */}
         {!hideDbNotice && (
-          <div className="mb-6 p-3.5 rounded-2xl bg-teal-500/[0.03] dark:bg-teal-950/[0.12] border border-teal-500/15 dark:border-teal-900/30 flex items-center justify-between gap-3 transition-colors duration-200 shadow-3xs">
-            <div className="flex items-center gap-2.5">
-              <Database className="w-4 h-4 text-teal-600 dark:text-teal-400 shrink-0 animate-pulse" />
-              <div className="text-2xs sm:text-xs text-slate-650 dark:text-slate-300 font-medium">
-                <span className="font-bold text-teal-900 dark:text-teal-300">Penyimpanan Terproteksi:</span> Semua data Anda tersimpan aman secara lokal di browser ini saja (IndexedDB).
+          <div className="mb-4 p-3 rounded-xl bg-teal-500/[0.02] dark:bg-teal-950/[0.10] border border-teal-500/10 dark:border-teal-900/20 flex items-center justify-between gap-3 transition-colors duration-200 shadow-3xs">
+            <div className="flex items-center gap-2">
+              <Database className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 shrink-0" />
+              <div className="text-[11px] text-slate-600 dark:text-slate-300">
+                <span className="font-bold text-teal-900 dark:text-teal-300">Penyimpanan Terproteksi Lokal:</span> Data diproses aman di database internal browser Anda (offline &amp; aman).
               </div>
             </div>
             <button
               onClick={handleDismissDbNotice}
-              className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-400 cursor-pointer transition-colors"
-              title="Sembunyikan info"
+              className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-400 dark:text-slate-500 hover:text-slate-650 cursor-pointer transition-colors"
+              title="Tutup"
             >
-              <X className="w-3.5 h-3.5" />
+              <X className="w-3 h-3" />
             </button>
           </div>
         )}
 
         {/* Dynamic Reminder for Week 3 Report */}
         {todayIsThirdWeek && !hideWeekReminder && (
-          <div className="mb-6 p-3.5 rounded-2xl bg-amber-500/[0.04] dark:bg-amber-500/[0.02] text-amber-800 dark:text-amber-400 border border-amber-500/15 flex items-center justify-between gap-3 transition-all shadow-3xs">
-            <div className="flex items-center gap-2.5">
-              <Bell className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
-              <div className="text-2xs sm:text-xs font-medium">
-                <span className="font-bold text-amber-900 dark:text-amber-350">⚠️ Pengingat Pekan ke-3:</span> Saat ini pekan ke-3. Jangan lupa menyusun Laporan Mingguan bulan ini!
+          <div className="mb-4 p-3 rounded-xl bg-amber-500/[0.02] dark:bg-amber-500/[0.01] text-amber-800 dark:text-amber-400 border border-amber-500/10 flex items-center justify-between gap-3 transition-all shadow-3xs">
+            <div className="flex items-center gap-2">
+              <Bell className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+              <div className="text-[11px]">
+                <span className="font-bold text-amber-900 dark:text-amber-350">⚠️ Info Pekan ke-3:</span> Jangan lupa menyusun Laporan Mingguan bulan ini!
               </div>
             </div>
             <div className="flex items-center gap-2">
               <button 
                 onClick={() => setActiveTab('laporan')}
-                className="px-2.5 py-1 text-[10px] font-black tracking-wide uppercase text-teal-750 dark:text-teal-400 bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-850 rounded-lg hover:bg-teal-500/5 transition-colors cursor-pointer"
+                className="px-2 py-0.5 text-[9px] font-extrabold tracking-wide uppercase text-teal-850 dark:text-teal-400 bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-850 rounded hover:bg-teal-500/5 transition-colors cursor-pointer"
               >
                 Buat Laporan
               </button>
               <button
                 onClick={handleDismissWeekReminder}
-                className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-400 cursor-pointer transition-colors"
-                title="Sembunyikan pengingat"
+                className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-400 dark:text-slate-500 hover:text-slate-650 cursor-pointer transition-colors"
+                title="Tutup"
               >
-                <X className="w-3.5 h-3.5" />
+                <X className="w-3 h-3" />
               </button>
             </div>
           </div>
@@ -1681,6 +1773,26 @@ export default function App() {
               </span>
             )}
           </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('sinkronisasi')}
+            className={`relative flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer z-10 flex-1 sm:flex-none ${
+              activeTab === 'sinkronisasi'
+                ? 'text-teal-750 dark:text-teal-400 font-extrabold'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-850 dark:hover:text-slate-200'
+            }`}
+          >
+            {activeTab === 'sinkronisasi' && (
+              <motion.span
+                layoutId="activeTabPill"
+                className="absolute inset-0 bg-white dark:bg-slate-950 border border-slate-200/20 dark:border-slate-800/80 shadow-[0_2px_8px_rgba(0,0,0,0.03)] rounded-xl -z-10"
+                transition={{ type: "spring", stiffness: 380, damping: 30 }}
+              />
+            )}
+            <Wifi className="w-4 h-4 text-teal-500" />
+            <span>Sinkronisasi Multi-HP</span>
+          </button>
         </div>
 
         {/* Tab 1: Form Input Presensi Harian */}
@@ -1723,6 +1835,47 @@ export default function App() {
                       Terpilih: {formatIndonesianDate(tanggalInput)}
                     </p>
                   )}
+
+                  {/* Dynamic Weekday Suggestion Dropdown if Linked Schedule is Active */}
+                  {(() => {
+                    const linkedSchedule = schedules.find(s => s.id === selectedScheduleId);
+                    if (linkedSchedule && linkedSchedule.hari) {
+                      const occurrencesList = getWeekdayOccurrences(linkedSchedule.hari);
+                      const isCustomDate = !occurrencesList.some(occ => occ.dateStr === tanggalInput);
+                      
+                      return (
+                        <div className="mt-3 bg-teal-500/[0.02] dark:bg-teal-950/[0.1] border border-teal-500/10 dark:border-teal-900/20 rounded-xl p-3">
+                          <label className="block text-[10px] font-black uppercase text-teal-600 dark:text-teal-400 tracking-wider mb-1.5">
+                            📅 Sesi Rutin Hari {linkedSchedule.hari}:
+                          </label>
+                          <select
+                            value={tanggalInput}
+                            onChange={(e) => {
+                              if (e.target.value) {
+                                setTanggalInput(e.target.value);
+                              }
+                            }}
+                            className="w-full text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md py-1.5 px-2 text-slate-700 dark:text-slate-305 focus:outline-hidden cursor-pointer"
+                          >
+                            {occurrencesList.map(occ => (
+                              <option key={occ.dateStr} value={occ.dateStr}>
+                                {occ.labelFormatted}
+                              </option>
+                            ))}
+                            {isCustomDate && (
+                              <option value={tanggalInput}>
+                                Tanggal Kustom Lainnya: {formatIndonesianDate(tanggalInput)}
+                              </option>
+                            )}
+                          </select>
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1.5 leading-normal">
+                            Ingin mengisi presensi yang terlewat? Pilih dari tanggal-tanggal di hari <b>{linkedSchedule.hari}</b> di atas.
+                          </p>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
 
                 <div>
@@ -2182,8 +2335,8 @@ export default function App() {
               </div>
             )}
 
-            {/* Serverless Multi-Device Sync Panel */}
-            <div className="mt-8 bg-zinc-50 dark:bg-slate-900/40 p-5 rounded-2xl border border-slate-200/50 dark:border-slate-800/80 transition-all duration-300">
+            {/* Serverless Multi-Device Sync Panel - Moved to dedicated Sinkronisasi Tab */}
+            <div id="legacy_sync_panel" className="hidden mt-8 bg-zinc-50 dark:bg-slate-900/40 p-5 rounded-2xl border border-slate-200/50 dark:border-slate-800/80 transition-all duration-300">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-slate-200/60 dark:border-slate-800/60 mb-4">
                 <div className="flex items-center gap-2">
                   <div className="p-1.5 bg-teal-500/10 text-teal-600 dark:text-teal-400 rounded-lg border border-teal-500/10">
@@ -2412,6 +2565,310 @@ export default function App() {
                     >
                       OK
                     </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Tab 5: Sinkronisasi Multi-HP */}
+        {activeTab === 'sinkronisasi' && (
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-6"
+          >
+            {/* Context Heading */}
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/50 dark:border-slate-800/80 p-6 shadow-xs">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-teal-500/10 text-teal-600 dark:text-teal-450 rounded-2xl border border-teal-500/20">
+                    <Wifi className="w-6 h-6 animate-pulse" />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wide">Sinkronisasi Instan Multi-HP</h2>
+                    <p className="text-xs text-slate-550 dark:text-slate-400 mt-1">
+                      Hubungkan dan satukan absensi antar HP wali murid/pengajar secara langsung tanpa pendaftaran akun.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Local Stats Summary Banner for transparency of data size */}
+                <div className="flex gap-4 p-3 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-200/50 dark:border-slate-850/80 text-2xs font-semibold text-slate-500 dark:text-slate-400">
+                  <div>
+                    <span className="block font-black text-slate-700 dark:text-slate-300 text-sm">{schedules.length}</span>
+                    <span>Sesi Kelas Lokal</span>
+                  </div>
+                  <div className="border-l border-slate-200 dark:border-slate-800 pl-4">
+                    <span className="block font-black text-slate-700 dark:text-slate-300 text-sm">{records.length}</span>
+                    <span>Presensi Tersimpan</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Step by step simple instruction cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6 pt-5 border-t border-slate-100 dark:border-slate-800/80">
+                <div className="p-3 bg-slate-50/50 dark:bg-slate-950/20 border border-slate-100 dark:border-slate-800/50 rounded-xl">
+                  <span className="text-3xs font-black bg-teal-500/10 text-teal-600 dark:text-teal-400 px-2 py-0.5 rounded-md uppercase">Langkah 1</span>
+                  <h4 className="text-xs font-bold text-slate-700 dark:text-slate-305 mt-2">Buka Tab Ini</h4>
+                  <p className="text-[10px] text-slate-505 dark:text-slate-400 mt-1 leading-relaxed">Buka menu Sinkronisasi ini secara bersamaan di kedua handphone pengajar.</p>
+                </div>
+                <div className="p-3 bg-slate-50/50 dark:bg-slate-950/20 border border-slate-100 dark:border-slate-800/50 rounded-xl">
+                  <span className="text-3xs font-black bg-teal-500/10 text-teal-600 dark:text-teal-400 px-2 py-0.5 rounded-md uppercase">Langkah 2</span>
+                  <h4 className="text-xs font-bold text-slate-700 dark:text-slate-305 mt-2">Tampilkan Barcode</h4>
+                  <p className="text-[10px] text-slate-505 dark:text-slate-400 mt-1 leading-relaxed">Di HP Sumber, klik tombol <span className="font-bold text-teal-600 dark:text-teal-400">Tampilkan QR</span> untuk membuat kode transfer database.</p>
+                </div>
+                <div className="p-3 bg-slate-50/50 dark:bg-slate-950/20 border border-slate-100 dark:border-slate-800/50 rounded-xl">
+                  <span className="text-3xs font-black bg-teal-500/10 text-teal-600 dark:text-teal-400 px-2 py-0.5 rounded-md uppercase">Langkah 3</span>
+                  <h4 className="text-xs font-bold text-slate-700 dark:text-slate-305 mt-2">Pindai & Satukan</h4>
+                  <p className="text-[10px] text-slate-505 dark:text-slate-400 mt-1 leading-relaxed">Di HP Penerima, klik <span className="font-bold text-teal-600 dark:text-teal-400">Pindai QR</span> dan arahkan kamera ke barcode HP pengirim.</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Live Interactive Area: Scanning camera stream or Generated Barcode code display */}
+            {(isScanning || (showQrModal && generatedQrUrl)) && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Camera Scanner View */}
+                {isScanning && (
+                  <div className="bg-slate-950 text-white rounded-2xl p-5 flex flex-col items-center justify-center space-y-4 relative overflow-hidden border border-slate-800/80 shadow-md">
+                    <button
+                      type="button"
+                      onClick={stopCameraScanner}
+                      className="absolute top-3 right-3 p-1.5 bg-white/10 hover:bg-white/20 rounded-xl text-white transition-colors cursor-pointer"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+
+                    <div className="flex items-center gap-2 mb-1">
+                      <Camera className="w-5 h-5 text-emerald-400 animate-pulse" />
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400">Kamera Pemindai QR Aktif</span>
+                    </div>
+
+                    <div className="relative w-full aspect-video max-w-md bg-black rounded-xl overflow-hidden border border-white/10 flex items-center justify-center">
+                      <video
+                        ref={videoRef}
+                        className="w-full h-full object-cover"
+                      />
+                      {/* Laser scanning glow HUD */}
+                      <div className="absolute inset-x-0 h-0.5 bg-emerald-400 animate-[bounce_2.5s_infinite] shadow-[0_0_12px_rgba(52,211,153,0.9)]" />
+                      <div className="absolute inset-0 border-2 border-dashed border-emerald-400/20 m-6 pointer-events-none rounded-lg" />
+                    </div>
+
+                    <canvas ref={canvasRef} className="hidden" />
+
+                    {scanError ? (
+                      <p className="text-[11px] text-rose-400 text-center px-4 font-semibold">{scanError}</p>
+                    ) : (
+                      <p className="text-[11px] text-slate-400 text-center px-4 leading-relaxed max-w-sm">
+                        Dekatkan kamera pada barcode yang menyala di HP pengirim. Sistem akan otomatis menutup kamera dan memproses Smart-Merge setelah pembacaan berhasil.
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* QR Code Barcode display View */}
+                {showQrModal && generatedQrUrl && (
+                  <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 flex flex-col items-center justify-center text-center space-y-4 border border-slate-200 dark:border-slate-800 shadow-md">
+                    <div className="flex items-center justify-between w-full border-b border-slate-100 dark:border-slate-800 pb-3">
+                      <span className="text-xs font-bold text-teal-700 dark:text-teal-400 flex items-center gap-2">
+                        <QrCode className="w-5 h-5" />
+                        <span>Barcode Sinkronisasi Aktif</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowQrModal(false);
+                          setGeneratedQrUrl('');
+                        }}
+                        className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-400 transition-colors cursor-pointer"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+
+                    <div className="p-3 bg-white rounded-2xl border border-slate-200/80 flex items-center justify-center shadow-xs">
+                      <img
+                        src={generatedQrUrl}
+                        alt="AbsenBocil Sync barcode"
+                        className="w-48 h-48 object-contain"
+                      />
+                    </div>
+
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 max-w-xs leading-relaxed">
+                      Mintalah HP Wali Kelas/Pengajar lain untuk meng-klik tombol <b>Pindai QR</b> pada HP mereka, dan arahkan kameranya ke barcode ini.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Central Control Methods Block */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Method A: QR Scanning Screen-to-Screen */}
+              <div className="bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/85 p-5 rounded-2xl flex flex-col justify-between space-y-5 shadow-xs">
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-teal-500/10 text-teal-605 dark:text-teal-400 rounded-md">Instan Layar</span>
+                    <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">Koneksi Tatap Muka (Scan QR)</h3>
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                    Sistem transfer data tercepat dan teraman tanpa membutuhkan database internet terpusat sama sekali. Buka barcode di HP pengirim, dan pindai memakai pengintai kamera HP penerima.
+                  </p>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <button
+                    type="button"
+                    onClick={handleGenerateQrCode}
+                    className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-50 dark:bg-slate-850 hover:bg-teal-500/5 hover:text-teal-600 dark:hover:text-teal-450 text-slate-700 dark:text-slate-300 text-xs font-extrabold rounded-lg cursor-pointer border border-slate-200 dark:border-slate-800 transition-all shadow-3xs"
+                  >
+                    <QrCode className="w-4 h-4 text-teal-500" />
+                    <span>Tampilkan QR Saya</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (isScanning) stopCameraScanner();
+                      else startCameraScanner();
+                    }}
+                    className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-teal-600 hover:bg-teal-700 text-white text-xs font-extrabold rounded-lg cursor-pointer transition-colors shadow-xs"
+                  >
+                    <Camera className="w-4 h-4 shrink-0" />
+                    <span>{isScanning ? 'Mati Kamera' : 'Mulai Pindai QR'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Method B: WhatsApp direct links */}
+              <div className="bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/85 p-5 rounded-2xl flex flex-col justify-between space-y-5 shadow-xs">
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-md">Jarak Jauh</span>
+                    <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">Kirim Link Jalur Cepat (WhatsApp)</h3>
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                    Mengajar di lokasi berbeda? Sistem akan memadatkan seluruh database absensi menjadi sebuah tautan enkripsi mandiri (.link). Kirimkan tautan ini via WhatsApp ke HP partner Anda.
+                  </p>
+                </div>
+
+                <div>
+                  <button
+                    type="button"
+                    onClick={handleCopyDirectSyncLink}
+                    className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-50 dark:bg-slate-850 hover:bg-amber-500/5 text-slate-755 dark:text-slate-300 hover:text-amber-600 dark:hover:text-amber-400 text-xs font-extrabold rounded-lg border border-slate-200 dark:border-slate-800 cursor-pointer transition-colors shadow-3xs"
+                  >
+                    <Link2 className="w-4 h-4 text-amber-500 shrink-0" />
+                    <span>Salin Tautan Integrasi WhatsApp</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Advanced & Fail-safe Options Card */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/80 p-5 rounded-2xl shadow-3xs space-y-4">
+              <div className="border-b border-slate-100 dark:border-slate-800 pb-2.5">
+                <h3 className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">Pilihan Cadangan Alternatif &amp; Fail-safe</h3>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-1">
+                {/* JSON Files block */}
+                <div className="space-y-2">
+                  <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300">1. Ekspor / Impor File Cadangan (.json)</h4>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed mb-3">
+                    Unduh file mentah database lokal Anda sebagai file <code className="text-amber-600 font-mono">.json</code>, lalu bagikan file tersebut secara manual untuk di-import di HP partner pengajar.
+                  </p>
+                  
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={handleFullBackupExport}
+                      className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-750 text-slate-705 dark:text-slate-300 text-xs font-bold rounded-lg cursor-pointer transition-colors"
+                    >
+                      <Download className="w-4 h-4 text-teal-600" />
+                      <span>Ekspor File (.json)</span>
+                    </button>
+                    
+                    <label className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-lg cursor-pointer transition-colors">
+                      <Upload className="w-4 h-4" />
+                      <span>Impor File (.json)</span>
+                      <input 
+                        type="file" 
+                        accept=".json" 
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          
+                          const reader = new FileReader();
+                          reader.onload = async (event) => {
+                            try {
+                              const content = event.target?.result as string;
+                              const parsed = JSON.parse(content);
+                              await handleSmartMergeImport(parsed);
+                            } catch (error) {
+                              showToast('Format berkas tidak valid!', 'error');
+                            }
+                          };
+                          reader.readAsText(file);
+                        }}
+                        className="hidden" 
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                {/* Plain-text string block */}
+                <div className="space-y-2">
+                  <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300">2. Kode Teks Database (Copy / Paste Text)</h4>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed mb-3">
+                    Kompres database lokal Anda menjadi satu baris deretan kode super panjang (Base64 string). Bagikan deretan string ini untuk dimasukkan langsung pada inputan penerima.
+                  </p>
+                  
+                  <div className="space-y-2.5">
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleGenerateSyncHash}
+                        className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-755 text-slate-700 dark:text-slate-350 text-xs font-bold rounded-lg cursor-pointer transition-colors"
+                      >
+                        <Share2 className="w-3.5 h-3.5 text-teal-600" />
+                        <span>Buat Kode Teks</span>
+                      </button>
+
+                      {syncHashOutput && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(syncHashOutput);
+                            showToast('Kode Sinkronisasi disalin ke clipboard!', 'success');
+                          }}
+                          className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold text-xs rounded-lg animate-pulse cursor-pointer truncate"
+                        >
+                          <Copy className="w-3.5 h-3.5 text-amber-505" />
+                          <span className="truncate">Salin Kode: {syncHashOutput.slice(0, 10)}...</span>
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="flex gap-2 items-center">
+                      <input
+                        type="text"
+                        placeholder="Tempel / Paste Kode Teks HP tujuan"
+                        value={syncInputText}
+                        onChange={(e) => setSyncInputText(e.target.value)}
+                        className="flex-1 px-3 py-1.5 text-xs border border-slate-200 dark:border-slate-800 dark:bg-slate-950 font-mono rounded-lg focus:outline-hidden focus:ring-1 focus:ring-teal-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleImportSyncHash}
+                        className="px-4 py-1.5 bg-teal-600 hover:bg-teal-700 text-white text-xs font-extrabold rounded-lg cursor-pointer transition-colors inline-flex items-center gap-1 shrink-0"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                        <span>OK, Gabungkan</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
