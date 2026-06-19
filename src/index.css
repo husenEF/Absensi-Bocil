@@ -4,14 +4,49 @@
 @theme {
   --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* Custom palette from: https://coolors.co/c71110-868282-fafcfc-a0a0a0-955958 */
+  --color-brick-ember: #c71110;
+  --color-grey: #868282;
+  --color-white: #fafcfc;
+  --color-cool-steel: #a0a0a0;
+  --color-smoky-rose: #955958;
+
+  /* Mapping custom palette to existing utility colors for seamless UI integration */
+  --color-red-500: #c71110;
+  --color-red-600: #c71110;
+  --color-red-650: #c71110;
+  --color-red-700: #955958;
+  --color-red-750: #955958;
+  --color-red-755: #955958;
+  --color-red-400: #955958;
+  
+  --color-zinc-400: #a0a0a0;
+  --color-zinc-500: #868282;
+  --color-zinc-650: #868282;
+  --color-zinc-600: #868282;
+  --color-zinc-700: #868282;
+  
+  --color-stone-50: #fafcfc;
+  --color-stone-100: #fafcfc;
+  --color-stone-200: #a0a0a0;
+  --color-stone-300: #868282;
+  --color-stone-905: #18181b;
+
+  /* Custom Gradients from palette */
+  --background-image-gradient-brick-top: linear-gradient(0deg, #c71110, #868282, #fafcfc, #a0a0a0, #955958);
+  --background-image-gradient-brick-right: linear-gradient(90deg, #c71110, #868282, #fafcfc, #a0a0a0, #955958);
+  --background-image-gradient-brick-bottom: linear-gradient(180deg, #c71110, #868282, #fafcfc, #a0a0a0, #955958);
+  --background-image-gradient-brick-left: linear-gradient(270deg, #c71110, #868282, #fafcfc, #a0a0a0, #955958);
+  --background-image-gradient-brick-diagonal: linear-gradient(135deg, #c71110, #868282, #fafcfc, #a0a0a0, #955958);
 }
 
 @variant dark (&:where(.dark, .dark *));
 
 body {
   font-family: var(--font-sans);
-  background-color: #f8fafc; /* Slate 50 */
-  color: #0f172a; /* Slate 900 */
+  background-color: #fafcfc; /* Palette Background Cream-White */
+  color: #1a1a1a;
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
