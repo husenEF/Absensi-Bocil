@@ -31,7 +31,8 @@ import {
   Video,
   ExternalLink,
   AlertTriangle,
-  Volume2
+  Volume2,
+  FileSpreadsheet
 } from 'lucide-react';
 import { db, AbsensiRecord, ScheduleRecord } from './db';
 import { formatIndonesianDate, formatDateShort } from './utils/date';
@@ -63,6 +64,23 @@ const getRecordBiMonth = (dateStr: string) => {
   return { year, blockIndex, key: `${year}-${blockIndex}` };
 };
 
+const getOccurrenceThisWeek = (hariName: string, waktuStr: string) => {
+  const INDO_DAYS = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+  const dayIndex = INDO_DAYS.indexOf(hariName);
+  if (dayIndex === -1) return new Date();
+
+  const now = new Date();
+  const currentDayIndex = now.getDay();
+  const daysDiff = dayIndex - currentDayIndex;
+
+  const occurrence = new Date();
+  occurrence.setDate(now.getDate() + daysDiff);
+  
+  const [h, m] = waktuStr.split(':').map(Number);
+  occurrence.setHours(h, m, 0, 0);
+  return occurrence;
+};
+
 export default function App() {
   // Navigation tabs
   const [activeTab, setActiveTab] = useState<'input' | 'riwayat' | 'laporan' | 'jadwal'>('input');
@@ -77,20 +95,47 @@ export default function App() {
   const [tanggalInput, setTanggalInput] = useState<string>('2026-06-18'); // Defaults to June 18, 2026
   const [namesInput, setNamesInput] = useState<string>('');
   
+  // Link attendance with schedule
+  const [selectedScheduleId, setSelectedScheduleId] = useState<number | undefined>(undefined);
+  const [lastAttendanceForSchedule, setLastAttendanceForSchedule] = useState<string[]>([]);
+  
   // Database States
   const [records, setRecords] = useState<AbsensiRecord[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+
+  // Synchronize with previous attendance names when selectedScheduleId changes
+  useEffect(() => {
+    if (selectedScheduleId) {
+      db.absensi.where('scheduleId').equals(selectedScheduleId).reverse().sortBy('tanggal')
+        .then(res => {
+          if (res && res.length > 0) {
+            setLastAttendanceForSchedule(res[0].peserta);
+          } else {
+            setLastAttendanceForSchedule([]);
+          }
+        })
+        .catch(err => {
+          console.error('[Load previous names error]', err);
+          setLastAttendanceForSchedule([]);
+        });
+    } else {
+      setLastAttendanceForSchedule([]);
+    }
+  }, [selectedScheduleId, records]);
 
   // Edit states for individual records in History
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editingNames, setEditingNames] = useState<string>('');
   const [editingTanggal, setEditingTanggal] = useState<string>('');
+  const [editingScheduleId, setEditingScheduleId] = useState<number | undefined>(undefined);
 
   // Selection state for export list
   const [selectedRecordIds, setSelectedRecordIds] = useState<number[]>([]);
 
   // Selection state for weekly report generator
   const [reportSelectedRecordIds, setReportSelectedRecordIds] = useState<number[]>([]);
+  // Filter report records by schedule/reminder
+  const [reportScheduleFilter, setReportScheduleFilter] = useState<string>('all');
 
   // Report Generator States
   const [reportText, setReportText] = useState<string>('');
@@ -108,9 +153,8 @@ export default function App() {
   // Meet Schedule Management States
   const [schedules, setSchedules] = useState<ScheduleRecord[]>([]);
   const [scheduleTitle, setScheduleTitle] = useState<string>('');
-  const [scheduleTanggal, setScheduleTanggal] = useState<string>('2026-06-18');
+  const [scheduleHari, setScheduleHari] = useState<string>('Senin');
   const [scheduleWaktu, setScheduleWaktu] = useState<string>('19:00');
-  const [scheduleLinkMeet, setScheduleLinkMeet] = useState<string>('');
   const [scheduleRemindMinutesBefore, setScheduleRemindMinutesBefore] = useState<number>(15);
 
   // Ref to the generated report textarea for fallback copying
@@ -159,11 +203,24 @@ export default function App() {
   const loadSchedules = async () => {
     try {
       const data = await db.schedules.toArray();
-      // Sort chronologically (tanggal then waktu)
+      const INDO_DAYS_ORDER = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
+      // Sort chronologically (hari index, then waktu, then tanggal fallback)
       data.sort((a, b) => {
-        const dComp = a.tanggal.localeCompare(b.tanggal);
-        if (dComp !== 0) return dComp;
-        return a.waktu.localeCompare(b.waktu);
+        const dayA = a.hari ? INDO_DAYS_ORDER.indexOf(a.hari) : -1;
+        const dayB = b.hari ? INDO_DAYS_ORDER.indexOf(b.hari) : -1;
+        
+        if (dayA !== dayB) {
+          if (dayA === -1) return 1;
+          if (dayB === -1) return -1;
+          return dayA - dayB;
+        }
+        
+        const timeComp = (a.waktu || '').localeCompare(b.waktu || '');
+        if (timeComp !== 0) return timeComp;
+        
+        const dateA = a.tanggal || '';
+        const dateB = b.tanggal || '';
+        return dateA.localeCompare(dateB);
       });
       setSchedules(data);
     } catch (error) {
@@ -230,38 +287,88 @@ export default function App() {
     const checkInterval = setInterval(() => {
       const now = new Date();
       schedules.forEach(async (sched) => {
-        if (sched.notified) return;
+        // 1. If it's a weekly recurring schedule based on day of week (hari)
+        if (sched.hari) {
+          const INDO_DAYS = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+          const dayIndex = INDO_DAYS.indexOf(sched.hari);
+          if (dayIndex === -1) return;
 
-        // Parse scheduled start date and time
-        const [h, m] = sched.waktu.split(':').map(Number);
-        const schedTime = new Date(sched.tanggal);
-        schedTime.setHours(h, m, 0, 0);
-
-        // Compute threshold for warning
-        const reminderThresholdMs = (sched.remindMinutesBefore || 0) * 60 * 1000;
-        const targetAlertTime = new Date(schedTime.getTime() - reminderThresholdMs);
-
-        // Calculate differences
-        const timeDiff = now.getTime() - targetAlertTime.getTime();
-        const pastEventDiff = now.getTime() - schedTime.getTime();
-
-        // Trigger if current time is past or equal to target alert time, and event hasn't already started more than 40 minutes ago
-        if (timeDiff >= 0 && pastEventDiff < 40 * 60 * 1000) {
-          const inMins = sched.remindMinutesBefore === 0 
-            ? 'sekarang juga' 
-            : `${sched.remindMinutesBefore} menit lagi`;
-
-          triggerNotification(
-            `🔔 PENGINGAT KURSUS`, 
-            `"${sched.title}" akan dimulai ${inMins}! (${sched.waktu} WIB).`
-          );
-
-          // Mark as notified in Dexie
-          if (sched.id) {
-            await db.schedules.update(sched.id, { notified: true });
+          // Auto-reset notified flag if we are on a different day than scheduled day, to refresh visual cues
+          if (sched.notified && now.getDay() !== dayIndex && sched.id) {
+            await db.schedules.update(sched.id, { notified: false });
+            loadSchedules();
+            return;
           }
-          // Refresh lists
-          loadSchedules();
+
+          if (now.getDay() !== dayIndex) return;
+
+          // Parse scheduled start time
+          const [h, m] = sched.waktu.split(':').map(Number);
+          const schedTime = new Date(now);
+          schedTime.setHours(h, m, 0, 0);
+
+          // Check if we already notified for this exact date today
+          const todayDateString = now.toLocaleDateString('sv'); // sv locale returns YYYY-MM-DD
+          if (sched.lastNotifiedDate === todayDateString) return;
+
+          // Compute threshold for warning
+          const reminderThresholdMs = (sched.remindMinutesBefore || 0) * 60 * 1000;
+          const targetAlertTime = new Date(schedTime.getTime() - reminderThresholdMs);
+
+          // Calculate differences
+          const timeDiff = now.getTime() - targetAlertTime.getTime();
+          const pastEventDiff = now.getTime() - schedTime.getTime();
+
+          // Trigger if current time is past or equal to target alert time, and event hasn't already started more than 40 minutes ago
+          if (timeDiff >= 0 && pastEventDiff < 40 * 60 * 1000) {
+            const inMins = sched.remindMinutesBefore === 0 
+              ? 'sekarang juga' 
+              : `${sched.remindMinutesBefore} menit lagi`;
+
+            triggerNotification(
+              `🔔 PENGINGAT JADWAL`, 
+              `"${sched.title}" akan dimulai ${inMins}! (${sched.waktu} WIB).`
+            );
+
+            // Mark as notified in Dexie
+            if (sched.id) {
+              await db.schedules.update(sched.id, { notified: true, lastNotifiedDate: todayDateString });
+            }
+            // Refresh lists
+            loadSchedules();
+          }
+        } 
+        // 2. Legacy fallback if it's based on specific date (tanggal)
+        else if (sched.tanggal) {
+          if (sched.notified) return;
+
+          const [h, m] = sched.waktu.split(':').map(Number);
+          const schedTime = new Date(sched.tanggal);
+          schedTime.setHours(h, m, 0, 0);
+
+          const reminderThresholdMs = (sched.remindMinutesBefore || 0) * 60 * 1000;
+          const targetAlertTime = new Date(schedTime.getTime() - reminderThresholdMs);
+
+          const timeDiff = now.getTime() - targetAlertTime.getTime();
+          const pastEventDiff = now.getTime() - schedTime.getTime();
+
+          if (timeDiff >= 0 && pastEventDiff < 40 * 60 * 1000) {
+            const inMins = sched.remindMinutesBefore === 0 
+              ? 'sekarang juga' 
+              : `${sched.remindMinutesBefore} menit lagi`;
+
+            triggerNotification(
+              `🔔 PENGINGAT KURSUS`, 
+              `"${sched.title}" akan dimulai ${inMins}! (${sched.waktu} WIB).`
+            );
+
+            // Mark as notified in Dexie
+            if (sched.id) {
+              await db.schedules.update(sched.id, { notified: true });
+            }
+            // Refresh lists
+            loadSchedules();
+          }
         }
       });
     }, 12000);
@@ -352,6 +459,17 @@ export default function App() {
     return records.filter(r => getRecordBiMonth(r.tanggal).key === selectedPeriodKey);
   }, [records, selectedPeriodKey]);
 
+  const filteredRecordsForReport = useMemo(() => {
+    if (reportScheduleFilter === 'all') {
+      return recordsInSelectedPeriod;
+    }
+    if (reportScheduleFilter === 'unlinked') {
+      return recordsInSelectedPeriod.filter(r => !r.scheduleId);
+    }
+    const schedId = Number(reportScheduleFilter);
+    return recordsInSelectedPeriod.filter(r => r.scheduleId === schedId);
+  }, [recordsInSelectedPeriod, reportScheduleFilter]);
+
   const bimonthlyWeeks = useMemo(() => {
     if (!currentPeriod) return [];
 
@@ -416,8 +534,8 @@ export default function App() {
 
   // Synchronize selection state for report generator
   useEffect(() => {
-    if (recordsInSelectedPeriod.length > 0) {
-      const existingIds = recordsInSelectedPeriod.map(r => r.id).filter(Boolean) as number[];
+    if (filteredRecordsForReport.length > 0) {
+      const existingIds = filteredRecordsForReport.map(r => r.id).filter(Boolean) as number[];
       setReportSelectedRecordIds(existingIds);
     } else {
       setReportSelectedRecordIds([]);
@@ -425,7 +543,7 @@ export default function App() {
     // Clear previous report output on period change
     setReportGenerated(false);
     setReportText('');
-  }, [selectedPeriodKey, recordsInSelectedPeriod]);
+  }, [selectedPeriodKey, filteredRecordsForReport]);
 
   // Custom helper: Capitalize each word nicely (e.g. "budi santoso" -> "Budi Santoso")
   const capitalizeWords = (str: string): string => {
@@ -500,8 +618,8 @@ export default function App() {
       showToast('Mohon masukkan judul sesi jadwal.', 'error');
       return;
     }
-    if (!scheduleTanggal) {
-      showToast('Mohon tentukan tanggal sesi jadwal.', 'error');
+    if (!scheduleHari) {
+      showToast('Mohon tentukan hari sesi jadwal.', 'error');
       return;
     }
     if (!scheduleWaktu) {
@@ -512,9 +630,8 @@ export default function App() {
     try {
       await db.schedules.add({
         title: scheduleTitle.trim(),
-        tanggal: scheduleTanggal,
+        hari: scheduleHari,
         waktu: scheduleWaktu,
-        linkMeet: scheduleLinkMeet.trim() || undefined,
         remindMinutesBefore: scheduleRemindMinutesBefore,
         notified: false,
         createdAt: Date.now()
@@ -522,7 +639,6 @@ export default function App() {
 
       showToast(`Jadwal "${scheduleTitle}" berhasil didaftarkan!`, 'success');
       setScheduleTitle('');
-      setScheduleLinkMeet('');
       loadSchedules();
     } catch (err) {
       console.error("Failed to add schedule:", err);
@@ -543,15 +659,6 @@ export default function App() {
       console.error("Failed to delete schedule:", err);
       showToast('Gagal menghapus jadwal.', 'error');
     }
-  };
-
-  // Helper to generate a reliable Google Meet link for demo purposes
-  const handleGenerateRandomMeetLink = () => {
-    const chars = 'abcdefghijklmnopqrstuvwxyz';
-    const genPart = (len: number) => Array.from({ length: len }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
-    const randomLink = `https://meet.google.com/${genPart(3)}-${genPart(4)}-${genPart(3)}`;
-    setScheduleLinkMeet(randomLink);
-    showToast('Link Google Meet simulasi berhasil terbuat!', 'success');
   };
 
   // Handle Form Submission: Create a new Daily Attendance
@@ -593,6 +700,7 @@ export default function App() {
         // Perform update
         await db.absensi.update(existing.id!, {
           peserta: parsedPeserta,
+          scheduleId: selectedScheduleId,
           createdAt: Date.now()
         });
         showToast(`Presensi tanggal ${formatIndonesianDate(tanggalInput)} berhasil diperbarui!`, 'success');
@@ -601,6 +709,7 @@ export default function App() {
         await db.absensi.add({
           tanggal: tanggalInput,
           peserta: parsedPeserta,
+          scheduleId: selectedScheduleId,
           createdAt: Date.now()
         });
         showToast('Presensi berhasil disimpan!', 'success');
@@ -608,6 +717,7 @@ export default function App() {
 
       // Reset textarea, keep tanggal
       setNamesInput('');
+      setSelectedScheduleId(undefined);
       loadRecords();
       
       // Auto-toggle to history to see update
@@ -650,12 +760,14 @@ export default function App() {
     setEditingId(record.id || null);
     setEditingNames(record.peserta.join(', '));
     setEditingTanggal(record.tanggal);
+    setEditingScheduleId(record.scheduleId);
   };
 
   const cancelEditing = () => {
     setEditingId(null);
     setEditingNames('');
     setEditingTanggal('');
+    setEditingScheduleId(undefined);
   };
 
   const saveEditedRecord = async (id: number) => {
@@ -677,10 +789,12 @@ export default function App() {
       await db.absensi.update(id, {
         tanggal: editingTanggal,
         peserta: updatedPeserta,
+        scheduleId: editingScheduleId,
         createdAt: Date.now()
       });
       showToast('Presensi berhasil diperbarui.', 'success');
       setEditingId(null);
+      setEditingScheduleId(undefined);
       loadRecords();
       
       if (reportGenerated) {
@@ -1127,29 +1241,79 @@ export default function App() {
 
             <form onSubmit={handleSaveAttendance} className="space-y-6">
               
-              {/* Date Input Box */}
-              <div>
-                <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-2" htmlFor="tanggal_kegiatan">
-                  Pilih Tanggal Kegiatan / Kursus
-                </label>
-                <div className="relative max-w-xs">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                    <Calendar className="w-4 h-4" />
+              {/* Date Input Box & Connected Schedule Selector */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-2" htmlFor="tanggal_kegiatan">
+                    Pilih Tanggal Kegiatan / Kursus
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                      <Calendar className="w-4 h-4" />
+                    </div>
+                    <input
+                      id="tanggal_kegiatan"
+                      type="date"
+                      value={tanggalInput}
+                      onChange={(e) => setTanggalInput(e.target.value)}
+                      required
+                      className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-slate-800 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-teal-500/10 focus:border-teal-600 dark:focus:border-teal-500 text-sm font-medium transition-colors"
+                    />
                   </div>
-                  <input
-                    id="tanggal_kegiatan"
-                    type="date"
-                    value={tanggalInput}
-                    onChange={(e) => setTanggalInput(e.target.value)}
-                    required
-                    className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-slate-800 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-teal-500/10 focus:border-teal-600 dark:focus:border-teal-500 text-sm font-medium transition-colors"
-                  />
+                  {tanggalInput && (
+                    <p className="text-xs text-teal-600 dark:text-teal-400 font-medium mt-1.5">
+                      Terpilih: {formatIndonesianDate(tanggalInput)}
+                    </p>
+                  )}
                 </div>
-                {tanggalInput && (
-                  <p className="text-xs text-teal-600 dark:text-teal-400 font-medium mt-1.5">
-                    Terpilih: {formatIndonesianDate(tanggalInput)}
-                  </p>
-                )}
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-2" htmlFor="linked_schedule">
+                    Hubungkan Sesi Jadwal Belajar <span className="text-slate-400 dark:text-slate-550 font-medium">(Opsional)</span>
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                      <Clock className="w-4 h-4" />
+                    </div>
+                    <select
+                      id="linked_schedule"
+                      value={selectedScheduleId || ''}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === '') {
+                          setSelectedScheduleId(undefined);
+                        } else {
+                          const schedId = Number(val);
+                          setSelectedScheduleId(schedId);
+                          const foundSched = schedules.find(s => s.id === schedId);
+                          if (foundSched && foundSched.hari) {
+                            const occurrences = getOccurrenceThisWeek(foundSched.hari, foundSched.waktu);
+                            const dateStr = occurrences.toLocaleDateString('sv');
+                            setTanggalInput(dateStr);
+                          }
+                        }
+                      }}
+                      className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-slate-800 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-teal-500/10 focus:border-teal-600 dark:focus:border-teal-500 text-sm font-medium transition-colors cursor-pointer"
+                    >
+                      <option value="">-- Tidak Terhubung ke Jadwal --</option>
+                      {schedules.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.title} (Setiap {s.hari} - {s.waktu})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {selectedScheduleId ? (
+                    <p className="text-xs text-teal-600 dark:text-teal-400 font-semibold mt-1.5 flex items-center gap-1 leading-none">
+                      <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse"></span>
+                      Terhubung ke Jadwal: {schedules.find(s => s.id === selectedScheduleId)?.title}
+                    </p>
+                  ) : (
+                    <p className="text-3xs text-slate-400 dark:text-slate-500 mt-1.5 leading-relaxed">
+                      Hubungkan sesi untuk menyalin presensi pertemuan sebelumnya.
+                    </p>
+                  )}
+                </div>
               </div>
 
               {/* Text Area for attendee names */}
@@ -1169,6 +1333,32 @@ export default function App() {
                   className="w-full px-4 py-3 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-hidden focus:ring-2 focus:ring-teal-500/10 focus:border-teal-600 dark:focus:border-teal-500 text-sm font-sans transition-colors"
                 ></textarea>
               </div>
+
+              {/* Previous Attendance Pre-fill Suggestion */}
+              {selectedScheduleId && lastAttendanceForSchedule.length > 0 && (
+                <div className="p-3 bg-teal-500/5 dark:bg-teal-950/15 border border-teal-500/20 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-fade-in/70">
+                  <div className="space-y-0.5 min-w-0">
+                    <p className="text-2xs font-bold text-slate-700 dark:text-slate-350 flex items-center gap-1">
+                      <Users className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                      <span>Ditemukan daftar presensi sesi sebelumnya ({lastAttendanceForSchedule.length} peserta):</span>
+                    </p>
+                    <p className="text-3xs text-slate-500 dark:text-slate-400 truncate font-mono">
+                      {lastAttendanceForSchedule.join(', ')}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNamesInput(lastAttendanceForSchedule.join(', '));
+                      showToast('Daftar nama berhasil disalin dari pertemuan terakhir!', 'success');
+                    }}
+                    className="flex items-center gap-1 px-2.5 py-1.5 bg-teal-600 hover:bg-teal-700 text-white dark:bg-teal-500 dark:hover:bg-teal-600 rounded-lg text-3xs font-extrabold transition-all shadow-xs shrink-0 cursor-pointer"
+                  >
+                    <Plus className="w-3 h-3" />
+                    Salin Nama
+                  </button>
+                </div>
+              )}
 
               {/* Master Smart List: Auto selection list */}
               {allRegisteredStudents.length > 0 && (
@@ -1391,13 +1581,31 @@ export default function App() {
                                 className="w-full px-3 py-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 rounded-lg text-sm transition-colors"
                               />
                             </div>
-                            <div className="md:col-span-2">
+                            <div>
+                              <label className="block text-xs font-bold text-slate-655 dark:text-slate-400 mb-1">Hubungkan Sesi Jadwal</label>
+                              <select
+                                value={editingScheduleId || ''}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setEditingScheduleId(val === '' ? undefined : Number(val));
+                                }}
+                                className="w-full px-3 py-2 bg-white dark:bg-slate-955 border border-slate-200 dark:border-slate-800 text-slate-905 dark:text-slate-100 rounded-lg text-sm transition-colors"
+                              >
+                                <option value="">-- Tidak Terhubung --</option>
+                                {schedules.map((s) => (
+                                  <option key={s.id} value={s.id}>
+                                    {s.title} ({s.hari})
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                            <div>
                               <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Peserta Hadir (pisahkan koma)</label>
                               <textarea
                                 value={editingNames}
                                 onChange={(e) => setEditingNames(e.target.value)}
                                 rows={2}
-                                className="w-full px-3 py-1.5 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 rounded-lg text-sm transition-colors"
+                                className="w-full px-3 py-1.5 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-805 text-slate-900 dark:text-slate-100 rounded-lg text-sm transition-colors"
                               ></textarea>
                             </div>
                           </div>
@@ -1468,6 +1676,22 @@ export default function App() {
                                   </span>
                                 ))}
                               </div>
+
+                              {/* Connected Schedule Info (Help Text Style) */}
+                              {record.scheduleId && (
+                                <div className="pt-1.5 animate-fade-in/70">
+                                  {(() => {
+                                    const connectedSchedule = schedules.find(s => s.id === record.scheduleId);
+                                    if (!connectedSchedule) return null;
+                                    return (
+                                      <p className="text-3xs text-slate-500 dark:text-slate-450 flex items-center gap-1.5 font-medium select-none bg-slate-50/50 dark:bg-slate-950/40 border border-slate-100 dark:border-slate-800/40 px-2.5 py-1 rounded-md w-fit">
+                                        <Clock className="w-3.5 h-3.5 text-teal-600/70 dark:text-teal-450/70 animate-pulse" />
+                                        <span>Sesi terhubung: <span className="font-bold text-teal-700 dark:text-teal-400">{connectedSchedule.title}</span> (Setiap {connectedSchedule.hari} @ {connectedSchedule.waktu} WIB)</span>
+                                      </p>
+                                    );
+                                  })()}
+                                </div>
+                              )}
                             </div>
 
                             {/* Right Controls */}
@@ -1582,15 +1806,15 @@ export default function App() {
                 <div className="flex items-center gap-2 mt-2 sm:mt-0">
                   <button
                     type="button"
-                    disabled={recordsInSelectedPeriod.length === 0}
-                    onClick={() => setReportSelectedRecordIds(recordsInSelectedPeriod.map(r => r.id!).filter(Boolean))}
+                    disabled={filteredRecordsForReport.length === 0}
+                    onClick={() => setReportSelectedRecordIds(filteredRecordsForReport.map(r => r.id!).filter(Boolean))}
                     className="px-2.5 py-1 text-4xs font-bold tracking-wider uppercase bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400 rounded hover:bg-teal-100 dark:hover:bg-teal-900/40 cursor-pointer transition-colors disabled:opacity-40"
                   >
                     Centang Semua
                   </button>
                   <button
                     type="button"
-                    disabled={recordsInSelectedPeriod.length === 0}
+                    disabled={filteredRecordsForReport.length === 0}
                     onClick={() => setReportSelectedRecordIds([])}
                     className="px-2.5 py-1 text-4xs font-bold tracking-wider uppercase bg-slate-100 dark:bg-slate-800 text-slate-650 dark:text-slate-400 rounded hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer transition-colors disabled:opacity-40"
                   >
@@ -1599,12 +1823,42 @@ export default function App() {
                 </div>
               </div>
 
-              {recordsInSelectedPeriod.length === 0 ? (
-                <p className="text-xs text-slate-550 dark:text-slate-400 italic py-2">Belum ada data presensi tersimpan untuk periode {currentPeriod?.label || 'ini'}. Silakan isi data terlebih dahulu atau muat data contoh.</p>
+              {/* Filter By Schedule / Reminder Dropdown */}
+              <div className="p-3.5 bg-slate-100/50 dark:bg-slate-950/40 border border-slate-200/45 dark:border-slate-800/60 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-slate-650 dark:text-slate-400">Filter Sesi Jadwal / Pengingat:</span>
+                </div>
+                <div className="relative">
+                  <select
+                    value={reportScheduleFilter}
+                    onChange={(e) => setReportScheduleFilter(e.target.value)}
+                    className="w-full md:w-80 pl-3 pr-8 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-slate-850 dark:text-slate-200 focus:outline-hidden transition-colors cursor-pointer text-xs font-semibold"
+                  >
+                    <option value="all">📁 Semua Sesi di Periode Ini ({recordsInSelectedPeriod.length})</option>
+                    <option value="unlinked">❓ Hanya Sesi Tanpa Hubungan Jadwal ({recordsInSelectedPeriod.filter(r => !r.scheduleId).length})</option>
+                    {schedules.map((s) => {
+                      const count = recordsInSelectedPeriod.filter(r => r.scheduleId === s.id).length;
+                      return (
+                        <option key={s.id} value={s.id}>
+                          📅 {s.title} ({s.hari} @ {s.waktu}) [Ada {count} Sesi]
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+              </div>
+
+              {filteredRecordsForReport.length === 0 ? (
+                <p className="text-xs text-slate-550 dark:text-slate-400 italic py-2">
+                  {recordsInSelectedPeriod.length === 0
+                    ? `Belum ada data presensi tersimpan untuk periode ${currentPeriod?.label || 'ini'}.`
+                    : "Tidak ada data presensi yang sesuai dengan filter jadwal terpilih."}
+                </p>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 max-h-56 overflow-y-auto pr-1">
-                  {recordsInSelectedPeriod.map((r) => {
+                  {filteredRecordsForReport.map((r) => {
                     const isChecked = reportSelectedRecordIds.includes(r.id!);
+                    const connectedSched = schedules.find(sched => sched.id === r.scheduleId);
                     return (
                       <label 
                         key={r.id} 
@@ -1630,6 +1884,12 @@ export default function App() {
                           <div className="font-bold truncate text-slate-800 dark:text-slate-200">
                             {formatIndonesianDate(r.tanggal)}
                           </div>
+                          {connectedSched && (
+                            <div className="text-4xs text-teal-655 dark:text-teal-400 font-semibold truncate flex items-center gap-0.5 mt-0.5">
+                              <span className="w-1 h-1 rounded-full bg-teal-505"></span>
+                              {connectedSched.title}
+                            </div>
+                          )}
                           <div className="text-3xs text-slate-500 dark:text-slate-455 mt-0.5 font-normal truncate">
                             {r.peserta.length} Peserta: {r.peserta.slice(0, 3).join(', ')}
                             {r.peserta.length > 3 ? '...' : ''}
@@ -1768,7 +2028,7 @@ export default function App() {
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
               
               {/* Form to submit schedule - 2 columns */}
-              <div className="lg:col-span-2 space-y-4">
+              <div className="lg:col-span-3 space-y-4">
                 <div className="p-4 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-200/60 dark:border-slate-800">
                   <h3 className="text-xs font-bold text-slate-705 dark:text-slate-300 uppercase tracking-wider mb-3 flex items-center gap-1.5">
                     <Plus className="w-4 h-4 text-teal-600" />
@@ -1794,15 +2054,21 @@ export default function App() {
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="block text-2xs font-bold text-slate-655 dark:text-slate-400 uppercase tracking-wider mb-1">
-                          Tanggal Sesi
+                          Pilih Hari Sesi
                         </label>
-                        <input
-                          type="date"
-                          value={scheduleTanggal}
-                          onChange={(e) => setScheduleTanggal(e.target.value)}
-                          required
+                        <select
+                          value={scheduleHari}
+                          onChange={(e) => setScheduleHari(e.target.value)}
                           className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-205 dark:border-slate-850 text-slate-900 dark:text-slate-100 rounded-lg text-xs focus:outline-hidden font-medium"
-                        />
+                        >
+                          <option value="Senin">Senin</option>
+                          <option value="Selasa">Selasa</option>
+                          <option value="Rabu">Rabu</option>
+                          <option value="Kamis">Kamis</option>
+                          <option value="Jumat">Jumat</option>
+                          <option value="Sabtu">Sabtu</option>
+                          <option value="Minggu">Minggu</option>
+                        </select>
                       </div>
                       <div>
                         <label className="block text-2xs font-bold text-slate-655 dark:text-slate-400 uppercase tracking-wider mb-1">
@@ -1814,34 +2080,6 @@ export default function App() {
                           onChange={(e) => setScheduleWaktu(e.target.value)}
                           required
                           className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-205 dark:border-slate-850 text-slate-900 dark:text-slate-100 rounded-lg text-xs focus:outline-hidden font-medium"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <label className="block text-2xs font-bold text-slate-655 dark:text-slate-400 uppercase tracking-wider" htmlFor="sched_link">
-                          Link Google Meet (Opsional)
-                        </label>
-                        <button
-                          type="button"
-                          onClick={handleGenerateRandomMeetLink}
-                          className="text-4xs font-bold text-teal-600 dark:text-teal-400 hover:underline uppercase tracking-wider cursor-pointer"
-                        >
-                          Simulasi Link Meet
-                        </button>
-                      </div>
-                      <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-slate-400">
-                          <Video className="w-3.5 h-3.5" />
-                        </div>
-                        <input
-                          id="sched_link"
-                          type="url"
-                          value={scheduleLinkMeet}
-                          onChange={(e) => setScheduleLinkMeet(e.target.value)}
-                          placeholder="https://meet.google.com/abc-defg-hij"
-                          className="w-full pl-8 pr-3 py-2 bg-white dark:bg-slate-900 border border-slate-205 dark:border-slate-850 rounded-lg text-slate-850 dark:text-slate-100 text-xs focus:outline-hidden"
                         />
                       </div>
                     </div>
@@ -1885,7 +2123,7 @@ export default function App() {
               </div>
 
               {/* List of existing schedules - 3 columns */}
-              <div className="lg:col-span-3 space-y-4">
+              <div className="lg:col-span-2 space-y-4">
                 <h3 className="text-xs font-bold text-slate-705 dark:text-slate-350 uppercase tracking-wider flex items-center gap-1.5">
                   <Clock className="w-4 h-4 text-teal-600" />
                   <span>Daftar Sesi Jadwal Terdaftar ({schedules.length})</span>
@@ -1904,11 +2142,13 @@ export default function App() {
                     {schedules.map((item) => {
                       const now = new Date();
                       const [h, m] = item.waktu.split(':').map(Number);
-                      const itemTime = new Date(item.tanggal);
+                      const itemTime = item.hari
+                        ? getOccurrenceThisWeek(item.hari, item.waktu)
+                        : new Date(item.tanggal || '');
                       itemTime.setHours(h, m, 0, 0);
 
                       const isUpcoming = itemTime.getTime() > now.getTime();
-                      const isOngoing = !isUpcoming && (now.getTime() - itemTime.getTime() < 60 * 60 * 1005); // 1 hour duration
+                      const isOngoing = !isUpcoming && (now.getTime() - itemTime.getTime() < 60 * 60 * 1000); // 1 hour duration
                       const isPast = !isUpcoming && !isOngoing;
 
                       return (
@@ -1958,16 +2198,22 @@ export default function App() {
                               </h4>
 
                               {/* Timetable schedule text info */}
-                              <p className="text-3xs text-slate-550 dark:text-slate-450 flex items-center gap-1.5">
+                              <p className="text-3xs text-slate-550 dark:text-slate-450 flex flex-wrap items-center gap-1.5 pt-0.5">
                                 <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                                <span className="font-semibold">{formatIndonesianDate(item.tanggal)}</span>
+                                {item.hari ? (
+                                  <span className="font-bold text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/20 px-1.5 py-0.5 rounded text-4xs uppercase tracking-wider">
+                                    Setiap Hari {item.hari}
+                                  </span>
+                                ) : (
+                                  <span className="font-semibold">{formatIndonesianDate(item.tanggal || '')}</span>
+                                )}
                                 <span className="text-slate-300 dark:text-slate-800">|</span>
                                 <Clock className="w-3.5 h-3.5 text-slate-400" />
-                                <span className="font-mono text-slate-800 dark:text-slate-300 font-bold">{item.waktu} WIB</span>
+                                <span className="font-mono text-slate-850 dark:text-slate-300 font-extrabold">{item.waktu} WIB</span>
                               </p>
 
                               {/* Room/Meeting link actions */}
-                              {item.linkMeet ? (
+                              {item.linkMeet && (
                                 <a 
                                   href={item.linkMeet}
                                   target="_blank"
@@ -1979,9 +2225,22 @@ export default function App() {
                                   <span>Buka Google Meet Sesi</span>
                                   <ExternalLink className="w-2.5 h-2.5" />
                                 </a>
-                              ) : (
-                                <p className="text-4xs text-slate-400 dark:text-slate-500 italic">Tidak ada link meeting yang disertakan.</p>
                               )}
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedScheduleId(item.id);
+                                  const occurrence = getOccurrenceThisWeek(item.hari, item.waktu);
+                                  setTanggalInput(occurrence.toLocaleDateString('sv'));
+                                  setActiveTab('input');
+                                  showToast(`Mulai presensi sesi "${item.title}"`, 'success');
+                                }}
+                                className="mt-2.5 flex items-center justify-center gap-1.5 px-3 py-1.5 bg-teal-50 hover:bg-teal-100 dark:bg-teal-950/20 dark:hover:bg-teal-900/30 text-teal-700 dark:text-teal-400 rounded-lg text-3xs font-extrabold transition-all cursor-pointer border border-teal-200/40 dark:border-teal-900/40 w-full"
+                              >
+                                <FileSpreadsheet className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                                <span>Input Absensi Sesi Ini</span>
+                              </button>
                             </div>
 
                             {/* Delete Button */}

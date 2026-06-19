@@ -2,11 +2,22 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <script>
+      // Automatically redirect to add a trailing slash if accessed on subdirectory without one
+      // This ensures relative assets like manifest.json and sw.js resolve correctly on GitHub Pages
+      if (!window.location.pathname.endsWith('/')) {
+        const segments = window.location.pathname.split('/');
+        const lastSegment = segments[segments.length - 1];
+        if (lastSegment && !lastSegment.includes('.')) {
+          window.location.replace(window.location.href + '/');
+        }
+      }
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>AbsenBocil 😊</title>
-    <link rel="manifest" href="/manifest.json" />
-    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
-    <link rel="apple-touch-icon" href="/icon-512.png" />
+    <link rel="manifest" href="manifest.json" />
+    <link rel="icon" href="icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="icon-512.png" />
     <meta name="theme-color" content="#059669" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />

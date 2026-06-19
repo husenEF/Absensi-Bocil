@@ -6,7 +6,7 @@ import './index.css';
 // Register service worker for Progressive Web App behavior
 if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
+    navigator.serviceWorker.register('sw.js')
       .then((reg) => {
         console.log('[PWA] Service Worker registered successfully:', reg.scope);
       })
@@ -17,7 +17,7 @@ if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
 } else if ('serviceWorker' in navigator) {
   // Allow registration in non-production during preview if supported
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
+    navigator.serviceWorker.register('sw.js')
       .then((reg) => console.log('[PWA SW Dev] Registered:', reg.scope))
       .catch((err) => console.log('[PWA SW Dev] Error:', err));
   });

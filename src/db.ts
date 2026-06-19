@@ -4,17 +4,20 @@ export interface AbsensiRecord {
   id?: number;
   tanggal: string; // "YYYY-MM-DD"
   peserta: string[]; // List of names
+  scheduleId?: number; // Optional reference to connected weekly schedule
   createdAt: number;
 }
 
 export interface ScheduleRecord {
   id?: number;
   title: string;
-  tanggal: string; // "YYYY-MM-DD"
+  tanggal?: string; // "YYYY-MM-DD" - kept optional for backward compatibility
+  hari: string; // "Senin", "Selasa", etc.
   waktu: string; // "HH:MM"
-  linkMeet?: string;
+  linkMeet?: string; // kept optional
   remindMinutesBefore: number; // minutes before start to remind: 0, 5, 10, 15, 30, etc.
   notified?: boolean; // track if reminder was triggered
+  lastNotifiedDate?: string; // "YYYY-MM-DD" to avoid double triggers in the same week
   createdAt: number;
 }
 

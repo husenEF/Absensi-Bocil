@@ -1,10 +1,10 @@
 const CACHE_NAME = 'presensi-kelas-cache-v1';
 const ASSETS_TO_CACHE = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/icon.svg',
-  '/icon-512.png'
+  './',
+  'index.html',
+  'manifest.json',
+  'icon.svg',
+  'icon-512.png'
 ];
 
 // Install Event
@@ -71,7 +71,7 @@ self.addEventListener('fetch', (event) => {
       }).catch(() => {
         // Serve root package index if navigation fails
         if (event.request.mode === 'navigate') {
-          return caches.match('/');
+          return caches.match('./').then(res => res || caches.match('index.html'));
         }
       });
     })
