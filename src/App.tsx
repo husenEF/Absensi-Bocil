@@ -99,7 +99,7 @@ const MainAppContent: React.FC = () => {
             <div className="relative">
               <img 
                 src={logoImg} 
-                alt="AbsenBocil logo" 
+                alt="ClassSync logo" 
                 referrerPolicy="no-referrer"
                 className="w-11 h-11 object-cover rounded-xl shadow-xs border border-zinc-200/40 dark:border-zinc-800"
               />
@@ -108,7 +108,7 @@ const MainAppContent: React.FC = () => {
 
             <div>
               <h1 className="text-sm sm:text-base font-black tracking-tight text-brick-ember leading-tight uppercase font-sans">
-                AbsenBocil<span className="text-zinc-700 dark:text-zinc-200 font-semibold tracking-normal text-xs ml-0.5 font-sans lowercase">.app</span>
+                ClassSync<span className="text-zinc-700 dark:text-zinc-200 font-semibold tracking-normal text-xs ml-0.5 font-sans lowercase">.app</span>
               </h1>
               <p className="text-[10px] text-zinc-500 dark:text-zinc-400 font-black tracking-widest uppercase mt-0.5">Presensi Offline &amp; WA Lapor</p>
             </div>
