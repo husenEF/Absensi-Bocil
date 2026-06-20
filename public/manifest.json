@@ -1,7 +1,7 @@
 {
-  "short_name": "AbsenBocil",
-  "name": "AbsenBocil 😊",
-  "description": "Pencatatan absensi peserta didik dengan database lokal IndexedDB offline-first, dilengkapi generator pembuat laporan mingguan otomatis.",
+  "short_name": "ClassSync",
+  "name": "ClassSync",
+  "description": "ClassSync is an offline-first student attendance and class scheduling app.",
   "icons": [
     {
       "src": "icon.svg",
