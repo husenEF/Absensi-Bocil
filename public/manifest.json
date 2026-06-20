@@ -1,7 +1,7 @@
 {
-  "short_name": "ClassSync",
-  "name": "ClassSync",
-  "description": "ClassSync is an offline-first student attendance and class scheduling app.",
+  "short_name": "AbsenBocil",
+  "name": "AbsenBocil 😊",
+  "description": "Pencatatan absensi peserta didik dengan database lokal IndexedDB offline-first, dilengkapi generator pembuat laporan mingguan otomatis.",
   "icons": [
     {
       "src": "icon.svg",
@@ -43,7 +43,7 @@
   "start_url": "./",
   "scope": "./",
   "background_color": "#f8fafc",
-  "theme_color": "#c71110",
+  "theme_color": "#059669",
   "display": "standalone",
   "orientation": "portrait"
 }

@@ -1,6 +1,6 @@
-# ClassSync
+# AbsenBocil 😊
 
-**ClassSync** adalah aplikasi pencatatan presensi peserta didik modern berbasis web dengan arsitektur **Offline-First**. Dirancang khusus untuk mempermudah guru, fasilitator, atau koordinator dalam mengelola kehadiran siswa, menjadwalkan kelas, menyusun rekap, dan memproses laporan mingguan secara otomatis tanpa ketergantungan koneksi internet.
+**AbsenBocil** adalah aplikasi pencatatan presensi peserta didik modern berbasis web dengan arsitektur **Offline-First**. Dirancang khusus untuk mempermudah guru, fasilitator, atau koordinator dalam mengelola kehadiran siswa, menjadwalkan kelas, menyusun rekap, dan memproses laporan mingguan secara otomatis tanpa ketergantungan koneksi internet.
 
 > 🌐 **GitHub Pages:** [https://husenEF.github.io/absen-bocil](https://husenEF.github.io/absen-bocil) *(Sesuaikan nama repositori GitHub Anda jika berbeda)*
 
@@ -79,7 +79,7 @@ Hasil kompilasi file statis siap sebar akan berada di dalam direktori `dist/`.
 
 ## 📦 Penerapan di GitHub Pages (GitHub Pages Deployment)
 
-Aplikasi **ClassSync** sepenuhnya dirancang sebagai Client-Side SPA (Single Page Application). Hal ini membuatnya sangat cocok, ringan, dan gratis untuk di-host di **GitHub Pages**.
+Aplikasi **AbsenBocil** sepenuhnya dirancang sebagai Client-Side SPA (Single Page Application). Hal ini membuatnya sangat cocok, ringan, dan gratis untuk di-host di **GitHub Pages**.
 
 ### Cara mengunggah ke GitHub Pages Anda secara manual:
 1. Jalankan perintah kompilasi produksi:
