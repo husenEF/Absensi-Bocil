@@ -329,8 +329,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Smart Sync Merge Import Function
   const handleSmartMergeImport = async (jsonData: any) => {
     try {
-      if (!jsonData || jsonData.app !== 'AbsenBocil') {
-        showToast('Format tidak valid atau bukan dari aplikasi AbsenBocil.', 'error');
+      if (!jsonData || jsonData.app !== 'ClassSync') {
+        showToast('Format tidak valid atau bukan dari aplikasi ClassSync.', 'error');
         return;
       }
 
@@ -1026,7 +1026,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
 
       const backupData = {
-        app: 'AbsenBocil',
+        app: 'ClassSync',
         version: '2.1',
         exportedAt: Date.now(),
         absensi: allAbsensi,
@@ -1119,7 +1119,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           const decryptedString = decodeURIComponent(escape(atob(scannedDataStr)));
           const parsedJson = JSON.parse(decryptedString);
 
-          if (parsedJson && parsedJson.app === 'AbsenBocil') {
+          if (parsedJson && parsedJson.app === 'ClassSync') {
             stopCameraScanner();
             handleSmartMergeImport(parsedJson);
             return;
@@ -1147,7 +1147,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
 
       const backupData = {
-        app: 'AbsenBocil',
+        app: 'ClassSync',
         version: '2.1',
         exportedAt: Date.now(),
         absensi: allAbsensi,
@@ -1194,7 +1194,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
 
       const backupData = {
-        app: 'AbsenBocil',
+        app: 'ClassSync',
         version: '2.1',
         exportedAt: Date.now(),
         absensi: allAbsensi,
@@ -1226,14 +1226,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const allAbsensi = await db.absensi.toArray();
       const allSchedules = await db.schedules.toArray();
       const backupData = {
-        app: 'AbsenBocil',
+        app: 'ClassSync',
         version: '2.1',
         exportedAt: Date.now(),
         absensi: allAbsensi,
         schedules: allSchedules
       };
       const jsonContent = JSON.stringify(backupData, null, 2);
-      downloadFile(jsonContent, `absenbocil-cadangan-lengkap-${new Date().toISOString().split('T')[0]}.json`, 'application/json;charset=utf-8;');
+      downloadFile(jsonContent, `ClassSync-cadangan-lengkap-${new Date().toISOString().split('T')[0]}.json`, 'application/json;charset=utf-8;');
       showToast('Cadangan database penuh berhasil diekspor!', 'success');
     } catch (err) {
       console.error('[Export Full Backup Error]', err);
