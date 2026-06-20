@@ -1,6 +1,6 @@
 {
-  "short_name": "AbsenBocil",
-  "name": "AbsenBocil 😊",
+  "short_name": "Class Sync",
+  "name": "Class Sync 😊",
   "description": "Pencatatan absensi peserta didik dengan database lokal IndexedDB offline-first, dilengkapi generator pembuat laporan mingguan otomatis.",
   "icons": [
     {
