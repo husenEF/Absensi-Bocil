@@ -1,6 +1,6 @@
 {
-  "name": "AbsenBocil 😊",
-  "description": "Aplikasi pencatatan absensi peserta didik dengan database lokal IndexedDB offline-first, dilengkapi generator pembuat laporan mingguan otomatis.",
+  "name": "ClassSync",
+  "description": "ClassSync offline-first attendance recording app with automated weekly report generator.",
   "requestFramePermissions": [
     "camera"
   ],
