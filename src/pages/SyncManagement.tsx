@@ -174,7 +174,7 @@ export const SyncManagement: React.FC = () => {
               <div className="p-2.5 bg-white rounded-2xl border border-zinc-200/80 flex items-center justify-center shadow-2xs">
                 <img
                   src={generatedQrUrl}
-                  alt="ClassSync Sync QR"
+                  alt="AbsenBocil Sync QR"
                   className="w-48 h-48 object-contain"
                 />
               </div>

@@ -1,13 +1,13 @@
-# 📄 Product Requirement Document (PRD) - ClassSync
+# 📄 Product Requirement Document (PRD) - AbsenBocil 😊
 
-**ClassSync** adalah aplikasi pencatatan presensi peserta didik modern berbasis web yang berfokus pada arsitektur **Offline-First**, kedaulatan data lokal, keamanan tinggi, dan otomatisasi pembuatan laporan mingguan.
+**AbsenBocil** adalah aplikasi pencatatan presensi peserta didik modern berbasis web yang berfokus pada arsitektur **Offline-First**, kedaulatan data lokal, keamanan tinggi, dan otomatisasi pembuatan laporan mingguan.
 
 ---
 
 ## 🧭 1. Latar Belakang & Tujuan
 Tugas administratif mencatat kehadiran secara konsisten di kursus atau lembaga pendidikan non-formal sering kali menyita waktu pengajar jika dilakukan secara manual. Banyak aplikasi yang memerlukan server eksternal, internet yang selalu aktif, atau pengiriman data sensitif siswa ke server asing. 
 
-**ClassSync** memecahkan masalah ini dengan menyediakan aplikasi pencatatan kehadiran yang:
+**AbsenBocil** memecahkan masalah ini dengan menyediakan aplikasi pencatatan kehadiran yang:
 1. **100% Client-Side & Offline-First**: Dapat berfungsi penuh tanpa koneksi internet dengan database internal browser.
 2. **Sangat Aman**: Data disimpan lokal di komputer atau perangkat genggam pengguna sendiri, mematuhi standar privasi data pribadi.
 3. **Generator Laporan Instan**: Otomatis menyusun laporan mingguan siap kirim yang kompatibel ganda (Markdown & WhatsApp Bold Formatting).
@@ -97,4 +97,4 @@ Menyimpan daftar jadwal berulang di setiap pekannya.
 
 ---
 
-*PRD ini diperbarui secara dinamis untuk mendokumentasikan evolusi fungsionalitas ClassSync.*
+*PRD ini diperbarui secara dinamis untuk mendokumentasikan evolusi fungsionalitas AbsenBocil.*
