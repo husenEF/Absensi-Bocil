@@ -142,7 +142,7 @@ const MainAppContent: React.FC = () => {
           <div className="max-w-4xl mx-auto px-4 py-2.5 flex items-center justify-between gap-2.5 text-2xs font-extrabold uppercase tracking-wider">
             <div className="flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5 animate-pulse" />
-              <span>Instal AbsenBocil di layar HP Anda!</span>
+              <span>Instal ClassSync di layar HP Anda!</span>
             </div>
             <button
               onClick={executePWAPrompt}
