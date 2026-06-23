@@ -1296,24 +1296,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       matchRecords.sort((a, b) => a.tanggal.localeCompare(b.tanggal));
 
-      const dateTokens = matchRecords.length > 0
-        ? matchRecords.map(r => formatDateShort(r.tanggal)).join(', ')
-        : '-';
-
-      const allNamesInPeriod = matchRecords.flatMap(r => r.peserta);
-      const uniqueNames: string[] = Array.from(new Set(allNamesInPeriod.map(n => n.trim()).filter(n => n.length > 0)));
-
-      uniqueNames.sort((a, b) => a.localeCompare(b, 'id', { sensitivity: 'base' }));
-
-      const namesJoined = uniqueNames.length > 0 ? uniqueNames.join(', ') : '-';
-
       lines.push(period.title);
-      if (period.isWeek1) {
-        lines.push(`* Tgl kursus : ${dateTokens}`);
-        lines.push(`* Peserta Hadir : ${namesJoined}`);
+
+      if (matchRecords.length === 0) {
+        if (period.isWeek1) {
+          lines.push(`* Tgl kursus : -`);
+          lines.push(`* Peserta Hadir : -`);
+        } else {
+          lines.push(`* Tgl Kursus : -`);
+          lines.push(`* Peserta : -`);
+        }
       } else {
-        lines.push(`* Tgl Kursus : ${dateTokens}`);
-        lines.push(`* Peserta : ${namesJoined}`);
+        matchRecords.forEach((rec, idx) => {
+          const dateToken = formatDateShort(rec.tanggal);
+          const uniqueNames: string[] = Array.from(new Set(rec.peserta.map(n => n.trim()).filter(n => n.length > 0)));
+          uniqueNames.sort((a, b) => a.localeCompare(b, 'id', { sensitivity: 'base' }));
+          const namesJoined = uniqueNames.length > 0 ? uniqueNames.join(', ') : '-';
+          
+          // Add trailing comma to the date token if there is another session scheduled after it in the same week
+          const trailingComma = idx < matchRecords.length - 1 ? ',' : '';
+
+          if (period.isWeek1) {
+            lines.push(`* Tgl kursus : ${dateToken}${trailingComma}`);
+            lines.push(`* Peserta Hadir : ${namesJoined}`);
+          } else {
+            lines.push(`* Tgl Kursus : ${dateToken}${trailingComma}`);
+            lines.push(`* Peserta : ${namesJoined}`);
+          }
+        });
       }
       lines.push("");
     });
