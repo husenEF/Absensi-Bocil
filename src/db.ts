@@ -21,15 +21,40 @@ export interface ScheduleRecord {
   createdAt: number;
 }
 
+export interface ExcelReportRecord {
+  id?: number;
+  periodKey: string; // e.g. "2026-2"
+  guruName: string;
+  kitabName: string;
+  catatan: string;
+  tanggalAktif: string;
+  weeks: string[]; // e.g. ["20-26 Jun", "27 Jun - 3 Jul", ...]
+  studentsData: Array<{
+    name: string;
+    category: 'K' | 'P';
+    attendance: string[]; // parallel to weeks
+    pendampingan: string;
+    hs: string;
+    jm: string;
+    sppKeterangan: string; // V, T, S, I, A
+    sppNominal: number;
+    buletinCetak: boolean;
+    buletinDigital: boolean;
+  }>;
+  createdAt: number;
+}
+
 class AttendanceDatabase extends Dexie {
   absensi!: Table<AbsensiRecord>;
   schedules!: Table<ScheduleRecord>;
+  excelReports!: Table<ExcelReportRecord>;
 
   constructor() {
     super('AttendanceDatabase');
-    this.version(2).stores({
+    this.version(3).stores({
       absensi: '++id, tanggal, createdAt',
-      schedules: '++id, tanggal, waktu, notified'
+      schedules: '++id, tanggal, waktu, notified',
+      excelReports: '++id, periodKey'
     });
   }
 }
