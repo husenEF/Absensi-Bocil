@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useRef } from 'react';
 import QRCode from 'qrcode';
 import jsQR from 'jsqr';
-import { db, AbsensiRecord, ScheduleRecord } from '../db';
+import { db, AbsensiRecord, ScheduleRecord, checkForAndMigratePreviousDatabases } from '../db';
 import { formatIndonesianDate, formatDateShort } from '../utils/date';
 
 interface BiMonthlyPeriod {
@@ -417,6 +417,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Seed on mount
   useEffect(() => {
+    // Check for and migrate legacy database instances if present in the browser origin
+    checkForAndMigratePreviousDatabases((successMsg) => {
+      showToast(successMsg, 'success');
+      loadRecords();
+      loadSchedules();
+    }).catch(err => {
+      console.error('[Migration check error]', err);
+    });
+
     loadRecords();
     loadSchedules();
 
