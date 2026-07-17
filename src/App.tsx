@@ -66,7 +66,7 @@ const MainAppContent: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-stone-50 dark:bg-zinc-950 text-stone-900 dark:text-zinc-100 flex flex-col antialiased transition-colors duration-200">
+    <div className="min-h-screen bg-[#fbefef] dark:bg-zinc-950 text-zinc-850 dark:text-zinc-100 flex flex-col antialiased transition-colors duration-200">
       
       {/* Toast Alert floating - standard positioning inside viewport */}
       <AnimatePresence>

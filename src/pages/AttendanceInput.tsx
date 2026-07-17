@@ -125,7 +125,7 @@ export const AttendanceInput: React.FC = () => {
                   required
                   value={tanggalInput}
                   onChange={(e) => setTanggalInput(e.target.value)}
-                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-9 pr-4 py-2.5 text-xs text-zinc-800 dark:text-zinc-150 focus:outline-hidden focus:ring-1 focus:ring-red-600 focus:border-red-600 transition-all font-medium cursor-pointer"
+                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-9 pr-4 py-2.5 text-xs text-zinc-800 dark:text-white dark:placeholder-zinc-400 focus:outline-hidden focus:ring-1 focus:ring-red-600 focus:border-red-600 transition-all font-semibold cursor-pointer"
                 />
               </div>
               
@@ -157,12 +157,12 @@ export const AttendanceInput: React.FC = () => {
                         className="w-full text-xs bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg py-1.5 px-2 text-zinc-800 dark:text-zinc-150 focus:outline-hidden cursor-pointer"
                       >
                         {occurrencesList.map(occ => (
-                          <option key={occ.dateStr} value={occ.dateStr}>
+                          <option key={occ.dateStr} value={occ.dateStr} className="dark:bg-zinc-900 dark:text-white">
                             {occ.labelFormatted}
                           </option>
                         ))}
                         {isCustomDate && (
-                          <option value={tanggalInput}>
+                          <option value={tanggalInput} className="dark:bg-zinc-900 dark:text-white">
                             Tanggal Kustom Lainnya: {formatIndonesianDate(tanggalInput)}
                           </option>
                         )}
@@ -210,11 +210,11 @@ export const AttendanceInput: React.FC = () => {
                       }
                     }
                   }}
-                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-9 pr-4 py-2.5 text-xs text-zinc-800 dark:text-zinc-150 focus:outline-hidden focus:ring-1 focus:ring-red-600 focus:border-red-600 transition-all font-medium cursor-pointer"
+                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-9 pr-4 py-2.5 text-xs text-zinc-800 dark:text-white focus:outline-hidden focus:ring-1 focus:ring-red-600 focus:border-red-600 transition-all font-semibold cursor-pointer"
                 >
-                  <option value="">-- Tidak Terhubung Jadwal --</option>
+                  <option value="" className="dark:bg-zinc-900 dark:text-white">-- Tidak Terhubung Jadwal --</option>
                   {schedules.map((s) => (
-                    <option key={s.id} value={s.id}>
+                    <option key={s.id} value={s.id} className="dark:bg-zinc-900 dark:text-white">
                       {s.title} ({s.hari ? `Setiap ${s.hari}` : s.tanggal} • {s.waktu})
                     </option>
                   ))}
@@ -276,7 +276,7 @@ export const AttendanceInput: React.FC = () => {
                 value={namesInput}
                 onChange={(e) => setNamesInput(e.target.value)}
                 placeholder="Contoh: Husen, Budi, Ahmad, Siti, Umar..."
-                className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-xs text-zinc-800 dark:text-zinc-150 focus:outline-hidden focus:ring-1 focus:ring-red-600 focus:border-red-600 transition-all font-sans leading-relaxed"
+                className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-xs text-zinc-800 dark:text-white dark:placeholder-zinc-400 focus:outline-hidden focus:ring-1 focus:ring-red-600 focus:border-red-600 transition-all font-sans leading-relaxed font-semibold"
               />
             </div>
           </div>

@@ -1,57 +1,124 @@
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 @import "tailwindcss";
 
+:root {
+  --zinc-50: #f8fafc;
+  --zinc-100: #f1f5f9;
+  --zinc-150: #e2e8f0;
+  --zinc-200: #cbd5e1;
+  --zinc-250: #cbd5e1;
+  --zinc-300: #94a3b8;
+  --zinc-350: #475569; /* slate-600: strong medium text */
+  --zinc-400: #334155; /* slate-700: very legible dark gray */
+  --zinc-450: #1e293b; /* slate-800: deep charcoal for secondary label / unselected nav elements */
+  --zinc-500: #0f172a; /* slate-900: near-black for primary helpers, informational texts, and labels */
+  --zinc-600: #0f172a; /* slate-900: near-black */
+  --zinc-650: #020617; /* slate-950: true deep black */
+  --zinc-700: #020617;
+  --zinc-750: #020617;
+  --zinc-800: #020617;
+  --zinc-850: #020617;
+  --zinc-900: #020617;
+  --zinc-950: #020617;
+}
+
+html.dark {
+  --zinc-50: #ffffff;
+  --zinc-100: #ffffff;
+  --zinc-150: #ffffff;
+  --zinc-200: #ffffff;
+  --zinc-250: #ffffff;
+  --zinc-300: #f8fafc;
+  --zinc-350: #f8fafc;
+  --zinc-400: #fbefef;
+  --zinc-450: #f5cbcb;
+  --zinc-500: #ffe2e2;
+  --zinc-600: #f5cbcb;
+  --zinc-650: #c5b3d3;
+  --zinc-700: #324d7d;
+  --zinc-750: #29416b;
+  --zinc-800: #203459;
+  --zinc-850: #182947;
+  --zinc-900: #121e36;
+  --zinc-950: #0a1120;
+}
+
 @theme {
   --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 
-  /* Custom palette from: https://coolors.co/c71110-868282-fafcfc-a0a0a0-955958 */
-  --color-brick-ember: #c71110;
-  --color-grey: #868282;
+  /* Custom palette from: https://colorhunt.co/palette/fbefefffe2e2f5cbcbc5b3d3 */
+  --color-pink-tint: #fbefef;
+  --color-rose-warm: #ffe2e2;
+  --color-rose-dusty: #f5cbcb;
+  --color-lavender-soft: #c5b3d3;
+
+  /* Deeper premium shades for contrast and readability in light mode */
+  --color-plum-dark: #6a4985;
+  --color-plum-deep: #412656;
+
+  /* Legacy variable mappings for backward compatibility */
+  --color-brick-ember: #6a4985;
+  --color-grey: #c5b3d3;
   --color-white: #fafcfc;
-  --color-cool-steel: #a0a0a0;
-  --color-smoky-rose: #955958;
+  --color-cool-steel: #ffe2e2;
+  --color-smoky-rose: #f5cbcb;
 
   /* Mapping custom palette to existing utility colors for seamless UI integration */
-  --color-red-500: #c71110;
-  --color-red-600: #c71110;
-  --color-red-650: #c71110;
-  --color-red-700: #955958;
-  --color-red-750: #955958;
-  --color-red-755: #955958;
-  --color-red-400: #955958;
+  --color-red-500: #c5b3d3;
+  --color-red-600: #6a4985;
+  --color-red-650: #412656;
+  --color-red-700: #2a153b;
+  --color-red-750: #1b0c28;
+  --color-red-755: #11051b;
+  --color-red-400: #f5cbcb;
   
-  --color-zinc-400: #a0a0a0;
-  --color-zinc-500: #868282;
-  --color-zinc-650: #868282;
-  --color-zinc-600: #868282;
-  --color-zinc-700: #868282;
-  
+  /* Dynamic zinc scale for both light and dark modes */
+  --color-zinc-50: var(--zinc-50);
+  --color-zinc-100: var(--zinc-100);
+  --color-zinc-150: var(--zinc-150);
+  --color-zinc-200: var(--zinc-200);
+  --color-zinc-250: var(--zinc-250);
+  --color-zinc-300: var(--zinc-300);
+  --color-zinc-350: var(--zinc-350);
+  --color-zinc-400: var(--zinc-400);
+  --color-zinc-450: var(--zinc-450);
+  --color-zinc-500: var(--zinc-500);
+  --color-zinc-600: var(--zinc-600);
+  --color-zinc-650: var(--zinc-650);
+  --color-zinc-700: var(--zinc-700);
+  --color-zinc-750: var(--zinc-750);
+  --color-zinc-800: var(--zinc-800);
+  --color-zinc-850: var(--zinc-850);
+  --color-zinc-900: var(--zinc-900);
+  --color-zinc-950: var(--zinc-950);
+
   --color-stone-50: #fafcfc;
   --color-stone-100: #fafcfc;
-  --color-stone-200: #a0a0a0;
-  --color-stone-300: #868282;
-  --color-stone-905: #18181b;
+  --color-stone-200: #ffe2e2;
+  --color-stone-300: #c5b3d3;
+  --color-stone-900: #121e36;
+  --color-stone-905: #0a1120;
 
   /* Custom Gradients from palette */
-  --background-image-gradient-brick-top: linear-gradient(0deg, #c71110, #868282, #fafcfc, #a0a0a0, #955958);
-  --background-image-gradient-brick-right: linear-gradient(90deg, #c71110, #868282, #fafcfc, #a0a0a0, #955958);
-  --background-image-gradient-brick-bottom: linear-gradient(180deg, #c71110, #868282, #fafcfc, #a0a0a0, #955958);
-  --background-image-gradient-brick-left: linear-gradient(270deg, #c71110, #868282, #fafcfc, #a0a0a0, #955958);
-  --background-image-gradient-brick-diagonal: linear-gradient(135deg, #c71110, #868282, #fafcfc, #a0a0a0, #955958);
+  --background-image-gradient-brick-top: linear-gradient(0deg, #fbefef, #ffe2e2, #f5cbcb, #c5b3d3);
+  --background-image-gradient-brick-right: linear-gradient(90deg, #fbefef, #ffe2e2, #f5cbcb, #c5b3d3);
+  --background-image-gradient-brick-bottom: linear-gradient(180deg, #fbefef, #ffe2e2, #f5cbcb, #c5b3d3);
+  --background-image-gradient-brick-left: linear-gradient(270deg, #fbefef, #ffe2e2, #f5cbcb, #c5b3d3);
+  --background-image-gradient-brick-diagonal: linear-gradient(135deg, #fbefef, #ffe2e2, #f5cbcb, #c5b3d3);
 }
 
 @variant dark (&:where(.dark, .dark *));
 
 body {
   font-family: var(--font-sans);
-  background-color: #fafcfc; /* Palette Background Cream-White */
-  color: #1a1a1a;
+  background-color: #fbefef; /* Soft washed light pink-white from colorhunt palette */
+  color: #1e293b; /* Muted slate instead of harsh jet-black */
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 html.dark body {
-  background-color: #020617; /* Slate 950 */
+  background-color: #0a1120; /* Deep Midnight Denim Background */
   color: #f8fafc; /* Slate 50 */
 }
 
