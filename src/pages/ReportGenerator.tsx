@@ -588,10 +588,10 @@ export const ReportGenerator: React.FC = () => {
               id="report_period"
               value={selectedPeriodKey}
               onChange={(e) => setSelectedPeriodKey(e.target.value)}
-              className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2.5 text-xs text-zinc-800 dark:text-zinc-150 focus:outline-hidden font-bold cursor-pointer"
+              className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2.5 text-xs text-zinc-800 dark:text-white focus:outline-hidden font-bold cursor-pointer"
             >
               {availablePeriods.map(p => (
-                <option key={p.key} value={p.key}>{p.label}</option>
+                <option key={p.key} value={p.key} className="dark:bg-zinc-900 dark:text-white">{p.label}</option>
               ))}
             </select>
           </div>
@@ -605,12 +605,12 @@ export const ReportGenerator: React.FC = () => {
               disabled={reportMode === 'excel'}
               value={reportScheduleFilter}
               onChange={(e) => setReportScheduleFilter(e.target.value)}
-              className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2.5 text-xs text-zinc-800 dark:text-zinc-150 focus:outline-hidden font-bold cursor-pointer disabled:opacity-40"
+              className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2.5 text-xs text-zinc-800 dark:text-white focus:outline-hidden font-bold cursor-pointer disabled:opacity-40"
             >
-              <option value="all">-- Semua Sesi Kelas --</option>
-              <option value="unlinked">Hanya Kelas Kustom (Tanpa Jadwal)</option>
+              <option value="all" className="dark:bg-zinc-900 dark:text-white">-- Semua Sesi Kelas --</option>
+              <option value="unlinked" className="dark:bg-zinc-900 dark:text-white">Hanya Kelas Kustom (Tanpa Jadwal)</option>
               {schedules.map(s => (
-                <option key={s.id} value={s.id}>{s.title} ({s.hari})</option>
+                <option key={s.id} value={s.id} className="dark:bg-zinc-900 dark:text-white">{s.title} ({s.hari})</option>
               ))}
             </select>
           </div>
@@ -865,7 +865,7 @@ export const ReportGenerator: React.FC = () => {
                             copy[idx] = e.target.value;
                             setWeeks(copy);
                           }}
-                          className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2 py-1.5 text-[11px] font-bold text-zinc-700 dark:text-zinc-300 text-center focus:outline-hidden focus:ring-1 focus:ring-red-600"
+                          className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2 py-1.5 text-[11px] font-bold text-zinc-700 dark:text-white text-center focus:outline-hidden focus:ring-1 focus:ring-red-600"
                           placeholder={`Pekan ${idx + 1}`}
                         />
                       </div>
@@ -953,7 +953,7 @@ export const ReportGenerator: React.FC = () => {
                               <select
                                 value={row.category}
                                 onChange={(e) => handleUpdateStudentField(rIdx, 'category', e.target.value)}
-                                className="bg-transparent border-0 text-center font-bold text-zinc-700 dark:text-zinc-300 focus:ring-0 focus:outline-hidden cursor-pointer"
+                                className="bg-transparent border-0 text-center font-bold text-zinc-700 dark:text-white focus:ring-0 focus:outline-hidden cursor-pointer"
                               >
                                 <option value="K">K</option>
                                 <option value="P">P</option>
@@ -997,7 +997,7 @@ export const ReportGenerator: React.FC = () => {
                                 type="text"
                                 value={row.pendampingan}
                                 onChange={(e) => handleUpdateStudentField(rIdx, 'pendampingan', e.target.value)}
-                                className="w-full bg-transparent border-0 text-zinc-700 dark:text-zinc-300 focus:ring-0 focus:outline-hidden p-1 rounded-sm focus:bg-zinc-100 dark:focus:bg-zinc-800"
+                                className="w-full bg-transparent border-0 text-zinc-700 dark:text-white font-semibold focus:ring-0 focus:outline-hidden p-1 rounded-sm focus:bg-zinc-100 dark:focus:bg-zinc-800"
                                 placeholder="..."
                               />
                             </td>
@@ -1007,15 +1007,15 @@ export const ReportGenerator: React.FC = () => {
                               <select
                                 value={row.hs}
                                 onChange={(e) => handleUpdateStudentField(rIdx, 'hs', e.target.value)}
-                                className="w-14 bg-transparent border-0 text-center font-bold text-zinc-700 dark:text-zinc-300 focus:ring-0 focus:outline-hidden cursor-pointer"
+                                className="w-14 bg-transparent border-0 text-center font-bold text-zinc-700 dark:text-white focus:ring-0 focus:outline-hidden cursor-pointer dark:bg-zinc-900 rounded-md"
                               >
-                                <option value="">-</option>
-                                <option value="V">V</option>
-                                <option value="S">S</option>
-                                <option value="I">I</option>
-                                <option value="A">A</option>
-                                <option value="T">T</option>
-                                <option value="B">B</option>
+                                <option value="" className="dark:bg-zinc-900 dark:text-white">-</option>
+                                <option value="V" className="dark:bg-zinc-900 dark:text-white">V</option>
+                                <option value="S" className="dark:bg-zinc-900 dark:text-white">S</option>
+                                <option value="I" className="dark:bg-zinc-900 dark:text-white">I</option>
+                                <option value="A" className="dark:bg-zinc-900 dark:text-white">A</option>
+                                <option value="T" className="dark:bg-zinc-900 dark:text-white">T</option>
+                                <option value="B" className="dark:bg-zinc-900 dark:text-white">B</option>
                               </select>
                             </td>
 
@@ -1024,15 +1024,15 @@ export const ReportGenerator: React.FC = () => {
                               <select
                                 value={row.jm}
                                 onChange={(e) => handleUpdateStudentField(rIdx, 'jm', e.target.value)}
-                                className="w-14 bg-transparent border-0 text-center font-bold text-zinc-700 dark:text-zinc-300 focus:ring-0 focus:outline-hidden cursor-pointer"
+                                className="w-14 bg-transparent border-0 text-center font-bold text-zinc-700 dark:text-white focus:ring-0 focus:outline-hidden cursor-pointer dark:bg-zinc-900 rounded-md"
                               >
-                                <option value="">-</option>
-                                <option value="V">V</option>
-                                <option value="S">S</option>
-                                <option value="I">I</option>
-                                <option value="A">A</option>
-                                <option value="T">T</option>
-                                <option value="B">B</option>
+                                <option value="" className="dark:bg-zinc-900 dark:text-white">-</option>
+                                <option value="V" className="dark:bg-zinc-900 dark:text-white">V</option>
+                                <option value="S" className="dark:bg-zinc-900 dark:text-white">S</option>
+                                <option value="I" className="dark:bg-zinc-900 dark:text-white">I</option>
+                                <option value="A" className="dark:bg-zinc-900 dark:text-white">A</option>
+                                <option value="T" className="dark:bg-zinc-900 dark:text-white">T</option>
+                                <option value="B" className="dark:bg-zinc-900 dark:text-white">B</option>
                               </select>
                             </td>
 
@@ -1041,14 +1041,14 @@ export const ReportGenerator: React.FC = () => {
                               <select
                                 value={row.sppKeterangan}
                                 onChange={(e) => handleUpdateStudentField(rIdx, 'sppKeterangan', e.target.value)}
-                                className="w-14 bg-transparent border-0 text-center font-bold text-zinc-700 dark:text-zinc-300 focus:ring-0 focus:outline-hidden cursor-pointer"
+                                className="w-14 bg-transparent border-0 text-center font-bold text-zinc-700 dark:text-white focus:ring-0 focus:outline-hidden cursor-pointer dark:bg-zinc-900 rounded-md"
                               >
-                                <option value="">-</option>
-                                <option value="V">V</option>
-                                <option value="T">T</option>
-                                <option value="S">S</option>
-                                <option value="I">I</option>
-                                <option value="A">A</option>
+                                <option value="" className="dark:bg-zinc-900 dark:text-white">-</option>
+                                <option value="V" className="dark:bg-zinc-900 dark:text-white">V</option>
+                                <option value="T" className="dark:bg-zinc-900 dark:text-white">T</option>
+                                <option value="S" className="dark:bg-zinc-900 dark:text-white">S</option>
+                                <option value="I" className="dark:bg-zinc-900 dark:text-white">I</option>
+                                <option value="A" className="dark:bg-zinc-900 dark:text-white">A</option>
                               </select>
                             </td>
 
@@ -1058,7 +1058,7 @@ export const ReportGenerator: React.FC = () => {
                                 type="number"
                                 value={row.sppNominal || ''}
                                 onChange={(e) => handleUpdateStudentField(rIdx, 'sppNominal', Number(e.target.value))}
-                                className="w-full bg-transparent border-0 text-right font-mono text-zinc-700 dark:text-zinc-300 focus:ring-0 focus:outline-hidden p-1 rounded-sm"
+                                className="w-full bg-transparent border-0 text-right font-mono text-zinc-700 dark:text-white focus:ring-0 focus:outline-hidden p-1 rounded-sm"
                                 placeholder="0"
                               />
                             </td>
@@ -1103,35 +1103,88 @@ export const ReportGenerator: React.FC = () => {
                 </div>
 
                 {/* Legend Table bottom representation */}
-                <div className="hidden lg:grid grid-cols-3 gap-6 bg-zinc-50 dark:bg-zinc-950 p-4 border border-zinc-150 dark:border-zinc-805 rounded-xl">
-                  <div className="text-3xs space-y-1">
-                    <p className="font-extrabold uppercase tracking-wider text-zinc-500">Keterangan Presensi:</p>
-                    <div className="grid grid-cols-2 gap-1.5 font-bold text-zinc-650 dark:text-zinc-400">
-                      <div><span className="text-emerald-500 mr-1 font-black">V:</span> Hadir Tepat Waktu</div>
-                      <div><span className="text-amber-500 mr-1 font-black">T:</span> Terlambat &lt;15m</div>
-                      <div><span className="text-sky-500 mr-1 font-black">S:</span> Sakit</div>
-                      <div><span className="text-sky-400 mr-1 font-black">I:</span> Izin</div>
-                      <div><span className="text-rose-500 mr-1 font-black">A:</span> Alpa (Tanpa Ket)</div>
-                      <div><span className="text-zinc-500 mr-1 font-black">B:</span> Musyrif Absen/Kosong</div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5 bg-white dark:bg-zinc-950 p-5 border border-zinc-200 dark:border-zinc-805 rounded-2xl shadow-xs">
+                  {/* Presensi */}
+                  <div className="space-y-3">
+                    <p className="font-extrabold uppercase tracking-wider text-[11px] text-zinc-500 dark:text-zinc-400 border-b border-zinc-100 dark:border-zinc-800 pb-2">
+                      Keterangan Presensi
+                    </p>
+                    <div className="grid grid-cols-2 gap-2 text-2xs font-bold text-zinc-700 dark:text-zinc-300">
+                      <div className="flex items-center gap-1.5">
+                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-emerald-50 dark:bg-emerald-950/45 text-emerald-600 dark:text-emerald-400 font-mono font-black text-3xs border border-emerald-200 dark:border-emerald-900/50">V</span>
+                        <span>Hadir Tepat</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-amber-50 dark:bg-amber-950/45 text-amber-600 dark:text-amber-400 font-mono font-black text-3xs border border-amber-200 dark:border-amber-900/50">T</span>
+                        <span>Terlambat &lt;15m</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-sky-50 dark:bg-sky-950/45 text-sky-600 dark:text-sky-400 font-mono font-black text-3xs border border-sky-200 dark:border-sky-900/50">S</span>
+                        <span>Sakit</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-indigo-50 dark:bg-indigo-950/45 text-indigo-600 dark:text-indigo-400 font-mono font-black text-3xs border border-indigo-200 dark:border-indigo-900/50">I</span>
+                        <span>Izin</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-rose-50 dark:bg-rose-950/45 text-rose-600 dark:text-rose-400 font-mono font-black text-3xs border border-rose-200 dark:border-rose-900/50">A</span>
+                        <span>Alpa</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 font-mono font-black text-3xs border border-zinc-250 dark:border-zinc-700">B</span>
+                        <span>Musyrif Absen</span>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="text-3xs space-y-1">
-                    <p className="font-extrabold uppercase tracking-wider text-zinc-500">Keterangan SPP:</p>
-                    <div className="grid grid-cols-2 gap-1.5 font-bold text-zinc-650 dark:text-zinc-400">
-                      <div><span className="text-emerald-500 mr-1 font-black">V:</span> Bayar sblm tgl 15</div>
-                      <div><span className="text-amber-500 mr-1 font-black">T:</span> Bayar stlh tgl 15</div>
-                      <div><span className="text-zinc-400 mr-1 font-black">S:</span> Kesulitan Bayar</div>
-                      <div><span className="text-sky-500 mr-1 font-black">I:</span> Dihutang bln dpn</div>
-                      <div><span className="text-rose-500 mr-1 font-black">A:</span> Tanpa Alasan</div>
+                  {/* SPP */}
+                  <div className="space-y-3 border-t md:border-t-0 md:border-l border-zinc-100 dark:border-zinc-800 pt-3 md:pt-0 md:pl-5">
+                    <p className="font-extrabold uppercase tracking-wider text-[11px] text-zinc-500 dark:text-zinc-400 border-b border-zinc-100 dark:border-zinc-800 pb-2">
+                      Keterangan SPP
+                    </p>
+                    <div className="grid grid-cols-2 gap-2 text-2xs font-bold text-zinc-700 dark:text-zinc-300">
+                      <div className="flex items-center gap-1.5">
+                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-emerald-50 dark:bg-emerald-950/45 text-emerald-600 dark:text-emerald-400 font-mono font-black text-3xs border border-emerald-200 dark:border-emerald-900/50">V</span>
+                        <span>Sblm Tgl 15</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-amber-50 dark:bg-amber-950/45 text-amber-600 dark:text-amber-400 font-mono font-black text-3xs border border-amber-200 dark:border-amber-900/50">T</span>
+                        <span>Stlh Tgl 15</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 font-mono font-black text-3xs border border-zinc-250 dark:border-zinc-700">S</span>
+                        <span>Sulit Bayar</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-indigo-50 dark:bg-indigo-950/45 text-indigo-600 dark:text-indigo-400 font-mono font-black text-3xs border border-indigo-200 dark:border-indigo-900/50">I</span>
+                        <span>Dihutang</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-rose-50 dark:bg-rose-950/45 text-rose-600 dark:text-rose-400 font-mono font-black text-3xs border border-rose-200 dark:border-rose-900/50">A</span>
+                        <span>Tanpa Alasan</span>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="text-3xs space-y-1">
-                    <p className="font-extrabold uppercase tracking-wider text-zinc-500">Kategori &amp; Buletin:</p>
-                    <div className="space-y-1 font-bold text-zinc-650 dark:text-zinc-400">
-                      <div><span className="font-black mr-1 text-zinc-500">K / P:</span> Karyawan / Pelajar</div>
-                      <div><span className="font-black mr-1 text-red-500">Sebar Buletin:</span> Centang jika terkirim via Cetak / Digital</div>
+                  {/* Kategori */}
+                  <div className="space-y-3 border-t md:border-t-0 md:border-l border-zinc-100 dark:border-zinc-800 pt-3 md:pt-0 md:pl-5">
+                    <p className="font-extrabold uppercase tracking-wider text-[11px] text-zinc-500 dark:text-zinc-400 border-b border-zinc-100 dark:border-zinc-800 pb-2">
+                      Kategori &amp; Buletin
+                    </p>
+                    <div className="space-y-2.5 text-2xs font-bold text-zinc-700 dark:text-zinc-300">
+                      <div className="flex items-center gap-1.5">
+                        <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-mono font-black text-3xs border border-zinc-250 dark:border-zinc-700">K / P</span>
+                        <span>Karyawan / Pelajar</span>
+                      </div>
+                      <div className="flex flex-col gap-1 bg-red-500/[0.03] dark:bg-red-500/[0.02] border border-red-500/10 p-2 rounded-lg">
+                        <div className="flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-red-650 animate-pulse"></span>
+                          <span className="font-extrabold uppercase tracking-wider text-3xs text-red-650 dark:text-red-400">Sebar Buletin</span>
+                        </div>
+                        <span className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-normal font-semibold">
+                          Centang kolom cetak/digital jika buletin telah diserahkan.
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1156,7 +1209,7 @@ export const ReportGenerator: React.FC = () => {
                     <button
                       type="button"
                       onClick={handleResetToAttendanceDB}
-                      className="px-4 py-2 bg-zinc-100 dark:bg-zinc-850 hover:bg-zinc-200 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 text-xs font-black rounded-xl transition-colors cursor-pointer inline-flex items-center gap-1.5"
+                      className="px-4 py-2 bg-zinc-100 dark:bg-zinc-850 hover:bg-zinc-200 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-white text-xs font-black rounded-xl transition-colors cursor-pointer inline-flex items-center gap-1.5"
                     >
                       <RefreshCw className="w-3.5 h-3.5" />
                       <span>Sinkron Kehadiran</span>
@@ -1233,8 +1286,8 @@ export const ReportGenerator: React.FC = () => {
                               onChange={(e) => handleUpdateStudentField(editingStudentIndex, 'category', e.target.value as 'K' | 'P')}
                               className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-xs font-bold text-zinc-800 dark:text-zinc-150 focus:outline-hidden"
                             >
-                              <option value="K">Karyawan (K)</option>
-                              <option value="P">Pelajar (P)</option>
+                              <option value="K" className="dark:bg-zinc-900 dark:text-white">Karyawan (K)</option>
+                              <option value="P" className="dark:bg-zinc-900 dark:text-white">Pelajar (P)</option>
                             </select>
                           </div>
                           <div>
@@ -1244,12 +1297,12 @@ export const ReportGenerator: React.FC = () => {
                               onChange={(e) => handleUpdateStudentField(editingStudentIndex, 'sppKeterangan', e.target.value)}
                               className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-xs font-bold text-zinc-800 dark:text-zinc-150 focus:outline-hidden"
                             >
-                              <option value="">-- Kosong --</option>
-                              <option value="V">V - Tepat waktu</option>
-                              <option value="T">T - Terlambat</option>
-                              <option value="S">S - Kesulitan</option>
-                              <option value="I">I - Dihutang</option>
-                              <option value="A">A - Tanpa Alasan</option>
+                              <option value="" className="dark:bg-zinc-900 dark:text-white">-- Kosong --</option>
+                              <option value="V" className="dark:bg-zinc-900 dark:text-white">V - Tepat waktu</option>
+                              <option value="T" className="dark:bg-zinc-900 dark:text-white">T - Terlambat</option>
+                              <option value="S" className="dark:bg-zinc-900 dark:text-white">S - Kesulitan</option>
+                              <option value="I" className="dark:bg-zinc-900 dark:text-white">I - Dihutang</option>
+                              <option value="A" className="dark:bg-zinc-900 dark:text-white">A - Tanpa Alasan</option>
                             </select>
                           </div>
                         </div>
@@ -1263,13 +1316,13 @@ export const ReportGenerator: React.FC = () => {
                               onChange={(e) => handleUpdateStudentField(editingStudentIndex, 'hs', e.target.value)}
                               className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-2 py-2.5 text-xs font-bold text-zinc-800 dark:text-zinc-150 text-center focus:outline-hidden cursor-pointer"
                             >
-                              <option value="">-</option>
-                              <option value="V">V</option>
-                              <option value="S">S</option>
-                              <option value="I">I</option>
-                              <option value="A">A</option>
-                              <option value="T">T</option>
-                              <option value="B">B</option>
+                              <option value="" className="dark:bg-zinc-900 dark:text-white">-</option>
+                              <option value="V" className="dark:bg-zinc-900 dark:text-white">V</option>
+                              <option value="S" className="dark:bg-zinc-900 dark:text-white">S</option>
+                              <option value="I" className="dark:bg-zinc-900 dark:text-white">I</option>
+                              <option value="A" className="dark:bg-zinc-900 dark:text-white">A</option>
+                              <option value="T" className="dark:bg-zinc-900 dark:text-white">T</option>
+                              <option value="B" className="dark:bg-zinc-900 dark:text-white">B</option>
                             </select>
                           </div>
                           <div className="col-span-1">
@@ -1279,13 +1332,13 @@ export const ReportGenerator: React.FC = () => {
                               onChange={(e) => handleUpdateStudentField(editingStudentIndex, 'jm', e.target.value)}
                               className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-2 py-2.5 text-xs font-bold text-zinc-800 dark:text-zinc-150 text-center focus:outline-hidden cursor-pointer"
                             >
-                              <option value="">-</option>
-                              <option value="V">V</option>
-                              <option value="S">S</option>
-                              <option value="I">I</option>
-                              <option value="A">A</option>
-                              <option value="T">T</option>
-                              <option value="B">B</option>
+                              <option value="" className="dark:bg-zinc-900 dark:text-white">-</option>
+                              <option value="V" className="dark:bg-zinc-900 dark:text-white">V</option>
+                              <option value="S" className="dark:bg-zinc-900 dark:text-white">S</option>
+                              <option value="I" className="dark:bg-zinc-900 dark:text-white">I</option>
+                              <option value="A" className="dark:bg-zinc-900 dark:text-white">A</option>
+                              <option value="T" className="dark:bg-zinc-900 dark:text-white">T</option>
+                              <option value="B" className="dark:bg-zinc-900 dark:text-white">B</option>
                             </select>
                           </div>
                           <div className="col-span-1">
@@ -1327,7 +1380,7 @@ export const ReportGenerator: React.FC = () => {
                                     {['V', 'T', 'S', 'I', 'A', 'B'].map((code) => {
                                       const isAct = cellValue === code;
                                       
-                                      let actStyle = 'bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-650 dark:text-zinc-300';
+                                      let actStyle = 'bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-650 dark:text-white';
                                       if (isAct) {
                                         if (code === 'V') actStyle = 'bg-emerald-600 text-white shadow-xs';
                                         else if (code === 'T') actStyle = 'bg-amber-500 text-white shadow-xs';
