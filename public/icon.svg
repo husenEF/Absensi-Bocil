@@ -1,11 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
   <defs>
     <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#059669" /> <!-- Emerald 600 -->
-      <stop offset="100%" stop-color="#0284c7" /> <!-- Sky 600 -->
+      <stop offset="0%" stop-color="#412656" /> <!-- Deep Plum -->
+      <stop offset="100%" stop-color="#6a4985" /> <!-- Dark Plum -->
     </linearGradient>
     <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
-      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#0f172a" flood-opacity="0.15" />
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#412656" flood-opacity="0.25" />
     </filter>
   </defs>
   <!-- Background Board -->
@@ -13,30 +13,31 @@
   
   <!-- Icon Graphics Group -->
   <g filter="url(#shadow)" transform="translate(106, 106)">
-    <!-- Slate Card Background -->
-    <rect x="0" y="30" width="300" height="260" rx="24" fill="#ffffff" />
-    <!-- Slate Header Bar -->
-    <rect x="0" y="30" width="300" height="64" rx="24" fill="#f8fafc" />
-    <path d="M 0 54 L 0 94 L 300 94 L 300 54 Z" fill="#f8fafc" />
-    <!-- Binder Rings -->
-    <rect x="60" y="10" width="20" height="40" rx="10" fill="#cbd5e1" />
-    <rect x="140" y="10" width="20" height="40" rx="10" fill="#cbd5e1" />
-    <rect x="220" y="10" width="20" height="40" rx="10" fill="#cbd5e1" />
+    <!-- White Card Background -->
+    <rect x="0" y="30" width="300" height="260" rx="28" fill="#ffffff" />
+    <!-- Light Pink Header Bar -->
+    <rect x="0" y="30" width="300" height="64" rx="28" fill="#fbefef" />
+    <path d="M 0 54 L 0 94 L 300 94 L 300 54 Z" fill="#fbefef" />
     
-    <!-- Checklist items -->
-    <!-- Item 1 - Checked -->
-    <circle cx="70" cy="140" r="16" fill="#10b981" />
-    <path d="M 64 140 L 68 144 L 76 136" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-    <rect x="110" y="132" width="130" height="16" rx="8" fill="#e2e8f0" />
+    <!-- Binder Rings (Plum Dark) -->
+    <rect x="60" y="10" width="20" height="40" rx="10" fill="#6a4985" />
+    <rect x="140" y="10" width="20" height="40" rx="10" fill="#6a4985" />
+    <rect x="220" y="10" width="20" height="40" rx="10" fill="#6a4985" />
     
-    <!-- Item 2 - Checked -->
-    <circle cx="70" cy="195" r="16" fill="#10b981" />
-    <path d="M 64 195 L 68 199 L 76 191" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-    <rect x="110" y="187" width="110" height="16" rx="8" fill="#e2e8f0" />
+    <!-- Checklist items in our color scheme -->
+    <!-- Item 1 - Checked (Plum Dark) -->
+    <circle cx="70" cy="140" r="18" fill="#412656" />
+    <path d="M 63 140 L 68 145 L 77 135" stroke="#ffffff" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+    <rect x="110" y="131" width="130" height="18" rx="9" fill="#ffe2e2" />
     
-    <!-- Item 3 - Checked -->
-    <circle cx="70" cy="250" r="16" fill="#0284c7" />
-    <path d="M 64 250 L 68 254 L 76 246" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-    <rect x="110" y="242" width="140" height="16" rx="8" fill="#e2e8f0" />
+    <!-- Item 2 - Checked (Plum Light) -->
+    <circle cx="70" cy="195" r="18" fill="#6a4985" />
+    <path d="M 63 195 L 68 200 L 77 190" stroke="#ffffff" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+    <rect x="110" y="186" width="110" height="18" rx="9" fill="#f5cbcb" />
+    
+    <!-- Item 3 - Checked (Lavender Soft) -->
+    <circle cx="70" cy="250" r="18" fill="#c5b3d3" />
+    <path d="M 63 250 L 68 255 L 77 245" stroke="#412656" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+    <rect x="110" y="241" width="140" height="18" rx="9" fill="#fbefef" />
   </g>
 </svg>

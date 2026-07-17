@@ -9,7 +9,7 @@ import { SyncManagement } from './pages/SyncManagement';
 
 // Import custom app logo image generated
 // @ts-ignore
-import logoImg from './assets/images/absenbocil_logo_1781882615871.jpg';
+import logoImg from './assets/images/classsync_logo_1784256921487.jpg';
 
 import { 
   PlusCircle, 
