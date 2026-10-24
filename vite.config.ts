@@ -5,7 +5,7 @@ import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
   return {
-    base: process.env.GITHUB_ACTIONS === 'true' ? '/absen-bocil/' : './',
+    base: process.env.GITHUB_ACTIONS === 'true' ? '/Absensi-Bocil/' : './',
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
