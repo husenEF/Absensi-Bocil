@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useRef } from 'react';
 import QRCode from 'qrcode';
 import jsQR from 'jsqr';
-import { db, AbsensiRecord, ScheduleRecord, checkForAndMigratePreviousDatabases } from '../db';
+import { db, upsertStudent, AbsensiRecord, ScheduleRecord, StudentRecord, checkForAndMigratePreviousDatabases } from '../db';
+import { buildStatusMap, nameKey, parseNameList, presentNames, rosterFromRecords, statusesFromPeserta, tally, type StatusKey, type StatusMap, type StatusTally } from '../roster';
 import { formatIndonesianDate, formatDateShort } from '../utils/date';
 import { biMonthlyWeeks, getBiMonthlyLabel, getRecordBiMonth, todayYMD } from '../utils/period';
 
@@ -48,6 +49,15 @@ interface AppContextType {
   lastAttendanceForSchedule: string[];
   currentActiveNames: string[];
   allRegisteredStudents: string[];
+  students: StudentRecord[];
+  sessionStatusFor: (studentName: string) => StatusKey;
+  setSessionStatus: (studentName: string, status: StatusKey) => void;
+  handleMarkAllPresent: () => void;
+  sessionTally: StatusTally;
+  untouchedCount: number;
+  handleAddStudent: (rawName: string) => Promise<boolean>;
+  lastSaved: { tanggal: string; tally: StatusTally } | null;
+  dismissLastSaved: () => void;
   handleToggleStudent: (studentName: string) => void;
   isStudentSelected: (studentName: string) => boolean;
   handleSaveAttendance: (e: React.FormEvent) => Promise<void>;
@@ -163,6 +173,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Records & schedules fetched
   const [records, setRecords] = useState<AbsensiRecord[]>([]);
+  const [students, setStudents] = useState<StudentRecord[]>([]);
+  const [sessionStatuses, setSessionStatuses] = useState<StatusMap>({});
+  const [touchedStudents, setTouchedStudents] = useState<Set<string>>(new Set());
+  const [lastSaved, setLastSaved] = useState<{ tanggal: string; tally: StatusTally } | null>(null);
   const [schedules, setSchedules] = useState<ScheduleRecord[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
@@ -262,11 +276,51 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   // Read entire records from DB
+  /**
+   * Make sure every santri named in a record exists on the roster.
+   *
+   * The v4 upgrade seeds the roster once, but records also arrive later —
+   * from a QR or file sync, from the sample data, or from a backup import —
+   * and those paths write attendance without touching the roster. Reconciling
+   * on load keeps the two in step however the data got here.
+   */
+  const reconcileRoster = async (fromRecords: AbsensiRecord[]) => {
+    try {
+      const existing = await db.students.toArray();
+      const known = new Set(existing.map(s => s.nameKey));
+      const missing = rosterFromRecords(fromRecords).filter(s => !known.has(s.nameKey));
+
+      if (missing.length === 0) return existing;
+
+      const now = Date.now();
+      await db.students.bulkAdd(
+        missing.map(s => ({ name: s.name, nameKey: s.nameKey, active: true, createdAt: now }))
+      );
+      return db.students.toArray();
+    } catch (err) {
+      console.error('[Reconcile roster error]', err);
+      return db.students.toArray();
+    }
+  };
+
+  const loadStudents = async (fromRecords?: AbsensiRecord[]) => {
+    try {
+      const all = fromRecords
+        ? await reconcileRoster(fromRecords)
+        : await db.students.toArray();
+      setStudents(all);
+    } catch (err) {
+      console.error('[Load students error]', err);
+    }
+  };
+
   const loadRecords = async () => {
     try {
       setLoading(true);
       const data = await db.absensi.orderBy('tanggal').reverse().toArray();
       setRecords(data);
+      // Keep the roster in step with whatever records just arrived.
+      await loadStudents(data);
       // Clean up selections that might have been deleted
       const existingIds = data.map(d => d.id).filter(Boolean) as number[];
       setSelectedRecordIds(prev => prev.filter(id => existingIds.includes(id)));
@@ -408,6 +462,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     loadRecords();
     loadSchedules();
+    loadStudents();
 
     const urlParams = new URLSearchParams(window.location.search);
     const syncToken = urlParams.get('sync');
@@ -659,21 +714,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       .join(' ');
   };
 
+  /**
+   * The santri roster.
+   *
+   * This used to fall back to six invented names when the database was empty,
+   * so a brand-new teacher's first save recorded children who do not exist.
+   * An empty roster is now genuinely empty, and the UI asks them to add the
+   * first santri.
+   */
   const allRegisteredStudents = useMemo(() => {
-    const listSet = new Set<string>();
-    records.forEach(rec => {
-      rec.peserta.forEach(name => {
-        const clean = name.trim();
-        if (clean) listSet.add(clean);
-      });
-    });
-
-    if (listSet.size === 0) {
-      return ['Husen', 'Budi', 'Ahmad', 'Siti', 'Umar', 'Fatimah'];
-    }
-
-    return Array.from(listSet).sort((a, b) => a.localeCompare(b, 'id', { sensitivity: 'base' }));
-  }, [records]);
+    return students
+      .filter(s => s.active)
+      .map(s => s.name)
+      .sort((a, b) => a.localeCompare(b, 'id', { sensitivity: 'base' }));
+  }, [students]);
 
   const currentActiveNames = useMemo(() => {
     return namesInput
@@ -700,6 +754,72 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return currentActiveNames.some(name => name.toLowerCase() === studentName.toLowerCase());
   };
 
+  /**
+   * Status for one santri in the session being edited.
+   *
+   * Everyone starts at Hadir, so the teacher only touches the exceptions —
+   * the pattern every established register app uses.
+   */
+  const sessionStatusFor = (studentName: string): StatusKey => {
+    return sessionStatuses[nameKey(studentName)] ?? 'hadir';
+  };
+
+  const setSessionStatus = (studentName: string, status: StatusKey) => {
+    setSessionStatuses(prev => ({ ...prev, [nameKey(studentName)]: status }));
+    setTouchedStudents(prev => {
+      const next = new Set(prev);
+      next.add(nameKey(studentName));
+      return next;
+    });
+  };
+
+  const handleMarkAllPresent = () => {
+    const next: StatusMap = {};
+    allRegisteredStudents.forEach(name => {
+      next[nameKey(name)] = 'hadir';
+    });
+    setSessionStatuses(next);
+    setTouchedStudents(new Set(allRegisteredStudents.map(nameKey)));
+    showToast('Semua santri ditandai hadir.', 'info');
+  };
+
+  const sessionTally = useMemo<StatusTally>(() => {
+    return tally(buildStatusMap(allRegisteredStudents, sessionStatuses));
+  }, [allRegisteredStudents, sessionStatuses]);
+
+  /** Santri whose status the teacher has not looked at yet. */
+  const untouchedCount = useMemo(() => {
+    return allRegisteredStudents.filter(n => !touchedStudents.has(nameKey(n))).length;
+  }, [allRegisteredStudents, touchedStudents]);
+
+  const dismissLastSaved = () => setLastSaved(null);
+
+  const handleAddStudent = async (rawName: string): Promise<boolean> => {
+    const names = parseNameList(rawName);
+    if (names.length === 0) {
+      showToast('Masukkan nama santri terlebih dahulu.', 'error');
+      return false;
+    }
+
+    try {
+      for (const name of names) {
+        await upsertStudent(name);
+      }
+      await loadStudents();
+      showToast(
+        names.length === 1
+          ? `${names[0]} ditambahkan ke daftar santri.`
+          : `${names.length} santri ditambahkan.`,
+        'success'
+      );
+      return true;
+    } catch (err) {
+      console.error('[Add student error]', err);
+      showToast('Gagal menambahkan santri.', 'error');
+      return false;
+    }
+  };
+
   // Create or Update Attendance Record
   const handleSaveAttendance = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -709,19 +829,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return;
     }
 
-    if (!namesInput.trim()) {
-      showToast('Mohon masukkan minimal satu nama peserta.', 'error');
+    // The roster is the source of truth. Names typed into the box are added
+    // to it first, so both ways of working end up in the same place.
+    const typed = parseNameList(namesInput);
+    const rosterNames = allRegisteredStudents.length > 0 ? allRegisteredStudents : typed;
+
+    if (rosterNames.length === 0) {
+      showToast('Tambahkan santri terlebih dahulu.', 'error');
       return;
     }
 
-    const parsedPeserta = namesInput
-      .split(',')
-      .map(name => capitalizeWords(name.trim()))
-      .filter(name => name.length > 0);
+    const statuses = buildStatusMap(rosterNames, sessionStatuses);
+    const parsedPeserta = presentNames(rosterNames, statuses);
 
-    if (parsedPeserta.length === 0) {
-      showToast('Daftar peserta tidak valid.', 'error');
-      return;
+    if (parsedPeserta.length === 0 && sessionTally.hadir === 0) {
+      const proceed = window.confirm(
+        'Tidak ada santri yang hadir pada sesi ini. Simpan tetap?'
+      );
+      if (!proceed) return;
     }
 
     try {
@@ -739,6 +864,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         await db.absensi.update(existing.id!, {
           peserta: parsedPeserta,
+          statuses,
           scheduleId: selectedScheduleId,
           createdAt: Date.now()
         });
@@ -747,6 +873,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         await db.absensi.add({
           tanggal: tanggalInput,
           peserta: parsedPeserta,
+          statuses,
           scheduleId: selectedScheduleId,
           createdAt: Date.now()
         });
@@ -755,11 +882,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       setNamesInput('');
       setSelectedScheduleId(undefined);
+      setSessionStatuses({});
+      setTouchedStudents(new Set());
+      setLastSaved({ tanggal: tanggalInput, tally: tally(statuses) });
       loadRecords();
-
-      setTimeout(() => {
-        setActiveTab('riwayat');
-      }, 500);
+      loadStudents();
+      // Saving used to jump to the Riwayat tab half a second later, which left
+      // the teacher on a screen they did not ask for. They stay here, and the
+      // confirmation offers the next step instead.
 
     } catch (err) {
       console.error('Error adding attendance:', err);
@@ -1389,6 +1519,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       lastAttendanceForSchedule,
       currentActiveNames,
       allRegisteredStudents,
+      students,
+      sessionStatusFor,
+      setSessionStatus,
+      handleMarkAllPresent,
+      sessionTally,
+      untouchedCount,
+      handleAddStudent,
+      lastSaved,
+      dismissLastSaved,
       handleToggleStudent,
       isStudentSelected,
       handleSaveAttendance,
