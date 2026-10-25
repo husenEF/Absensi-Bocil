@@ -560,3 +560,83 @@
   font-weight: 700;
   cursor: pointer;
 }
+
+/* --------------------------------------------------------- session picker */
+
+.cs-session {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--cs-space-3);
+  min-height: var(--cs-tap);
+  padding: var(--cs-space-3);
+  background-color: var(--cs-surface-sunken);
+  border: 1.5px solid var(--cs-border);
+  border-radius: var(--cs-radius);
+  cursor: pointer;
+}
+
+.cs-session.is-selected {
+  border-color: var(--cs-brand);
+  background-color: var(--cs-brand-tint);
+}
+
+.cs-session:has(:focus-visible) {
+  outline: 3px solid var(--cs-focus);
+  outline-offset: 2px;
+}
+
+.cs-session input {
+  width: 1.5rem;
+  height: 1.5rem;
+  margin-top: 2px;
+  flex: none;
+  accent-color: var(--cs-brand-solid);
+}
+
+.cs-session__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.cs-session__date {
+  font-size: var(--cs-text-base);
+  font-weight: 600;
+  color: var(--cs-text);
+}
+
+.cs-session__names {
+  font-size: var(--cs-text-sm);
+  color: var(--cs-text-muted);
+  line-height: var(--cs-leading-normal);
+}
+
+/* ------------------------------------------------------------ wide sheet */
+
+.cs-sheet {
+  overflow-x: auto;
+  border: 1px solid var(--cs-border);
+  border-radius: var(--cs-radius);
+  /* Half-reveal the next column so it is visible that there is more to the
+     right; an arrow or dots are routinely missed. */
+  background:
+    linear-gradient(to right, var(--cs-surface) 30%, transparent),
+    linear-gradient(to left, var(--cs-surface) 30%, transparent) 100% 0,
+    radial-gradient(farthest-side at 0 50%, rgb(0 0 0 / 0.12), transparent),
+    radial-gradient(farthest-side at 100% 50%, rgb(0 0 0 / 0.12), transparent) 100% 0;
+  background-repeat: no-repeat;
+  background-size: 3rem 100%, 3rem 100%, 1rem 100%, 1rem 100%;
+  background-attachment: local, local, scroll, scroll;
+}
+
+.cs-sheet:focus-visible {
+  outline: 3px solid var(--cs-focus);
+  outline-offset: 2px;
+}
+
+.cs-sheet__actions {
+  display: flex;
+  gap: var(--cs-tap-gap);
+  justify-content: center;
+}
