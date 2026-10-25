@@ -38,6 +38,7 @@ const MainAppContent: React.FC = () => {
     darkMode,
     setDarkMode,
     toast,
+    dismissToast,
     onlineStatus,
     deferredPrompt,
     executePWAPrompt,
@@ -68,24 +69,31 @@ const MainAppContent: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#fbefef] dark:bg-zinc-950 text-zinc-850 dark:text-zinc-100 flex flex-col antialiased transition-colors duration-200">
       
-      {/* Toast Alert floating - standard positioning inside viewport */}
+      {/* Messages, with an optional single action such as Urungkan. */}
       <AnimatePresence>
         {toast && (
-          <div className="fixed top-8 left-1/2 -translate-x-1/2 z-50">
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9, y: -20 }}
+          <div className="cs-toast__wrap" role="status" aria-live="polite">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: -16 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: -20 }}
-              className={`flex items-center gap-2.5 px-5 py-3.5 rounded-2xl shadow-xl border text-xs font-bold font-sans ${
-                toast.type === 'success' ? 'bg-zinc-900 border-zinc-800 text-white' : 
-                toast.type === 'error' ? 'bg-brick-ember/10 border-brick-ember/20 text-brick-ember' : 
-                'bg-smoky-rose/10 border-smoky-rose/20 text-smoky-rose'
-              }`}
+              exit={{ opacity: 0, scale: 0.96, y: -16 }}
+              className={`cs-toast cs-toast--${toast.type}`}
             >
-              {toast.type === 'success' && <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />}
-              {toast.type === 'error' && <AlertCircle className="w-4 h-4 text-brick-ember" />}
-              {toast.type === 'info' && <Info className="w-4 h-4 text-cool-steel" />}
-              <span>{toast.message}</span>
+              {toast.type === 'error' && <AlertCircle className="cs-icon" aria-hidden="true" />}
+              {toast.type === 'info' && <Info className="cs-icon" aria-hidden="true" />}
+              <span className="cs-toast__msg">{toast.message}</span>
+              {toast.action && (
+                <button
+                  type="button"
+                  className="cs-toast__action"
+                  onClick={() => {
+                    toast.action?.onAction();
+                    dismissToast();
+                  }}
+                >
+                  {toast.action.label}
+                </button>
+              )}
             </motion.div>
           </div>
         )}
