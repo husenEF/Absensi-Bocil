@@ -223,10 +223,10 @@
   border-color: var(--cs-izin-solid);
   color: var(--cs-izin-solid-ink);
 }
-.cs-status__opt--alfa.is-selected {
-  background-color: var(--cs-alfa-solid);
-  border-color: var(--cs-alfa-solid);
-  color: var(--cs-alfa-solid-ink);
+.cs-status__opt--alpa.is-selected {
+  background-color: var(--cs-alpa-solid);
+  border-color: var(--cs-alpa-solid);
+  color: var(--cs-alpa-solid-ink);
 }
 
 /* ------------------------------------------------------------ status chips */
@@ -254,7 +254,7 @@
   background-color: var(--cs-izin-tint);
   color: var(--cs-izin-ink);
 }
-.cs-chip--alfa {
-  background-color: var(--cs-alfa-tint);
-  color: var(--cs-alfa-ink);
+.cs-chip--alpa {
+  background-color: var(--cs-alpa-tint);
+  color: var(--cs-alpa-ink);
 }

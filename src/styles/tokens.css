@@ -61,10 +61,10 @@
   --cs-izin-solid: #1a4f8a;
   --cs-izin-solid-ink: #ffffff;
 
-  --cs-alfa-tint: #fdeceb;
-  --cs-alfa-ink: #9e2820;
-  --cs-alfa-solid: #9e2820;
-  --cs-alfa-solid-ink: #ffffff;
+  --cs-alpa-tint: #fdeceb;
+  --cs-alpa-ink: #9e2820;
+  --cs-alpa-solid: #9e2820;
+  --cs-alpa-solid-ink: #ffffff;
 
   /* type scale — rem-based so browser and Android font scaling both work */
   --cs-text-xs: 0.875rem; /* 14px — the smallest text allowed anywhere */
@@ -142,10 +142,10 @@ html.dark {
   --cs-izin-solid: #1f5f9e;
   --cs-izin-solid-ink: #ffffff;
 
-  --cs-alfa-tint: #41201b;
-  --cs-alfa-ink: #ff9d94;
-  --cs-alfa-solid: #b32f26;
-  --cs-alfa-solid-ink: #ffffff;
+  --cs-alpa-tint: #41201b;
+  --cs-alpa-ink: #ff9d94;
+  --cs-alpa-solid: #b32f26;
+  --cs-alpa-solid-ink: #ffffff;
 
   --cs-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.5);
   --cs-shadow: 0 2px 8px rgb(0 0 0 / 0.55);
