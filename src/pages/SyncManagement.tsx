@@ -363,7 +363,7 @@ export const SyncManagement: React.FC = () => {
             <Database className="w-4.5 h-4.5 text-red-650" />
             <div>
               <h4 className="text-2xs font-bold text-zinc-800 dark:text-zinc-200 uppercase tracking-wider">Simulasi Sesi Belajar (Reviewer Sandbox)</h4>
-              <p className="text-[10px] text-zinc-400">Gunakan ini jika ingin menguji fungsi laporan mingguan bwi-bulanan dengan basis data terisi otomatis.</p>
+              <p className="text-[10px] text-zinc-400">Mengisi aplikasi dengan presensi contoh supaya Anda bisa mencoba laporannya.</p>
             </div>
           </div>
 
