@@ -59,13 +59,13 @@ export const SyncManagement: React.FC = () => {
       className="space-y-6"
     >
       {/* Synchronization Header Banner */}
-      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-xs relative overflow-hidden">
+      <div className="p-6 relative overflow-hidden">
         {/* Accent Bar */}
         <div className="absolute top-0 left-0 right-0 h-1.5 bg-red-650" />
 
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mt-1">
           <div className="flex items-center gap-3">
-            <div className="p-3 bg-red-500/10 text-red-650 dark:text-red-400 rounded-2xl border border-red-500/10">
+            <div className="cs-hidden-tile">
               <Wifi className="w-6 h-6 animate-pulse" />
             </div>
             <div>
@@ -76,12 +76,12 @@ export const SyncManagement: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex gap-4 p-3.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-805 rounded-xl text-sm font-extrabold text-zinc-500 select-none shrink-0 self-start md:self-center">
+          <div className="flex gap-4 p-3.5 text-sm font-extrabold text-zinc-500 select-none shrink-0 self-start md:self-center">
             <div>
               <span className="block font-black text-zinc-900 dark:text-zinc-50 text-sm">{schedules.length}</span>
               <span>Jadwal</span>
             </div>
-            <div className="border-l border-zinc-200 dark:border-zinc-800 pl-4">
+            <div className="border-l pl-4">
               <span className="block font-black text-zinc-900 dark:text-zinc-50 text-sm">{records.length}</span>
               <span>Presensi</span>
             </div>
@@ -90,22 +90,22 @@ export const SyncManagement: React.FC = () => {
       </div>
 
       {/* Step by step simple instruction cards */}
-      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-805 rounded-2xl p-5 shadow-xs">
-        <h3 className="text-sm font-black text-zinc-800 dark:text-zinc-200 mb-4 border-b border-zinc-150 dark:border-zinc-805 pb-2.5">Caranya</h3>
+      <div className="p-5">
+        <h3 className="text-sm font-black text-zinc-800 dark:text-zinc-200 mb-4 border-b pb-2.5">Caranya</h3>
         
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-          <div className="p-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200/50 dark:border-zinc-850 rounded-xl relative overflow-hidden">
-            <span className="text-sm font-black bg-red-500/10 text-red-650 dark:text-red-400 px-2 py-0.5 rounded">Langkah 1</span>
+          <div className="p-3 relative overflow-hidden">
+            <span className="cs-step">1</span>
             <h4 className="text-sm font-extrabold text-zinc-800 dark:text-zinc-200 mt-2">Buka halaman ini di kedua HP</h4>
             <p className="text-sm text-zinc-500 leading-normal mt-1">Buka halaman Sinkron HP di HP pengirim dan HP penerima.</p>
           </div>
-          <div className="p-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200/50 dark:border-zinc-850 rounded-xl relative overflow-hidden">
-            <span className="text-sm font-black bg-red-500/10 text-red-650 dark:text-red-400 px-2 py-0.5 rounded">Langkah 2</span>
+          <div className="p-3 relative overflow-hidden">
+            <span className="cs-step">2</span>
             <h4 className="text-sm font-extrabold text-zinc-800 dark:text-zinc-200 mt-2">Tampilkan QR di HP pengirim</h4>
             <p className="text-sm text-zinc-500 leading-normal mt-1">Di HP Pengirim, klik tombol <span className="font-semibold text-red-650">Tampilkan QR</span> untuk memadatkan data lokal.</p>
           </div>
-          <div className="p-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200/50 dark:border-zinc-850 rounded-xl relative overflow-hidden">
-            <span className="text-sm font-black bg-red-500/10 text-red-650 dark:text-red-400 px-2 py-0.5 rounded">Langkah 3</span>
+          <div className="p-3 relative overflow-hidden">
+            <span className="cs-step">3</span>
             <h4 className="text-sm font-extrabold text-zinc-800 dark:text-zinc-200 mt-2">Pindai QR dari HP penerima</h4>
             <p className="text-sm text-zinc-500 leading-normal mt-1">Di HP Penerima, klik <span className="font-semibold text-red-650">Pindai QR</span> dan bidik barcode tersebut dengan kamera.</p>
           </div>
@@ -118,11 +118,11 @@ export const SyncManagement: React.FC = () => {
           
           {/* Active Camera Stream */}
           {isScanning && (
-            <div className="bg-zinc-950 text-white rounded-2xl p-5 flex flex-col items-center justify-center space-y-4 relative border border-zinc-850 shadow-md">
+            <div className="bg-zinc-950 text-white p-5 flex flex-col items-center justify-center space-y-4 relative">
               <button
                 type="button"
                 onClick={stopCameraScanner}
-                className="absolute top-3.5 right-3.5 p-1.5 bg-white/10 hover:bg-white/20 rounded-xl text-white transition-colors cursor-pointer"
+                className="absolute top-3.5 right-3.5 p-1.5 /10 hover:/20 text-white transition-colors cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -132,13 +132,13 @@ export const SyncManagement: React.FC = () => {
                 <span className="text-sm font-black text-emerald-400">Kamera aktif</span>
               </div>
 
-              <div className="relative w-full aspect-video max-w-sm bg-black rounded-xl overflow-hidden border border-white/10 flex items-center justify-center">
+              <div className="relative w-full aspect-video max-w-sm bg-black overflow-hidden border-white/10 flex items-center justify-center">
                 <video
                   ref={videoRef}
                   className="w-full h-full object-cover"
                 />
-                <div className="absolute inset-x-0 h-0.5 bg-emerald-450 animate-[bounce_2s_infinite] shadow-[0_0_12px_rgba(52,211,153,0.9)]" />
-                <div className="absolute inset-0 border border-dashed border-emerald-400/30 m-6 pointer-events-none rounded" />
+                <div className="absolute inset-x-0 h-0.5 bg-emerald-450 animate-[bounce_2s_infinite] -[0_0_12px_rgba(52,211,153,0.9)]" />
+                <div className="absolute inset-0 border-dashed border-emerald-400/30 m-6 pointer-events-none" />
               </div>
 
               <canvas ref={canvasRef} className="hidden" />
@@ -155,8 +155,8 @@ export const SyncManagement: React.FC = () => {
 
           {/* Active Barcode display */}
           {showQrModal && generatedQrUrl && (
-            <div className="bg-white dark:bg-zinc-900 rounded-2xl p-5 flex flex-col items-center justify-center text-center space-y-4 border border-zinc-200 dark:border-zinc-800 shadow-md">
-              <div className="flex items-center justify-between w-full border-b border-zinc-150 dark:border-zinc-805 pb-3">
+            <div className="p-5 flex flex-col items-center justify-center text-center space-y-4">
+              <div className="flex items-center justify-between w-full border-b pb-3">
                 <span className="text-sm font-black text-red-650 dark:text-red-450 flex items-center gap-2">
                   <QrCode className="w-5 h-5 text-red-650" />
                   <span>QR siap dipindai</span>
@@ -167,13 +167,13 @@ export const SyncManagement: React.FC = () => {
                     setShowQrModal(false);
                     setGeneratedQrUrl('');
                   }}
-                  className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-400 transition-colors cursor-pointer"
+                  className="p-1.5 hover: dark:hover:bg-zinc-800 text-zinc-400 transition-colors cursor-pointer"
                 >
                   <X className="w-4.5 h-4.5" />
                 </button>
               </div>
 
-              <div className="p-2.5 bg-white rounded-2xl border border-zinc-200/80 flex items-center justify-center shadow-2xs">
+              <div className="p-2.5 flex items-center justify-center -2xs">
                 <img
                   src={generatedQrUrl}
                   alt="ClassSync Sync QR"
@@ -194,10 +194,10 @@ export const SyncManagement: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         
         {/* Method 1: QR scanning */}
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-5 rounded-2xl flex flex-col justify-between space-y-4 shadow-3xs relative overflow-hidden">
+        <div className="p-5 flex flex-col justify-between space-y-4 -3xs relative overflow-hidden">
           <div>
             <div className="flex items-center gap-1.5 mb-2">
-              <span className="text-sm font-black px-2 py-0.5 bg-red-500/10 text-red-650 dark:text-red-400 rounded-md">Cara termudah</span>
+              
               <h3 className="text-sm font-black text-zinc-850 dark:text-zinc-150">Lewat QR</h3>
             </div>
             <p className="text-sm text-zinc-500 leading-relaxed font-semibold">
@@ -209,7 +209,7 @@ export const SyncManagement: React.FC = () => {
             <button
               type="button"
               onClick={handleGenerateQrCode}
-              className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-750 text-zinc-800 dark:text-zinc-200 text-sm font-black rounded-xl transition-all shadow-3xs cursor-pointer border border-zinc-200 dark:border-zinc-700"
+              className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-750 text-zinc-800 dark:text-zinc-200 text-sm font-black transition-all -3xs cursor-pointer"
             >
               <QrCode className="w-4 h-4 text-red-650" />
               <span>Tampilkan QR</span>
@@ -221,7 +221,7 @@ export const SyncManagement: React.FC = () => {
                 if (isScanning) stopCameraScanner();
                 else startCameraScanner();
               }}
-              className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 bg-red-650 hover:bg-red-750 text-white text-sm font-black rounded-xl cursor-pointer transition-colors shadow-2xs"
+              className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 bg-red-650 hover:bg-red-750 text-white text-sm font-black cursor-pointer transition-colors -2xs"
             >
               <Camera className="w-4 h-4 shrink-0" />
               <span>{isScanning ? 'Matikan kamera' : 'Pindai QR'}</span>
@@ -230,10 +230,10 @@ export const SyncManagement: React.FC = () => {
         </div>
 
         {/* Method 2: whatsapp share */}
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-5 rounded-2xl flex flex-col justify-between space-y-4 shadow-3xs relative overflow-hidden">
+        <div className="p-5 flex flex-col justify-between space-y-4 -3xs relative overflow-hidden">
           <div>
             <div className="flex items-center gap-1.5 mb-2">
-              <span className="text-sm font-black px-2 py-0.5 bg-red-500/10 text-red-650 dark:text-red-400 rounded-md">Kalau tidak bertemu langsung</span>
+              
               <h3 className="text-sm font-black text-zinc-850 dark:text-zinc-150">Kirim lewat WhatsApp</h3>
             </div>
             <p className="text-sm text-zinc-500 leading-relaxed font-semibold">
@@ -245,7 +245,7 @@ export const SyncManagement: React.FC = () => {
             <button
               type="button"
               onClick={handleCopyDirectSyncLink}
-              className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-zinc-900 hover:bg-zinc-800 text-white text-sm font-black rounded-xl transition-colors shadow-2xs border border-transparent cursor-pointer"
+              className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-zinc-900 hover:bg-zinc-800 text-white text-sm font-black transition-colors -2xs border-transparent cursor-pointer"
             >
               <Link2 className="w-4 h-4 text-red-500 shrink-0" />
               <span>Salin tautan</span>
@@ -256,12 +256,12 @@ export const SyncManagement: React.FC = () => {
       </div>
 
       {/* Fail-safe Cadangan Advanced Options Panel */}
-      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-xs space-y-4">
-        <h3 className="text-sm font-black text-zinc-850 dark:text-zinc-200 border-b border-zinc-150 dark:border-zinc-805 pb-3">Cara lain</h3>
+      <div className="p-5 space-y-4">
+        <h3 className="text-sm font-black text-zinc-850 dark:text-zinc-200 border-b pb-3">Cara lain</h3>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-1">
           {/* JSON File storage */}
-          <div className="p-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-805 rounded-xl space-y-3.5 flex flex-col justify-between">
+          <div className="p-4 space-y-3.5 flex flex-col justify-between">
             <div className="space-y-1">
               <h4 className="text-sm font-extrabold text-zinc-800 dark:text-zinc-200">Lewat file cadangan</h4>
               <p className="text-sm text-zinc-400 leading-normal">
@@ -273,13 +273,13 @@ export const SyncManagement: React.FC = () => {
               <button
                 type="button"
                 onClick={handleFullBackupExport}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-700 dark:text-zinc-300 text-sm font-black border border-zinc-200 dark:border-zinc-800 transition-colors cursor-pointer shadow-3xs"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 hover: dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-sm font-black transition-colors cursor-pointer -3xs"
               >
                 <Download className="w-3.5 h-3.5 text-red-500" />
                 <span>Unduh cadangan</span>
               </button>
 
-              <label className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-red-650 hover:bg-red-750 text-white text-sm font-black rounded-lg cursor-pointer transition-colors shadow-2xs">
+              <label className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-red-650 hover:bg-red-750 text-white text-sm font-black cursor-pointer transition-colors -2xs">
                 <Upload className="w-3.5 h-3.5" />
                 <span>Pilih file cadangan</span>
                 <input 
@@ -307,7 +307,7 @@ export const SyncManagement: React.FC = () => {
           </div>
 
           {/* Raw plain-text stream copy/paste */}
-          <div className="p-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-805 rounded-xl space-y-3 flex flex-col justify-between">
+          <div className="p-4 space-y-3 flex flex-col justify-between">
             <div className="space-y-1">
               <h4 className="text-sm font-extrabold text-zinc-800 dark:text-zinc-200">Lewat kode teks</h4>
               <p className="text-sm text-zinc-400 leading-normal">
@@ -320,7 +320,7 @@ export const SyncManagement: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleGenerateSyncHash}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-250 hover:bg-zinc-100 rounded-lg text-sm font-bold border border-zinc-200 cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-zinc-800 dark:text-zinc-250 hover: text-sm font-bold cursor-pointer"
                 >
                   <span>Buat kode</span>
                 </button>
@@ -332,7 +332,7 @@ export const SyncManagement: React.FC = () => {
                       navigator.clipboard.writeText(syncHashOutput);
                       showToast('Kode disalin!', 'success');
                     }}
-                    className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-red-500/10 hover:bg-red-500/15 text-red-650 rounded-lg font-mono text-sm truncate max-w-xs animate-pulse"
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-red-500/10 hover:bg-red-500/15 text-red-650 font-mono text-sm truncate max-w-xs animate-pulse"
                   >
                     <span>Salin: {syncHashOutput.slice(0, 8)}...</span>
                   </button>
@@ -361,7 +361,7 @@ export const SyncManagement: React.FC = () => {
             wipes every real session, and it used to sit here permanently,
             styled like any other button, next to the backup controls. */}
         {records.length === 0 && schedules.length === 0 ? (
-        <div className="bg-red-500/[0.01] dark:bg-red-950/[0.05] border border-red-500/10 dark:border-red-900/10 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 select-none">
+        <div className="bg-red-500/[0.01] dark:bg-red-950/[0.05] border-red-500/10 dark:border-red-900/10 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 select-none">
           <div className="flex items-center gap-2">
             <Database className="w-4.5 h-4.5 text-red-650" />
             <div>
@@ -373,7 +373,7 @@ export const SyncManagement: React.FC = () => {
           <button
             type="button"
             onClick={handleLoadSampleData}
-            className="px-3.5 py-2 bg-red-650 hover:bg-red-750 text-white text-sm font-extrabold rounded-lg transition-colors cursor-pointer shrink-0"
+            className="px-3.5 py-2 bg-red-650 hover:bg-red-750 text-white text-sm font-extrabold transition-colors cursor-pointer shrink-0"
           >
             Muat data contoh
           </button>

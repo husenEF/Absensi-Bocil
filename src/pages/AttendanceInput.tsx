@@ -3,7 +3,7 @@ import {motion} from 'motion/react';
 import {Calendar, Check, Plus, Save, UserPlus, Users} from 'lucide-react';
 import {useApp} from '../context/AppContext';
 import {formatIndonesianDate} from '../utils/date';
-import {STATUS_LABEL, STATUS_ORDER} from '../styles/palette';
+import {STATUS_CODE, STATUS_LABEL, STATUS_ORDER} from '../styles/palette';
 import {Button} from '../ui/Button';
 import {Field} from '../ui/Field';
 import {StatusPicker} from '../ui/StatusPicker';
@@ -221,10 +221,17 @@ export const AttendanceInput: React.FC = () => {
 
           {hasRoster ? (
             <>
-              <p className="cs-muted" aria-live="polite">
-                {allRegisteredStudents.length} santri ·{' '}
-                {STATUS_ORDER.map((k) => `${STATUS_LABEL[k]} ${sessionTally[k]}`).join(' · ')}
-              </p>
+
+              <ul className="cs-legend" aria-hidden="true">
+                {STATUS_ORDER.map((k) => (
+                  <li key={k}>
+                    <span className={`cs-legend__mark cs-legend__mark--${k}`}>
+                      {STATUS_CODE[k]}
+                    </span>
+                    {STATUS_LABEL[k]}
+                  </li>
+                ))}
+              </ul>
 
               <ul className="cs-roster">
                 {allRegisteredStudents.map((name, index) => (
@@ -236,6 +243,17 @@ export const AttendanceInput: React.FC = () => {
                       value={sessionStatusFor(name)}
                       onChange={(status) => setSessionStatus(name, status)}
                     />
+                  </li>
+                ))}
+              </ul>
+
+              {/* Only what is true: a count of santri, and the statuses that
+                  actually occur. Printing "Sakit 0 · Izin 0 · Alpa 0" on every
+                  session was noise the teacher had to read past. */}
+              <ul className="cs-tally" aria-live="polite" aria-label="Ringkasan kehadiran">
+                {STATUS_ORDER.filter((k) => sessionTally[k] > 0).map((k) => (
+                  <li key={k} className={`cs-chip cs-chip--${k}`}>
+                    {STATUS_LABEL[k]} {sessionTally[k]}
                   </li>
                 ))}
               </ul>

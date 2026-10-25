@@ -121,3 +121,42 @@ describe('report labels', () => {
     expect(STATUS_REPORT_LABEL.hadir).toBe('Hadir');
   });
 });
+
+describe('colour is reserved for attendance', () => {
+  const marks = (s: Record<string, StatusColors>) =>
+    STATUS_ORDER.map((k) => s[k].solid.toLowerCase());
+
+  it.each([
+    ['light', light, statusLight],
+    ['dark', dark, statusDark],
+  ])('%s: no chrome colour reuses a mark colour', (_n, theme, statuses) => {
+    // If a button or a heading borrowed a mark's colour, a colour on screen
+    // would stop meaning one thing. Ink and paper only, everywhere else.
+    const chrome = [
+      theme.bg,
+      theme.surface,
+      theme.text,
+      theme.textMuted,
+      theme.border,
+      theme.borderStrong,
+      theme.brandSolid,
+      theme.dangerSolid,
+      theme.focus,
+    ].map((c) => c.toLowerCase());
+
+    for (const mark of marks(statuses as Record<string, StatusColors>)) {
+      expect(chrome, `${mark} is used as chrome`).not.toContain(mark);
+    }
+  });
+
+  it.each([
+    ['light', statusLight],
+    ['dark', statusDark],
+  ])('%s: every mark is a fill carrying ink, not coloured text', (_n, statuses) => {
+    for (const key of STATUS_ORDER) {
+      const s = (statuses as Record<string, StatusColors>)[key];
+      // The letter inside the mark is what must be readable.
+      expect(ratio(s.solidInk, s.solid)).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+});
