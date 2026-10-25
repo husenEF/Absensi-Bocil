@@ -857,6 +857,7 @@ export const ReportGenerator: React.FC = () => {
                       <div key={idx}>
                         <input
                           type="text"
+                          aria-label={`Nama kolom pekan ${idx + 1}`}
                           value={wk}
                           onChange={(e) => {
                             const copy = [...weeks];

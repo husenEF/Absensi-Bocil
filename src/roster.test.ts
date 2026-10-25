@@ -67,9 +67,11 @@ describe('buildStatusMap', () => {
     });
   });
 
-  it('drops a santri who is no longer on the roster', () => {
+  it('keeps a recorded status for someone not on the current roster', () => {
+    // Dropping these erased absences on the next save: a santri who was only
+    // ever absent is in no record's `peserta`, so they were not on the roster.
     const existing = {budi: 'izin' as const, lama: 'alpa' as const};
-    expect(buildStatusMap(['Budi'], existing)).toEqual({budi: 'izin'});
+    expect(buildStatusMap(['Budi'], existing)).toEqual({budi: 'izin', lama: 'alpa'});
   });
 });
 
@@ -139,6 +141,13 @@ describe('rosterFromRecords', () => {
 
   it('copes with records that have no participants', () => {
     expect(rosterFromRecords([{peserta: []}])).toEqual([]);
+  });
+
+  it('includes a santri who was only ever absent', () => {
+    const roster = rosterFromRecords([
+      {peserta: ['Umar'], statuses: {umar: 'hadir', budi: 'alpa', siti: 'sakit'}},
+    ]);
+    expect(roster.map((s) => s.name).sort()).toEqual(['Budi', 'Siti', 'Umar']);
   });
 });
 

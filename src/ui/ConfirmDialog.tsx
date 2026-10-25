@@ -40,10 +40,26 @@ export const ConfirmDialog: React.FC<Props> = ({
   const titleId = useId();
   const bodyId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
+  const cancelRef = useRef<HTMLButtonElement>(null);
   const [typed, setTyped] = useState('');
 
   useEffect(() => {
     if (!open) setTyped('');
+  }, [open]);
+
+  /**
+   * Move focus into the dialog, and hand it back on close.
+   *
+   * Without this the Tab trap below never engaged — focus stayed on the page
+   * behind an aria-modal dialog, so a keyboard user had to tab blindly to
+   * reach it. The cancel button is focused rather than the confirm one, so
+   * a stray Enter cannot destroy anything.
+   */
+  useEffect(() => {
+    if (!open) return;
+    const previous = document.activeElement as HTMLElement | null;
+    cancelRef.current?.focus();
+    return () => previous?.focus?.();
   }, [open]);
 
   useEffect(() => {
@@ -117,7 +133,7 @@ export const ConfirmDialog: React.FC<Props> = ({
         ) : null}
 
         <div className="cs-dialog__actions">
-          <Button variant="secondary" onClick={onCancel}>
+          <Button ref={cancelRef} variant="secondary" onClick={onCancel}>
             {cancelLabel}
           </Button>
           <Button
