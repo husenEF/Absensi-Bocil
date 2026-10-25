@@ -258,3 +258,164 @@
   background-color: var(--cs-alpa-tint);
   color: var(--cs-alpa-ink);
 }
+
+/* ------------------------------------------------------------ page layout */
+
+.cs-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cs-space-5);
+}
+
+.cs-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cs-space-4);
+  padding: var(--cs-space-5);
+  background-color: var(--cs-surface);
+  border: 1px solid var(--cs-border);
+  border-radius: var(--cs-radius-lg);
+  box-shadow: var(--cs-shadow-sm);
+}
+
+.cs-card--success {
+  border-color: var(--cs-hadir-solid);
+  border-left-width: 5px;
+}
+
+.cs-card__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--cs-space-3);
+}
+
+.cs-card__title {
+  display: flex;
+  align-items: center;
+  gap: var(--cs-space-2);
+  font-size: var(--cs-text-xl);
+  font-weight: 700;
+  line-height: var(--cs-leading-tight);
+  color: var(--cs-text);
+}
+
+.cs-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex: none;
+}
+
+.cs-muted {
+  font-size: var(--cs-text-sm);
+  color: var(--cs-text-muted);
+  line-height: var(--cs-leading-normal);
+}
+
+.cs-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cs-tap-gap);
+}
+
+.cs-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--cs-space-4);
+}
+
+@media (min-width: 48rem) {
+  .cs-grid-2 {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.cs-tally {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cs-tap-gap);
+  list-style: none;
+}
+
+/* ----------------------------------------------------------------- roster */
+
+.cs-roster {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cs-tap-gap);
+  list-style: none;
+}
+
+.cs-roster__row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cs-space-2);
+  padding: var(--cs-space-3);
+  background-color: var(--cs-surface-sunken);
+  border-radius: var(--cs-radius);
+}
+
+.cs-roster__name {
+  font-size: var(--cs-text-base);
+  font-weight: 600;
+  color: var(--cs-text);
+  line-height: var(--cs-leading-tight);
+}
+
+.cs-addrow {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--cs-tap-gap);
+}
+
+.cs-addrow .cs-field {
+  flex: 1;
+}
+
+.cs-bulk {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cs-space-3);
+  margin-top: var(--cs-space-3);
+}
+
+/* ------------------------------------------------------------ empty state */
+
+.cs-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--cs-space-2);
+  padding: var(--cs-space-6) var(--cs-space-4);
+  text-align: center;
+  background-color: var(--cs-surface-sunken);
+  border-radius: var(--cs-radius);
+}
+
+.cs-empty__icon {
+  width: 2rem;
+  height: 2rem;
+  color: var(--cs-text-muted);
+}
+
+.cs-empty__title {
+  font-size: var(--cs-text-lg);
+  font-weight: 700;
+  color: var(--cs-text);
+}
+
+.cs-empty__body {
+  font-size: var(--cs-text-sm);
+  color: var(--cs-text-muted);
+  line-height: var(--cs-leading-normal);
+  max-width: 34ch;
+}
+
+/* -------------------------------------------------------------- save area */
+
+.cs-save {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cs-space-2);
+}
