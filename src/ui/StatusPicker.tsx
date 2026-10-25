@@ -9,7 +9,7 @@ type Props = {
 };
 
 /**
- * Four tap targets — Hadir / Sakit / Izin / Alfa — as a radio group.
+ * Four tap targets — Hadir / Sakit / Izin / Alpa — as a radio group.
  *
  * Every option shows its letter AND its word, so the meaning never rests on
  * colour alone. Each is a 48px target, operable with a single finger: no

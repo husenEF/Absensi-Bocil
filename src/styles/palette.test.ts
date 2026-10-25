@@ -110,14 +110,14 @@ describe('status codes', () => {
       'Hadir',
       'Sakit',
       'Izin',
-      'Alfa',
+      'Alpa',
     ]);
   });
 });
 
 describe('report labels', () => {
   it('spells an unexplained absence out for reports, not as teacher shorthand', () => {
-    expect(STATUS_REPORT_LABEL.alfa).toBe('Tanpa keterangan');
+    expect(STATUS_REPORT_LABEL.alpa).toBe('Tanpa keterangan');
     expect(STATUS_REPORT_LABEL.hadir).toBe('Hadir');
   });
 });

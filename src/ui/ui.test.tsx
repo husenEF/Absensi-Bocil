@@ -90,7 +90,7 @@ describe('Field', () => {
 });
 
 describe('StatusPicker', () => {
-  const setup = (value: 'hadir' | 'sakit' | 'izin' | 'alfa' = 'hadir') => {
+  const setup = (value: 'hadir' | 'sakit' | 'izin' | 'alpa' = 'hadir') => {
     const onChange = vi.fn();
     render(<StatusPicker personName="Budi" value={value} onChange={onChange} />);
     return {onChange};
@@ -108,7 +108,7 @@ describe('StatusPicker', () => {
     expect(screen.getByRole('radio', {name: 'Hadir'})).toBeInTheDocument();
     expect(screen.getByRole('radio', {name: 'Sakit'})).toBeInTheDocument();
     expect(screen.getByRole('radio', {name: 'Izin'})).toBeInTheDocument();
-    expect(screen.getByRole('radio', {name: 'Alfa'})).toBeInTheDocument();
+    expect(screen.getByRole('radio', {name: 'Alpa'})).toBeInTheDocument();
   });
 
   it('shows which status is set', () => {
@@ -127,8 +127,8 @@ describe('StatusPicker', () => {
     const {onChange} = setup();
     // A plain click on the label reaches the control: no swipe, no long-press,
     // nothing that needs WCAG 2.5.7's drag alternative.
-    await userEvent.click(screen.getByText('Alfa'));
-    expect(onChange).toHaveBeenCalledWith('alfa');
+    await userEvent.click(screen.getByText('Alpa'));
+    expect(onChange).toHaveBeenCalledWith('alpa');
   });
 
   it('writes each status as a letter as well as a word, never colour alone', () => {
