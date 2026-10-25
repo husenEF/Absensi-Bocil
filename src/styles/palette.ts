@@ -44,7 +44,7 @@ export type ThemeColors = {
   focus: string;
 };
 
-export type StatusKey = 'hadir' | 'sakit' | 'izin' | 'alfa';
+export type StatusKey = 'hadir' | 'sakit' | 'izin' | 'alpa';
 
 export type StatusColors = {
   /** Tint background for the unselected/!summary chip. */
@@ -109,14 +109,14 @@ export const statusLight: Record<StatusKey, StatusColors> = {
   hadir: {tint: '#e6f4ea', ink: '#17623b', solid: '#17623b', solidInk: '#ffffff'},
   sakit: {tint: '#fdf0dc', ink: '#7a4f00', solid: '#7a4f00', solidInk: '#ffffff'},
   izin: {tint: '#e6f0fb', ink: '#1a4f8a', solid: '#1a4f8a', solidInk: '#ffffff'},
-  alfa: {tint: '#fdeceb', ink: '#9e2820', solid: '#9e2820', solidInk: '#ffffff'},
+  alpa: {tint: '#fdeceb', ink: '#9e2820', solid: '#9e2820', solidInk: '#ffffff'},
 };
 
 export const statusDark: Record<StatusKey, StatusColors> = {
   hadir: {tint: '#13291d', ink: '#7ddfa4', solid: '#1f7a48', solidInk: '#ffffff'},
   sakit: {tint: '#2b1f0c', ink: '#ffc97a', solid: '#8a5a00', solidInk: '#ffffff'},
   izin: {tint: '#12223a', ink: '#9cc5f5', solid: '#1f5f9e', solidInk: '#ffffff'},
-  alfa: {tint: '#41201b', ink: '#ff9d94', solid: '#b32f26', solidInk: '#ffffff'},
+  alpa: {tint: '#41201b', ink: '#ff9d94', solid: '#b32f26', solidInk: '#ffffff'},
 };
 
 /** Teacher-facing labels — used in the UI and as accessible names. */
@@ -124,7 +124,7 @@ export const STATUS_LABEL: Record<StatusKey, string> = {
   hadir: 'Hadir',
   sakit: 'Sakit',
   izin: 'Izin',
-  alfa: 'Alfa',
+  alpa: 'Alpa',
 };
 
 /**
@@ -135,7 +135,7 @@ export const STATUS_REPORT_LABEL: Record<StatusKey, string> = {
   hadir: 'Hadir',
   sakit: 'Sakit',
   izin: 'Izin',
-  alfa: 'Tanpa keterangan',
+  alpa: 'Tanpa keterangan',
 };
 
 /** The single-letter codes the official report uses. */
@@ -143,7 +143,7 @@ export const STATUS_CODE: Record<StatusKey, 'H' | 'S' | 'I' | 'A'> = {
   hadir: 'H',
   sakit: 'S',
   izin: 'I',
-  alfa: 'A',
+  alpa: 'A',
 };
 
-export const STATUS_ORDER: StatusKey[] = ['hadir', 'sakit', 'izin', 'alfa'];
+export const STATUS_ORDER: StatusKey[] = ['hadir', 'sakit', 'izin', 'alpa'];
