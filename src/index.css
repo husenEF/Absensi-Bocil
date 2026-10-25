@@ -1,5 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 @import "tailwindcss";
+@import "./styles/tokens.css";
+@import "./styles/components.css";
 
 :root {
   --pink-tint: #faf9f6; /* Elegant warm minimalist white background */
@@ -85,7 +87,10 @@ html.dark {
   --color-red-600: var(--brick-ember);
   --color-red-650: var(--plum-dark);
   --color-red-700: var(--plum-deep);
-  --color-red-750: var(--rose-dusty);
+  /* Darker than red-650 so `hover:bg-red-750` actually darkens the button.
+     This previously resolved to --rose-dusty (#e8e5db), which made white
+     button labels disappear on hover. */
+  --color-red-750: var(--plum-deep);
   --color-red-755: var(--rose-warm);
   --color-red-400: var(--pink-tint);
   
