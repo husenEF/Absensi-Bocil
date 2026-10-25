@@ -3,6 +3,7 @@ import QRCode from 'qrcode';
 import jsQR from 'jsqr';
 import { db, AbsensiRecord, ScheduleRecord, checkForAndMigratePreviousDatabases } from '../db';
 import { formatIndonesianDate, formatDateShort } from '../utils/date';
+import { biMonthlyWeeks, getBiMonthlyLabel, getRecordBiMonth, todayYMD } from '../utils/period';
 
 interface BiMonthlyPeriod {
   year: number;
@@ -140,25 +141,6 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-const getBiMonthlyLabel = (blockIndex: number, year: number) => {
-  const labels = [
-    "Januari - Februari",
-    "Maret - April",
-    "Mei - Juni",
-    "Juli - Agustus",
-    "September - Oktober",
-    "November - Desember"
-  ];
-  return `${labels[blockIndex]} ${year}`;
-};
-
-const getRecordBiMonth = (dateStr: string) => {
-  const date = new Date(dateStr);
-  const year = date.getFullYear();
-  const month = date.getMonth();
-  const blockIndex = Math.floor(month / 2);
-  return { year, blockIndex, key: `${year}-${blockIndex}` };
-};
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Active Tab navigation
@@ -170,11 +152,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return saved === 'dark';
   });
 
-  // Today dates YYYY-MM-DD
-  const [tanggalInput, setTanggalInput] = useState<string>(() => {
-    const now = new Date();
-    return now.toISOString().split('T')[0];
-  });
+  // Today's date, in local time. toISOString() is UTC, which gave the wrong
+  // day to anyone west of UTC and to WIB users before 07:00.
+  const [tanggalInput, setTanggalInput] = useState<string>(() => todayYMD());
   const [namesInput, setNamesInput] = useState<string>('');
 
   // Linked Schedule
@@ -651,57 +631,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const bimonthlyWeeks = useMemo(() => {
     if (!currentPeriod) return [];
-    const periodRecords = records.filter(r => getRecordBiMonth(r.tanggal).key === currentPeriod.key);
-
-    let baseDateStr = '';
-    if (periodRecords.length > 0) {
-      const dates = periodRecords.map(r => r.tanggal);
-      dates.sort();
-      baseDateStr = dates[0];
-    } else {
-      const monthStart = currentPeriod.blockIndex * 2;
-      const mStr = String(monthStart + 1).padStart(2, '0');
-      baseDateStr = `${currentPeriod.year}-${mStr}-01`;
-    }
-
-    const baseDate = new Date(baseDateStr);
-    const periodsList = [];
-    const indonesianMonths = [
-      "Januari", "Februari", "Maret", "April", "Mei", "Juni",
-      "Juli", "Agustus", "September", "Oktober", "November", "Desember"
-    ];
-
-    for (let i = 0; i < 4; i++) {
-      const start = new Date(baseDate.getTime());
-      start.setDate(baseDate.getDate() + (i * 7));
-
-      const end = new Date(start.getTime());
-      end.setDate(start.getDate() + 6);
-
-      const startStr = start.toISOString().split('T')[0];
-      const endStr = end.toISOString().split('T')[0];
-
-      const startDay = start.getDate();
-      const endDay = end.getDate();
-      const startMonth = indonesianMonths[start.getMonth()];
-      const endMonth = indonesianMonths[end.getMonth()];
-      const startYear = start.getFullYear();
-
-      let periodLabel = `${startDay}-${endDay} ${startMonth} ${startYear}`;
-      if (startMonth !== endMonth) {
-        periodLabel = `${startDay} ${startMonth}-${endDay} ${endMonth} ${startYear}`;
-      }
-
-      periodsList.push({
-        id: i + 1,
-        title: periodLabel,
-        start: startStr,
-        end: endStr,
-        isWeek1: i === 0
-      });
-    }
-
-    return periodsList;
+    const periodDates = records
+      .filter(r => getRecordBiMonth(r.tanggal).key === currentPeriod.key)
+      .map(r => r.tanggal);
+    return biMonthlyWeeks(currentPeriod, periodDates);
   }, [currentPeriod, records]);
 
   // Update selection states for reports when filters or period changes
@@ -792,7 +725,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     try {
-      const existing = await db.absensi.where('tanggal').equals(tanggalInput).first();
+      // A date can hold more than one session when each is linked to a
+      // different schedule, so match on the pair rather than the date alone.
+      const sameDate = await db.absensi.where('tanggal').equals(tanggalInput).toArray();
+      const linkedId = selectedScheduleId ? Number(selectedScheduleId) : undefined;
+      const existing = sameDate.find(r => (r.scheduleId ?? undefined) === linkedId);
 
       if (existing) {
         const confirmOverwrite = window.confirm(

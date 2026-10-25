@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from '../context/AppContext';
+import { escapeHtml } from '../roster';
 import { formatIndonesianDate } from '../utils/date';
 import { db, ExcelReportRecord } from '../db';
 import { 
@@ -367,10 +368,10 @@ export const ReportGenerator: React.FC = () => {
         <td colspan="17" class="title-main">LAPORAN PETUGAS NGAGLIK</td>
       </tr>
       <tr>
-        <td colspan="17" class="title-sub">LAPORAN BULAN : ${periodLabel.toUpperCase()}</td>
+        <td colspan="17" class="title-sub">LAPORAN BULAN : ${escapeHtml(periodLabel.toUpperCase())}</td>
       </tr>
       <tr>
-        <td colspan="17" class="title-tanggal">TANGGAL AKTIF PEMBELAJARAN : ${tanggalAktif.toUpperCase() || '-'}</td>
+        <td colspan="17" class="title-tanggal">TANGGAL AKTIF PEMBELAJARAN : ${escapeHtml(tanggalAktif.toUpperCase()) || '-'}</td>
       </tr>
       
       <!-- Blank Separator Row -->
@@ -393,11 +394,11 @@ export const ReportGenerator: React.FC = () => {
       
       <!-- Double Table Headers (Row 2) -->
       <tr class="hdr" style="height: 25px;">
-        <th style="width: 85px; border: 1px solid #7f7f7f;">${weeks[0] || 'Pekan 1'}</th>
-        <th style="width: 85px; border: 1px solid #7f7f7f;">${weeks[1] || 'Pekan 2'}</th>
-        <th style="width: 85px; border: 1px solid #7f7f7f;">${weeks[2] || 'Pekan 3'}</th>
-        <th style="width: 85px; border: 1px solid #7f7f7f;">${weeks[3] || 'Pekan 4'}</th>
-        <th style="width: 85px; border: 1px solid #7f7f7f;">${weeks[4] || 'Pekan 5'}</th>
+        <th style="width: 85px; border: 1px solid #7f7f7f;">${escapeHtml(weeks[0]) || 'Pekan 1'}</th>
+        <th style="width: 85px; border: 1px solid #7f7f7f;">${escapeHtml(weeks[1]) || 'Pekan 2'}</th>
+        <th style="width: 85px; border: 1px solid #7f7f7f;">${escapeHtml(weeks[2]) || 'Pekan 3'}</th>
+        <th style="width: 85px; border: 1px solid #7f7f7f;">${escapeHtml(weeks[3]) || 'Pekan 4'}</th>
+        <th style="width: 85px; border: 1px solid #7f7f7f;">${escapeHtml(weeks[4]) || 'Pekan 5'}</th>
         <th style="width: 110px; border: 1px solid #7f7f7f;">KETERANGAN</th>
         <th style="width: 100px; border: 1px solid #7f7f7f;">NOMINAL (Rp)</th>
         <th style="width: 60px; border: 1px solid #7f7f7f;">Cetak</th>
@@ -418,23 +419,23 @@ export const ReportGenerator: React.FC = () => {
       
       // Merge "Nama Guru" and "Kitab" vertically for the entire list!
       if (idx === 0) {
-        html += `<td rowspan="${studentsData.length}" class="bg-guru" style="border: 1px solid #7f7f7f;">${guruName}</td>`;
-        html += `<td rowspan="${studentsData.length}" class="bg-guru" style="border: 1px solid #7f7f7f;">${kitabName}</td>`;
+        html += `<td rowspan="${studentsData.length}" class="bg-guru" style="border: 1px solid #7f7f7f;">${escapeHtml(guruName)}</td>`;
+        html += `<td rowspan="${studentsData.length}" class="bg-guru" style="border: 1px solid #7f7f7f;">${escapeHtml(kitabName)}</td>`;
       }
       
-      html += `<td ${nameBg} style="border: 1px solid #7f7f7f;">${row.name || ''}</td>`;
-      html += `<td style="border: 1px solid #7f7f7f;">${row.category || ''}</td>`;
+      html += `<td ${nameBg} style="border: 1px solid #7f7f7f;">${escapeHtml(row.name)}</td>`;
+      html += `<td style="border: 1px solid #7f7f7f;">${escapeHtml(row.category)}</td>`;
       
       // Attendance status (5 columns)
       for (let w = 0; w < 5; w++) {
         const val = row.attendance[w] || '';
-        html += `<td style="border: 1px solid #7f7f7f; font-weight: bold;">${val}</td>`;
+        html += `<td style="border: 1px solid #7f7f7f; font-weight: bold;">${escapeHtml(val)}</td>`;
       }
       
-      html += `<td class="text-left" style="border: 1px solid #7f7f7f;">${row.pendampingan || ''}</td>`;
-      html += `<td style="border: 1px solid #7f7f7f;">${row.hs || ''}</td>`;
-      html += `<td style="border: 1px solid #7f7f7f;">${row.jm || ''}</td>`;
-      html += `<td style="border: 1px solid #7f7f7f; font-weight: bold;">${row.sppKeterangan || ''}</td>`;
+      html += `<td class="text-left" style="border: 1px solid #7f7f7f;">${escapeHtml(row.pendampingan)}</td>`;
+      html += `<td style="border: 1px solid #7f7f7f;">${escapeHtml(row.hs)}</td>`;
+      html += `<td style="border: 1px solid #7f7f7f;">${escapeHtml(row.jm)}</td>`;
+      html += `<td style="border: 1px solid #7f7f7f; font-weight: bold;">${escapeHtml(row.sppKeterangan)}</td>`;
       html += `<td style="border: 1px solid #7f7f7f;">${row.sppNominal > 0 ? row.sppNominal : ''}</td>`;
       html += `<td style="border: 1px solid #7f7f7f; font-weight: bold;">${row.buletinCetak ? 'V' : ''}</td>`;
       html += `<td style="border: 1px solid #7f7f7f; font-weight: bold;">${row.buletinDigital ? 'V' : ''}</td>`;
