@@ -156,6 +156,15 @@ export const QR_SAFE_CHARS = 1200;
 export type ToastAction = { label: string; onAction: () => void };
 export type PendingImport = { data: any; sessions: number; schedules: number };
 
+export type PendingOverwrite = {
+  existingId: number;
+  tanggal: string;
+  existingCount: number;
+  peserta: string[];
+  statuses: StatusMap;
+  scheduleId?: number;
+};
+
 export type ToastState = {
   message: string;
   type: 'success' | 'error' | 'info';
@@ -252,6 +261,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Toasts
   const [toast, setToast] = useState<ToastState | null>(null);
   const [pendingImport, setPendingImport] = useState<PendingImport | null>(null);
+  const [pendingOverwrite, setPendingOverwrite] = useState<PendingOverwrite | null>(null);
   const toastTimer = useRef<number | null>(null);
 
   // New Schedules Form States
@@ -364,7 +374,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setSelectedRecordIds(prev => prev.filter(id => existingIds.includes(id)));
     } catch (error) {
       console.error('Failed to load records from IndexedDB:', error);
-      showToast('Gagal memuat data dari database lokal.', 'error');
+      showToast('Tidak dapat memuat data dari ponsel ini.', 'error');
     } finally {
       setLoading(false);
     }
@@ -430,7 +440,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const applySmartMergeImport = async (jsonData: any) => {
     try {
       if (!jsonData || jsonData.app !== 'ClassSync') {
-        showToast('Format tidak valid atau bukan dari aplikasi ClassSync.', 'error');
+        showToast('Berkas ini bukan cadangan ClassSync.', 'error');
         return;
       }
 
@@ -890,7 +900,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     e.preventDefault();
 
     if (!tanggalInput) {
-      showToast('Mohon pilih tanggal kegiatan belajar.', 'error');
+      showToast('Pilih tanggal kegiatan terlebih dahulu.', 'error');
       return;
     }
 
@@ -922,28 +932,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const existing = sameDate.find(r => (r.scheduleId ?? undefined) === linkedId);
 
       if (existing) {
-        const confirmOverwrite = window.confirm(
-          `Data presensi untuk tanggal ${formatIndonesianDate(tanggalInput)} sudah ada. Apakah Anda ingin memperbaruinya?`
-        );
-        if (!confirmOverwrite) return;
-
-        await db.absensi.update(existing.id!, {
-          peserta: parsedPeserta,
-          statuses,
-          scheduleId: selectedScheduleId,
-          createdAt: Date.now()
-        });
-        showToast(`Presensi tanggal ${formatIndonesianDate(tanggalInput)} berhasil diperbarui!`, 'success');
-      } else {
-        await db.absensi.add({
+        // Overwriting a saved session replaces it, so it is staged and the
+        // page asks first — with what is being replaced, not "are you sure".
+        setPendingOverwrite({
+          existingId: existing.id!,
           tanggal: tanggalInput,
+          existingCount: existing.peserta?.length ?? 0,
           peserta: parsedPeserta,
           statuses,
-          scheduleId: selectedScheduleId,
-          createdAt: Date.now()
+          scheduleId: selectedScheduleId
         });
-        showToast('Presensi berhasil disimpan!', 'success');
+        return;
       }
+
+      await db.absensi.add({
+        tanggal: tanggalInput,
+        peserta: parsedPeserta,
+        statuses,
+        scheduleId: selectedScheduleId,
+        createdAt: Date.now()
+      });
+      showToast('Presensi tersimpan.', 'success');
 
       setNamesInput('');
       setSelectedScheduleId(undefined);
@@ -958,7 +967,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     } catch (err) {
       console.error('Error adding attendance:', err);
-      showToast('Gagal menyimpan ke database lokal.', 'error');
+      showToast('Tidak dapat menyimpan ke ponsel ini.', 'error');
     }
   };
 
@@ -971,6 +980,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
    * and offers an undo instead — the dialog only taught people to dismiss
    * dialogs. Irreversible actions still confirm; see handleClearAllRecords.
    */
+  const cancelOverwrite = () => setPendingOverwrite(null);
+
+  const confirmOverwrite = async () => {
+    const staged = pendingOverwrite;
+    setPendingOverwrite(null);
+    if (!staged) return;
+
+    try {
+      await db.absensi.update(staged.existingId, {
+        peserta: staged.peserta,
+        statuses: staged.statuses,
+        scheduleId: staged.scheduleId,
+        createdAt: Date.now()
+      });
+      showToast(`Presensi ${formatIndonesianDate(staged.tanggal)} diperbarui.`, 'success');
+
+      setNamesInput('');
+      setSelectedScheduleId(undefined);
+      setSessionStatuses({});
+      setTouchedStudents(new Set());
+      setLastSaved({ tanggal: staged.tanggal, tally: tally(staged.statuses) });
+      loadRecords();
+    } catch (err) {
+      console.error('Error updating attendance:', err);
+      showToast('Tidak dapat menyimpan ke ponsel ini.', 'error');
+    }
+  };
+
   const handleDeleteRecord = async (id: number, tanggal: string) => {
     try {
       const removed = await db.absensi.get(id);
@@ -1001,7 +1038,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
     } catch (err) {
       console.error('Error deleting record:', err);
-      showToast('Gagal menghapus data.', 'error');
+      showToast('Tidak dapat menghapus.', 'error');
     }
   };
 
@@ -1069,7 +1106,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     } catch (err) {
       console.error('Error updating edited record:', err);
-      showToast('Gagal memperbarui presensi.', 'error');
+      showToast('Tidak dapat memperbarui presensi.', 'error');
     }
   };
 
@@ -1096,7 +1133,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const handleExportCSV = () => {
     const selected = records.filter(r => r.id && selectedRecordIds.includes(r.id));
     if (selected.length === 0) {
-      showToast('Silakan pilih minimal satu presensi untuk diekspor.', 'error');
+      showToast('Pilih minimal satu sesi untuk diekspor.', 'error');
       return;
     }
 
@@ -1114,7 +1151,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const handleExportJSON = () => {
     const selected = records.filter(r => r.id && selectedRecordIds.includes(r.id));
     if (selected.length === 0) {
-      showToast('Silakan pilih minimal satu presensi untuk diekspor.', 'error');
+      showToast('Pilih minimal satu sesi untuk diekspor.', 'error');
       return;
     }
 
@@ -1125,7 +1162,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const handleCopySelectedCSV = () => {
     const selected = records.filter(r => r.id && selectedRecordIds.includes(r.id));
     if (selected.length === 0) {
-      showToast('Silakan pilih minimal satu presensi untuk disalin.', 'error');
+      showToast('Pilih minimal satu sesi untuk disalin.', 'error');
       return;
     }
 
@@ -1139,22 +1176,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const csvContent = [headers, ...rows].join('\n');
     navigator.clipboard.writeText(csvContent)
       .then(() => showToast('Format CSV berhasil disalin ke clipboard!', 'success'))
-      .catch(() => showToast('Gagal menyalin teks.', 'error'));
+      .catch(() => showToast('Tidak dapat menyalin teks.', 'error'));
   };
 
   // Form schedules add/delete
   const handleAddSchedule = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!scheduleTitle.trim()) {
-      showToast('Mohon masukkan judul sesi jadwal.', 'error');
+      showToast('Isi nama kelas.', 'error');
       return;
     }
     if (!scheduleHari) {
-      showToast('Mohon tentukan hari sesi jadwal.', 'error');
+      showToast('Pilih hari kelas.', 'error');
       return;
     }
     if (!scheduleWaktu) {
-      showToast('Mohon tentukan waktu sesi jadwal.', 'error');
+      showToast('Isi jam mulai kelas.', 'error');
       return;
     }
 
@@ -1173,7 +1210,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       loadSchedules();
     } catch (err) {
       console.error("Failed to add schedule:", err);
-      showToast('Gagal mendaftarkan jadwal ke DB.', 'error');
+      showToast('Tidak dapat menyimpan jadwal.', 'error');
     }
   };
 
@@ -1187,7 +1224,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       loadSchedules();
     } catch (err) {
       console.error("Failed to delete schedule:", err);
-      showToast('Gagal menghapus jadwal.', 'error');
+      showToast('Tidak dapat menghapus jadwal.', 'error');
     }
   };
 
@@ -1198,7 +1235,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const allSchedules = await db.schedules.toArray();
 
       if (allAbsensi.length === 0 && allSchedules.length === 0) {
-        showToast('Database lokal Anda masih kosong, tidak ada data untuk disinkronisasi.', 'error');
+        showToast('Belum ada data untuk dibagikan.', 'error');
         return;
       }
 
@@ -1214,7 +1251,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const u8String = unescape(encodeURIComponent(jsonString));
       const b64 = btoa(u8String);
       setSyncHashOutput(b64);
-      showToast('Kode Sinkronisasi Instan berhasil dibuat! Silakan salin.', 'success');
+      showToast('Kode dibuat. Salin lalu tempel di HP tujuan.', 'success');
     } catch (err) {
       console.error('[Generate Sync Hash Error]', err);
       showToast('Gagal menciptakan kode sinkronisasi.', 'error');
@@ -1223,7 +1260,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const handleImportSyncHash = async () => {
     if (!syncInputText || syncInputText.trim() === '') {
-      showToast('Masukkan kode sinkronisasi terlebih dahulu.', 'error');
+      showToast('Tempel kode sinkronisasi terlebih dahulu.', 'error');
       return;
     }
 
@@ -1237,7 +1274,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setSyncHashOutput('');
     } catch (err) {
       console.error('[Decode Sync Hash Error]', err);
-      showToast('Kode sinkronisasi salah atau tidak dapat dibaca.', 'error');
+      showToast('Kode tidak terbaca. Periksa lalu tempel ulang.', 'error');
     }
   };
 
@@ -1259,7 +1296,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch (err: any) {
       console.error('[Camera Access Error]', err);
       setScanError('Tidak dapat membuka kamera. Periksa izin kamera di pengaturan browser.');
-      showToast('Gagal membuka kamera perangkat.', 'error');
+      showToast('Tidak dapat membuka kamera.', 'error');
     }
   };
 
@@ -1319,7 +1356,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const allSchedules = await db.schedules.toArray();
 
       if (allAbsensi.length === 0 && allSchedules.length === 0) {
-        showToast('Database lokal Anda kosong. Tidak ada data untuk dibagikan!', 'error');
+        showToast('Belum ada data untuk dibagikan.', 'error');
         return;
       }
 
@@ -1369,7 +1406,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const allSchedules = await db.schedules.toArray();
 
       if (allAbsensi.length === 0 && allSchedules.length === 0) {
-        showToast('Database lokal kosong. Belum ada data untuk dipasang ke tautan!', 'error');
+        showToast('Belum ada data untuk dibuatkan tautan.', 'error');
         return;
       }
 
@@ -1393,7 +1430,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         })
         .catch(() => {
           setSyncHashOutput(syncUrl);
-          showToast('Tautan gagal otomatis disalin. Silakan gunakan tab Teks untuk menyalinnya.', 'info');
+          showToast('Tautan tidak dapat disalin otomatis. Gunakan "Buat kode" di bawah.', 'info');
         });
     } catch (error) {
       console.error('[Copy Sync Link Tool Error]', error);
@@ -1462,6 +1499,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const label = currentPeriod ? currentPeriod.label : "Mei-Juni 2026";
     const lines = [
+      // Verbatim: this is the report the coordinator reads, and its wording
+      // is a contract with them, not UI copy. Do not 'improve' it.
       `Mohon untuk dikirimkan Laporan Kursus periode ${label}`,
       ""
     ];
@@ -1533,7 +1572,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           setTimeout(() => setCopied(false), 3000);
         }
       } catch (fallbackErr) {
-        showToast('Salin otomatis gagal. Mohon pilih dan salin teks secara manual.', 'error');
+        showToast('Tidak dapat menyalin otomatis. Pilih teksnya lalu salin manual.', 'error');
       }
     }
   };
@@ -1685,6 +1724,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       handleCopyDirectSyncLink,
       handleSmartMergeImport,
       pendingImport,
+      pendingOverwrite,
+      confirmOverwrite,
+      cancelOverwrite,
       confirmPendingImport,
       cancelPendingImport,
       handleFullBackupExport,
