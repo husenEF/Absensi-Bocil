@@ -227,11 +227,12 @@ export const AttendanceInput: React.FC = () => {
               </p>
 
               <ul className="cs-roster">
-                {allRegisteredStudents.map((name) => (
+                {allRegisteredStudents.map((name, index) => (
                   <li key={name} className="cs-roster__row">
                     <span className="cs-roster__name">{name}</span>
                     <StatusPicker
                       personName={name}
+                      groupId={String(index)}
                       value={sessionStatusFor(name)}
                       onChange={(status) => setSessionStatus(name, status)}
                     />

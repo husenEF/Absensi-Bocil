@@ -73,7 +73,11 @@ export function buildStatusMap(
   rosterNames: readonly string[],
   existing?: StatusMap,
 ): StatusMap {
-  const out: StatusMap = {};
+  // Start from what is already recorded. A santri can have a status without
+  // being on the current roster — they were only ever absent, or they came in
+  // with imported data — and dropping those entries here silently erased the
+  // absences on the next save.
+  const out: StatusMap = {...(existing ?? {})};
   for (const name of rosterNames) {
     const key = nameKey(name);
     out[key] = existing?.[key] ?? DEFAULT_STATUS;
@@ -117,7 +121,7 @@ export function statusesFromPeserta(peserta: readonly string[]): StatusMap {
 
 /** Every distinct santri across all records, ready to seed the roster. */
 export function rosterFromRecords(
-  records: ReadonlyArray<{peserta: string[]}>,
+  records: ReadonlyArray<{peserta: string[]; statuses?: StatusMap}>,
 ): Array<{name: string; nameKey: string}> {
   const byKey = new Map<string, string>();
 
@@ -126,6 +130,13 @@ export function rosterFromRecords(
       const name = capitalizeWords(raw);
       const key = nameKey(name);
       if (key && !byKey.has(key)) byKey.set(key, name);
+    }
+
+    // A santri who was absent every time appears in no `peserta` at all, so
+    // reading only that list loses them from the roster entirely — and then
+    // they can never be marked absent again.
+    for (const key of Object.keys(record.statuses ?? {})) {
+      if (key && !byKey.has(key)) byKey.set(key, capitalizeWords(key));
     }
   }
 

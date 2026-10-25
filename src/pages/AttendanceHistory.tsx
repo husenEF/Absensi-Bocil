@@ -28,6 +28,7 @@ const summarise = (record: {peserta: string[]; statuses?: Record<string, StatusK
 export const AttendanceHistory: React.FC = () => {
   const {
     records,
+    students,
     loading,
     schedules,
     setActiveTab,
@@ -253,11 +254,16 @@ export const AttendanceHistory: React.FC = () => {
 
                 {record.statuses
                   ? STATUS_ORDER.filter((k) => k !== 'hadir').map((k) => {
+                      // An absent santri is by definition not in `peserta`,
+                      // so their display name has to come from the roster;
+                      // looking in peserta always fell through to the raw
+                      // lower-cased key ("budi santoso").
                       const names = Object.entries(record.statuses ?? {})
                         .filter(([, v]) => v === k)
                         .map(([key]) => {
-                          const match = record.peserta.find((n) => nameKey(n) === key);
-                          return match ?? key;
+                          const student = students.find((st) => st.nameKey === key);
+                          const inRecord = record.peserta.find((n) => nameKey(n) === key);
+                          return student?.name ?? inRecord ?? key;
                         });
                       if (names.length === 0) return null;
                       return (

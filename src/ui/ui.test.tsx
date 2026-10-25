@@ -92,7 +92,7 @@ describe('Field', () => {
 describe('StatusPicker', () => {
   const setup = (value: 'hadir' | 'sakit' | 'izin' | 'alpa' = 'hadir') => {
     const onChange = vi.fn();
-    render(<StatusPicker personName="Budi" value={value} onChange={onChange} />);
+    render(<StatusPicker personName="Budi" groupId="budi" value={value} onChange={onChange} />);
     return {onChange};
   };
 
