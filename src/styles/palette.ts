@@ -1,125 +1,133 @@
 /**
- * ClassSync semantic palette — the single source of truth for colour.
+ * ClassSync palette — ink on paper, with colour reserved for attendance.
  *
- * `tokens.css` mirrors these values as CSS custom properties, and
- * `palette.test.ts` asserts every pair meets its WCAG 2.2 AA ratio, so a
- * colour can never be changed into an unreadable one without a test failing.
+ * The rule that shapes everything else: **the only colour in the product is the
+ * four attendance marks.** Buttons, links, headings and rules are ink. A colour
+ * on screen therefore always answers one question — was this santri here?
  *
- * Naming is by ROLE, not by hue: `text` on `surface`, `brandInk` on `brand`.
- * The ember identity (#ff5500) is kept as the accent, with darker variants
- * where it has to carry text.
+ * The four marks are the user's palette (colorhunt.co/palette/ff7f50ffd16606d6a0118ab2).
+ * Measured, they can only be used one way: as solid fills carrying ink. As text
+ * on white they reach 2.50, 1.44, 1.89 and 3.96 — all failing 4.5:1 — while as
+ * fills under ink they reach 11.13, 14.56, 5.30 and 8.40. So a mark is a filled
+ * block with a letter in it, never a coloured word and never a coloured hairline.
+ *
+ * `palette.test.ts` asserts every pair, so a colour cannot be changed into an
+ * unreadable one without a test failing.
  */
 
 export type ThemeColors = {
-  /** Page background. */
+  /** The page. */
   bg: string;
-  /** Raised card/panel. */
+  /** Same as the page: there are no cards to raise. */
   surface: string;
-  /** Inset wells, table stripes, disabled fields. */
+  /** The few inset areas that genuinely recede. */
   surfaceSunken: string;
-  /** Primary body text. */
+  /** Body text, headings, buttons. */
   text: string;
-  /** Secondary text: hints, metadata. */
+  /** Secondary text: meta, hints, counts. */
   textMuted: string;
-  /** Hairlines between content. Decorative only. */
+  /** Hairlines between rows. Separation, not enclosure. */
   border: string;
-  /** Borders that carry meaning: input outlines, control edges. Needs 3:1. */
+  /** Edges that carry meaning — input outlines. Needs 3:1. */
   borderStrong: string;
-  /** Brand accent for text and icons. Needs 4.5:1 on surface. */
+  /** Ink. Kept under the old names so the rest of the app need not care. */
   brand: string;
-  /** Brand fill behind `brandInk`. */
   brandSolid: string;
   brandSolidHover: string;
-  /** Text that sits on `brandSolid`. */
   brandInk: string;
-  /** Subtle brand wash behind `brand` text. */
   brandTint: string;
-  /** Destructive accent for text and icons. */
+  /** Destructive actions are ink too; the words and the gate carry the weight. */
   danger: string;
   dangerSolid: string;
   dangerSolidHover: string;
   dangerInk: string;
+  /** The one place coral appears outside a mark: flagging a destructive area. */
   dangerTint: string;
-  /** Focus ring. Needs 3:1 against both bg and surface. */
   focus: string;
 };
 
 export type StatusKey = 'hadir' | 'sakit' | 'izin' | 'alpa';
 
 export type StatusColors = {
-  /** Tint background for the unselected/!summary chip. */
+  /** Soft wash, for summary chips away from the register. */
   tint: string;
-  /** Text/icon on `tint`. Needs 4.5:1. */
+  /** Text on `tint`. */
   ink: string;
-  /** Fill when the status is selected. */
+  /** The mark itself. */
   solid: string;
-  /** Text on `solid`. Needs 4.5:1. */
+  /** The letter inside the mark. */
   solidInk: string;
 };
 
 export const light: ThemeColors = {
-  bg: '#faf7f4',
+  bg: '#ffffff',
   surface: '#ffffff',
-  surfaceSunken: '#f3ede7',
-  text: '#1a1512',
-  textMuted: '#5b524b',
-  border: '#e5ddd5',
-  borderStrong: '#8a7d72',
-  brand: '#b83c00',
-  brandSolid: '#b83c00',
-  brandSolidHover: '#993200',
+  surfaceSunken: '#f6f5f2',
+  text: '#000000',
+  textMuted: '#5b5b5b',
+  border: '#e2dfd8',
+  borderStrong: '#8c8880',
+  brand: '#000000',
+  brandSolid: '#000000',
+  brandSolidHover: '#2b2b2b',
   brandInk: '#ffffff',
-  brandTint: '#fdeee6',
-  danger: '#b3261e',
-  dangerSolid: '#b3261e',
-  dangerSolidHover: '#8c1d17',
+  brandTint: '#f6f5f2',
+  danger: '#000000',
+  dangerSolid: '#000000',
+  dangerSolidHover: '#2b2b2b',
   dangerInk: '#ffffff',
-  dangerTint: '#fdecea',
-  focus: '#0b57d0',
+  dangerTint: '#fff1ea',
+  focus: '#000000',
 };
 
 export const dark: ThemeColors = {
-  bg: '#12100e',
-  surface: '#1c1917',
-  surfaceSunken: '#252120',
-  text: '#f6f1ec',
-  textMuted: '#b8aea5',
-  border: '#332e2b',
-  borderStrong: '#8a7d72',
-  brand: '#ff8a4d',
-  // Dark mode inverts the button: a bright fill carrying dark text reaches
-  // 7.75:1, where a deep ember with white text only managed 3.99:1.
-  brandSolid: '#ff8a4d',
-  brandSolidHover: '#ffa273',
-  brandInk: '#1a1512',
-  brandTint: '#2c1a10',
-  danger: '#ff8a80',
-  dangerSolid: '#ff8a80',
-  dangerSolidHover: '#ff9a91',
-  dangerInk: '#1a1512',
-  dangerTint: '#2c1512',
-  focus: '#a8c7fa',
+  bg: '#111010',
+  surface: '#111010',
+  surfaceSunken: '#1b1a18',
+  text: '#fafaf8',
+  textMuted: '#adaaa4',
+  border: '#302e2b',
+  borderStrong: '#8c8880',
+  brand: '#fafaf8',
+  brandSolid: '#fafaf8',
+  brandSolidHover: '#e4e2dd',
+  brandInk: '#111010',
+  brandTint: '#1b1a18',
+  danger: '#fafaf8',
+  dangerSolid: '#fafaf8',
+  dangerSolidHover: '#e4e2dd',
+  dangerInk: '#111010',
+  dangerTint: '#2a1a14',
+  focus: '#fafaf8',
 };
 
 /**
- * Attendance statuses. Colour is never the only channel — every chip also
- * carries its letter (H/S/I/A) and an accessible name.
+ * The marks. Identical in both themes — a bright fill carrying dark ink reads
+ * the same on paper and at night, so Hadir is one colour the teacher learns
+ * once.
  */
+const MARK = {
+  hadir: '#06d6a0',
+  sakit: '#ffd166',
+  izin: '#118ab2',
+  alpa: '#ff7f50',
+} as const;
+
 export const statusLight: Record<StatusKey, StatusColors> = {
-  hadir: {tint: '#e6f4ea', ink: '#17623b', solid: '#17623b', solidInk: '#ffffff'},
-  sakit: {tint: '#fdf0dc', ink: '#7a4f00', solid: '#7a4f00', solidInk: '#ffffff'},
-  izin: {tint: '#e6f0fb', ink: '#1a4f8a', solid: '#1a4f8a', solidInk: '#ffffff'},
-  alpa: {tint: '#fdeceb', ink: '#9e2820', solid: '#9e2820', solidInk: '#ffffff'},
+  hadir: {tint: '#e3f9f1', ink: '#055c45', solid: MARK.hadir, solidInk: '#000000'},
+  sakit: {tint: '#fff4de', ink: '#6b4a00', solid: MARK.sakit, solidInk: '#000000'},
+  izin: {tint: '#e2f1f7', ink: '#0d5e7a', solid: MARK.izin, solidInk: '#000000'},
+  alpa: {tint: '#ffeee7', ink: '#8c3410', solid: MARK.alpa, solidInk: '#000000'},
 };
 
 export const statusDark: Record<StatusKey, StatusColors> = {
-  hadir: {tint: '#13291d', ink: '#7ddfa4', solid: '#1f7a48', solidInk: '#ffffff'},
-  sakit: {tint: '#2b1f0c', ink: '#ffc97a', solid: '#8a5a00', solidInk: '#ffffff'},
-  izin: {tint: '#12223a', ink: '#9cc5f5', solid: '#1f5f9e', solidInk: '#ffffff'},
-  alpa: {tint: '#41201b', ink: '#ff9d94', solid: '#b32f26', solidInk: '#ffffff'},
+  hadir: {tint: '#0c2a22', ink: '#5fe3bd', solid: MARK.hadir, solidInk: '#111010'},
+  sakit: {tint: '#2b2310', ink: '#ffd98a', solid: MARK.sakit, solidInk: '#111010'},
+  izin: {tint: '#0d2630', ink: '#6cc2dd', solid: MARK.izin, solidInk: '#111010'},
+  alpa: {tint: '#2e1a12', ink: '#ff9f7d', solid: MARK.alpa, solidInk: '#111010'},
 };
 
-/** Teacher-facing labels — used in the UI and as accessible names. */
+/** Teacher-facing labels. */
 export const STATUS_LABEL: Record<StatusKey, string> = {
   hadir: 'Hadir',
   sakit: 'Sakit',
@@ -129,7 +137,7 @@ export const STATUS_LABEL: Record<StatusKey, string> = {
 
 /**
  * Report-facing labels. Indonesian report cards spell an unexplained absence
- * out as "tanpa keterangan" rather than using the teacher's shorthand.
+ * out rather than using the teacher's shorthand.
  */
 export const STATUS_REPORT_LABEL: Record<StatusKey, string> = {
   hadir: 'Hadir',

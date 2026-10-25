@@ -1,171 +1,163 @@
 /*
- * ClassSync design tokens.
+ * ClassSync design tokens — ink on paper.
  *
  * Colour values mirror src/styles/palette.ts, which is covered by contrast
- * tests — change a colour there and here together, or the tests will tell you.
+ * tests; change a colour there and here together or the tests will say so.
  *
- * Sizing follows the research brief:
- * - Body text 18px. WCAG sets no minimum font size; 18-19px is the figure
- *   GOV.UK ships in production and HHS recommends for older audiences.
- * - Inputs 18px, which also clears the ~16px threshold below which iOS Safari
- *   zooms the page on focus.
- * - Tap targets 48px. WCAG 2.5.8 (AA) only asks 24px, but Android guidance and
- *   Lighthouse both use 48dp, and our users are teachers on mid-range phones.
- * - Focus ring 3px at >=3:1, which clears 2.4.7 (AA) and 2.4.13 (AAA).
+ * Two families do all the work. Literata carries the names and dates: it was
+ * drawn for long reading, and a register is something you read down. Public
+ * Sans handles controls and counts and stays out of the way. Both have true
+ * tabular lining figures, which a page full of dates and tallies needs.
+ *
+ * Sizes keep the floor set in the previous pass: body and form controls at
+ * 18px (under ~16px iOS zooms the page on focus), nothing below 14px, and
+ * every interactive target at least 48px.
  */
 
 :root {
-  /* surfaces */
-  --cs-bg: #faf7f4;
+  /* paper and ink */
+  --cs-bg: #ffffff;
   --cs-surface: #ffffff;
-  --cs-surface-sunken: #f3ede7;
+  --cs-surface-sunken: #f6f5f2;
+  --cs-text: #000000;
+  --cs-text-muted: #5b5b5b;
 
-  /* text */
-  --cs-text: #1a1512;
-  --cs-text-muted: #5b524b;
+  /* a hairline separates; it does not enclose */
+  --cs-border: #e2dfd8;
+  --cs-border-strong: #8c8880;
 
-  /* lines */
-  --cs-border: #e5ddd5;
-  --cs-border-strong: #8a7d72;
-
-  /* brand */
-  --cs-brand: #b83c00;
-  --cs-brand-solid: #b83c00;
-  --cs-brand-solid-hover: #993200;
+  /* actions are ink */
+  --cs-brand: #000000;
+  --cs-brand-solid: #000000;
+  --cs-brand-solid-hover: #2b2b2b;
   --cs-brand-ink: #ffffff;
-  --cs-brand-tint: #fdeee6;
+  --cs-brand-tint: #f6f5f2;
 
-  /* destructive */
-  --cs-danger: #b3261e;
-  --cs-danger-solid: #b3261e;
-  --cs-danger-solid-hover: #8c1d17;
+  --cs-danger: #000000;
+  --cs-danger-solid: #000000;
+  --cs-danger-solid-hover: #2b2b2b;
   --cs-danger-ink: #ffffff;
-  --cs-danger-tint: #fdecea;
+  --cs-danger-tint: #fff1ea;
 
-  /* focus */
-  --cs-focus: #0b57d0;
+  --cs-focus: #000000;
 
-  /* attendance statuses */
-  --cs-hadir-tint: #e6f4ea;
-  --cs-hadir-ink: #17623b;
-  --cs-hadir-solid: #17623b;
-  --cs-hadir-solid-ink: #ffffff;
+  /* the only colour in the product */
+  --cs-hadir-tint: #e3f9f1;
+  --cs-hadir-ink: #055c45;
+  --cs-hadir-solid: #06d6a0;
+  --cs-hadir-solid-ink: #000000;
 
-  --cs-sakit-tint: #fdf0dc;
-  --cs-sakit-ink: #7a4f00;
-  --cs-sakit-solid: #7a4f00;
-  --cs-sakit-solid-ink: #ffffff;
+  --cs-sakit-tint: #fff4de;
+  --cs-sakit-ink: #6b4a00;
+  --cs-sakit-solid: #ffd166;
+  --cs-sakit-solid-ink: #000000;
 
-  --cs-izin-tint: #e6f0fb;
-  --cs-izin-ink: #1a4f8a;
-  --cs-izin-solid: #1a4f8a;
-  --cs-izin-solid-ink: #ffffff;
+  --cs-izin-tint: #e2f1f7;
+  --cs-izin-ink: #0d5e7a;
+  --cs-izin-solid: #118ab2;
+  --cs-izin-solid-ink: #000000;
 
-  --cs-alpa-tint: #fdeceb;
-  --cs-alpa-ink: #9e2820;
-  --cs-alpa-solid: #9e2820;
-  --cs-alpa-solid-ink: #ffffff;
+  --cs-alpa-tint: #ffeee7;
+  --cs-alpa-ink: #8c3410;
+  --cs-alpa-solid: #ff7f50;
+  --cs-alpa-solid-ink: #000000;
 
-  /* type scale — rem-based so browser and Android font scaling both work */
-  --cs-text-xs: 0.875rem; /* 14px — the smallest text allowed anywhere */
-  --cs-text-sm: 1rem; /* 16px — secondary text, metadata */
-  --cs-text-base: 1.125rem; /* 18px — body, form controls */
-  --cs-text-lg: 1.25rem; /* 20px */
-  --cs-text-xl: 1.5rem; /* 24px — section headings */
-  --cs-text-2xl: 1.75rem; /* 28px */
-  --cs-text-3xl: 2rem; /* 32px — page titles */
+  /* type */
+  --cs-font-display: 'Literata', Georgia, 'Times New Roman', serif;
+  --cs-font-sans: 'Public Sans', system-ui, -apple-system, sans-serif;
 
-  --cs-leading-tight: 1.25;
-  --cs-leading-normal: 1.5;
+  --cs-text-xs: 0.875rem; /* 14px — the floor */
+  --cs-text-sm: 0.9375rem; /* 15px — meta, counts */
+  --cs-text-base: 1.125rem; /* 18px — body and every control */
+  --cs-text-lg: 1.1875rem; /* 19px — santri names, in Literata */
+  --cs-text-xl: 1.375rem; /* 22px — section headings */
+  --cs-text-2xl: 1.75rem; /* 28px — page title on a phone */
+  --cs-text-3xl: 2rem; /* 32px — page title */
 
-  /* spacing */
+  --cs-leading-tight: 1.2;
+  --cs-leading-normal: 1.55;
+
+  /* space — a scale with room to breathe, since space does the separating */
   --cs-space-1: 0.25rem;
   --cs-space-2: 0.5rem;
   --cs-space-3: 0.75rem;
   --cs-space-4: 1rem;
   --cs-space-5: 1.5rem;
-  --cs-space-6: 2rem;
-  --cs-space-7: 3rem;
+  --cs-space-6: 2.25rem;
+  --cs-space-7: 3.5rem;
 
   /* controls */
-  --cs-tap: 48px; /* minimum interactive size */
-  --cs-tap-gap: 8px; /* minimum gap between adjacent targets */
-  --cs-radius-sm: 0.5rem;
-  --cs-radius: 0.75rem;
-  --cs-radius-lg: 1rem;
+  --cs-tap: 48px;
+  --cs-tap-gap: 8px;
+  --cs-radius-sm: 2px;
+  --cs-radius: 3px;
+  --cs-radius-lg: 4px;
   --cs-radius-full: 999px;
 
-  --cs-shadow-sm: 0 1px 2px rgb(26 21 18 / 0.06);
-  --cs-shadow: 0 2px 8px rgb(26 21 18 / 0.08);
-  --cs-shadow-lg: 0 12px 32px rgb(26 21 18 / 0.16);
+  /* measure: a register is read down a column, not across a screen */
+  --cs-measure: 34rem;
 }
 
 html.dark {
-  --cs-bg: #12100e;
-  --cs-surface: #1c1917;
-  --cs-surface-sunken: #252120;
+  --cs-bg: #111010;
+  --cs-surface: #111010;
+  --cs-surface-sunken: #1b1a18;
+  --cs-text: #fafaf8;
+  --cs-text-muted: #adaaa4;
 
-  --cs-text: #f6f1ec;
-  --cs-text-muted: #b8aea5;
+  --cs-border: #302e2b;
+  --cs-border-strong: #8c8880;
 
-  --cs-border: #332e2b;
-  --cs-border-strong: #8a7d72;
+  --cs-brand: #fafaf8;
+  --cs-brand-solid: #fafaf8;
+  --cs-brand-solid-hover: #e4e2dd;
+  --cs-brand-ink: #111010;
+  --cs-brand-tint: #1b1a18;
 
-  /* A bright fill with dark text; the deep ember with white text only
-     reached 3.99:1 on a dark surface. */
-  --cs-brand: #ff8a4d;
-  --cs-brand-solid: #ff8a4d;
-  --cs-brand-solid-hover: #ffa273;
-  --cs-brand-ink: #1a1512;
-  --cs-brand-tint: #2c1a10;
+  --cs-danger: #fafaf8;
+  --cs-danger-solid: #fafaf8;
+  --cs-danger-solid-hover: #e4e2dd;
+  --cs-danger-ink: #111010;
+  --cs-danger-tint: #2a1a14;
 
-  --cs-danger: #ff8a80;
-  --cs-danger-solid: #ff8a80;
-  --cs-danger-solid-hover: #ff9a91;
-  --cs-danger-ink: #1a1512;
-  --cs-danger-tint: #2c1512;
+  --cs-focus: #fafaf8;
 
-  --cs-focus: #a8c7fa;
+  /* The marks do not change between themes: Hadir is one colour, learned once. */
+  --cs-hadir-tint: #0c2a22;
+  --cs-hadir-ink: #5fe3bd;
+  --cs-hadir-solid: #06d6a0;
+  --cs-hadir-solid-ink: #111010;
 
-  --cs-hadir-tint: #13291d;
-  --cs-hadir-ink: #7ddfa4;
-  --cs-hadir-solid: #1f7a48;
-  --cs-hadir-solid-ink: #ffffff;
+  --cs-sakit-tint: #2b2310;
+  --cs-sakit-ink: #ffd98a;
+  --cs-sakit-solid: #ffd166;
+  --cs-sakit-solid-ink: #111010;
 
-  --cs-sakit-tint: #2b1f0c;
-  --cs-sakit-ink: #ffc97a;
-  --cs-sakit-solid: #8a5a00;
-  --cs-sakit-solid-ink: #ffffff;
+  --cs-izin-tint: #0d2630;
+  --cs-izin-ink: #6cc2dd;
+  --cs-izin-solid: #118ab2;
+  --cs-izin-solid-ink: #111010;
 
-  --cs-izin-tint: #12223a;
-  --cs-izin-ink: #9cc5f5;
-  --cs-izin-solid: #1f5f9e;
-  --cs-izin-solid-ink: #ffffff;
-
-  --cs-alpa-tint: #41201b;
-  --cs-alpa-ink: #ff9d94;
-  --cs-alpa-solid: #b32f26;
-  --cs-alpa-solid-ink: #ffffff;
-
-  --cs-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.5);
-  --cs-shadow: 0 2px 8px rgb(0 0 0 / 0.55);
-  --cs-shadow-lg: 0 12px 32px rgb(0 0 0 / 0.6);
-}
-
-/* One visible focus style for the whole app (2.4.7 AA, 2.4.13 AAA). */
-:where(a, button, input, select, textarea, [tabindex]):focus-visible {
-  outline: 3px solid var(--cs-focus);
-  outline-offset: 2px;
-  border-radius: var(--cs-radius-sm);
+  --cs-alpa-tint: #2e1a12;
+  --cs-alpa-ink: #ff9f7d;
+  --cs-alpa-solid: #ff7f50;
+  --cs-alpa-solid-ink: #111010;
 }
 
 /*
- * Keep focused controls clear of the fixed bottom tab bar (2.4.11 Focus Not
- * Obscured, AA — the sticky-footer failure F110).
+ * One focus style. Ink would vanish on an ink button, so the ring is drawn
+ * with a paper-coloured gap between the control and the outline.
  */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--cs-focus);
+  outline-offset: 3px;
+  border-radius: var(--cs-radius-sm);
+}
+
+/* Keep a focused control clear of the fixed tab bar (WCAG 2.4.11). */
 html {
   scroll-padding-bottom: calc(var(--cs-tap) + var(--cs-space-6));
-  scroll-padding-top: var(--cs-space-7);
+  scroll-padding-top: var(--cs-space-6);
 }
 
 @media (prefers-reduced-motion: reduce) {
