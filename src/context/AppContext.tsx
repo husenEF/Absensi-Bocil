@@ -150,7 +150,12 @@ interface AppContextType {
   capitalizeWords: (str: string) => string;
 }
 
+/** Beyond this a QR stops being reliably scannable from another screen. */
+export const QR_SAFE_CHARS = 1200;
+
 export type ToastAction = { label: string; onAction: () => void };
+export type PendingImport = { data: any; sessions: number; schedules: number };
+
 export type ToastState = {
   message: string;
   type: 'success' | 'error' | 'info';
@@ -246,6 +251,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Toasts
   const [toast, setToast] = useState<ToastState | null>(null);
+  const [pendingImport, setPendingImport] = useState<PendingImport | null>(null);
   const toastTimer = useRef<number | null>(null);
 
   // New Schedules Form States
@@ -393,7 +399,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Smart Sync Merge Import Function
+  /**
+   * Stage an incoming dataset and ask before merging.
+   *
+   * Scanning a QR, pasting a code or picking a backup file all used to merge
+   * straight into the teacher's database with no confirmation and no way back.
+   */
   const handleSmartMergeImport = async (jsonData: any) => {
+    if (!jsonData || jsonData.app !== 'ClassSync') {
+      showToast('Berkas ini bukan cadangan ClassSync.', 'error');
+      return;
+    }
+
+    setPendingImport({
+      data: jsonData,
+      sessions: Array.isArray(jsonData.absensi) ? jsonData.absensi.length : 0,
+      schedules: Array.isArray(jsonData.schedules) ? jsonData.schedules.length : 0
+    });
+  };
+
+  const cancelPendingImport = () => setPendingImport(null);
+
+  const confirmPendingImport = async () => {
+    const staged = pendingImport;
+    setPendingImport(null);
+    if (!staged) return;
+    await applySmartMergeImport(staged.data);
+  };
+
+  const applySmartMergeImport = async (jsonData: any) => {
     try {
       if (!jsonData || jsonData.app !== 'ClassSync') {
         showToast('Format tidak valid atau bukan dari aplikasi ClassSync.', 'error');
@@ -503,16 +537,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       window.history.replaceState({}, document.title, cleanUrl);
 
       setTimeout(() => {
-        const conf = window.confirm("Ditemukan berkas integrasi presensi masuk dari HP tujuan via tautan! Apakah Anda setuju menggabungkannya ke database lokal IndexedDB secara pintar?");
-        if (conf) {
-          try {
-            const decodedString = decodeURIComponent(escape(atob(syncToken)));
-            const jsonData = JSON.parse(decodedString);
-            handleSmartMergeImport(jsonData);
-          } catch (err) {
-            console.error('[Decode Sync URL Param Error]', err);
-            showToast('Tautan sinkronisasi terkompresi rusak atau tidak terbaca.', 'error');
-          }
+        // Staged rather than merged: the confirmation dialog shows what is in
+        // the link before any of it touches the teacher's data.
+        try {
+          const decodedString = decodeURIComponent(escape(atob(syncToken)));
+          const jsonData = JSON.parse(decodedString);
+          handleSmartMergeImport(jsonData);
+        } catch (err) {
+          console.error('[Decode Sync URL Param Error]', err);
+          showToast('Tautan sinkronisasi rusak atau tidak terbaca.', 'error');
         }
       }, 800);
     }
@@ -1225,7 +1258,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     } catch (err: any) {
       console.error('[Camera Access Error]', err);
-      setScanError('Gagal mengakses kamera. Mohon pastikan izin akses kamera aktif.');
+      setScanError('Tidak dapat membuka kamera. Periksa izin kamera di pengaturan browser.');
       showToast('Gagal membuka kamera perangkat.', 'error');
     }
   };
@@ -1300,8 +1333,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       const jsonString = JSON.stringify(backupData);
 
-      if (jsonString.length > 3900) {
-        showToast('Data Anda terlalu besar untuk QR Code! Mohon gunakan Metode 3 (Ekspor Berkas JSON) agar aman.', 'error');
+      // A QR holding ~1.2 KB is already at the edge of what a mid-range phone
+      // can read off another phone's screen, and splitting across several
+      // codes is a known usability failure. Send people to the file instead.
+      if (jsonString.length > QR_SAFE_CHARS) {
+        showToast('Data Anda sudah terlalu banyak untuk QR. Gunakan "Unduh cadangan" lalu kirim filenya.', 'error');
         return;
       }
 
@@ -1648,6 +1684,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       handleGenerateQrCode,
       handleCopyDirectSyncLink,
       handleSmartMergeImport,
+      pendingImport,
+      confirmPendingImport,
+      cancelPendingImport,
       handleFullBackupExport,
       handleLoadSampleData,
 
