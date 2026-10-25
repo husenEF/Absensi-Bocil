@@ -1,9 +1,11 @@
 /*
- * ClassSync component styles.
+ * ClassSync components.
  *
- * Every interactive control here is at least --cs-tap (48px) tall, carries a
- * visible text label, and keeps its focus ring. Sizes are in rem so Android's
- * font-scale setting and browser zoom both work.
+ * There are no cards here. Sections are separated by space, and a hairline is
+ * drawn only where there is a real boundary — between rows of a register, or
+ * above a total. Hierarchy comes from the type scale.
+ *
+ * Every interactive thing is at least 48px and carries a visible text label.
  */
 
 .cs-visually-hidden {
@@ -18,6 +20,112 @@
   border: 0;
 }
 
+/* ------------------------------------------------------------------ page */
+
+.cs-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cs-space-7);
+  max-width: var(--cs-measure);
+}
+
+/* The column of a page you read down, centred in whatever width it is given. */
+.cs-page {
+  margin-inline: auto;
+}
+
+/* A section is space and a heading, not a container. */
+.cs-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cs-space-4);
+}
+
+.cs-card--inset {
+  padding: var(--cs-space-4);
+  background-color: var(--cs-surface-sunken);
+}
+
+/* The one place a rule earns its keep outside the register. */
+.cs-card--danger {
+  padding-left: var(--cs-space-4);
+  border-left: 3px solid var(--cs-alpa-solid);
+}
+
+.cs-card--success {
+  padding-left: var(--cs-space-4);
+  border-left: 3px solid var(--cs-hadir-solid);
+}
+
+.cs-card__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--cs-space-3);
+}
+
+.cs-card__title,
+.cs-subtitle {
+  font-family: var(--cs-font-display);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: var(--cs-leading-tight);
+  color: var(--cs-text);
+}
+
+.cs-card__title {
+  font-size: var(--cs-text-xl);
+}
+
+.cs-subtitle {
+  font-size: var(--cs-text-lg);
+}
+
+/* Headings carry no decorative icon; the words say what the section is. */
+.cs-card__title .cs-icon,
+.cs-subtitle .cs-icon {
+  display: none;
+}
+
+.cs-icon {
+  width: 1.125rem;
+  height: 1.125rem;
+  flex: none;
+}
+
+.cs-muted {
+  font-size: var(--cs-text-sm);
+  line-height: var(--cs-leading-normal);
+  color: var(--cs-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.cs-names {
+  font-size: var(--cs-text-base);
+  line-height: var(--cs-leading-normal);
+  color: var(--cs-text);
+}
+
+.cs-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--cs-space-4);
+}
+
+.cs-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--cs-space-5);
+}
+
+@media (min-width: 48rem) {
+  .cs-grid-2 {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
 /* ---------------------------------------------------------------- buttons */
 
 .cs-btn {
@@ -27,26 +135,23 @@
   gap: var(--cs-space-2);
   min-height: var(--cs-tap);
   padding: var(--cs-space-3) var(--cs-space-5);
-  border: 1.5px solid transparent;
+  border: 1px solid transparent;
   border-radius: var(--cs-radius);
+  font-family: var(--cs-font-sans);
   font-size: var(--cs-text-base);
-  font-weight: 600;
+  font-weight: 500;
   line-height: var(--cs-leading-tight);
-  text-align: center;
   cursor: pointer;
-  transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease;
+  transition: background-color 0.12s ease, border-color 0.12s ease;
 }
 
 .cs-btn:disabled {
-  opacity: 0.45;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
 .cs-btn--lg {
   min-height: 56px;
-  font-size: var(--cs-text-lg);
 }
 
 .cs-btn--block {
@@ -66,9 +171,14 @@
 .cs-btn--primary:hover:not(:disabled) {
   background-color: var(--cs-brand-solid-hover);
 }
+/* The ring needs a paper gap to be seen against an ink fill. */
+.cs-btn--primary:focus-visible {
+  outline-color: var(--cs-focus);
+  box-shadow: 0 0 0 3px var(--cs-bg);
+}
 
 .cs-btn--secondary {
-  background-color: var(--cs-surface);
+  background-color: transparent;
   border-color: var(--cs-border-strong);
   color: var(--cs-text);
 }
@@ -76,12 +186,18 @@
   background-color: var(--cs-surface-sunken);
 }
 
+/* A quiet action is a word with a rule under it, not a box. */
 .cs-btn--ghost {
+  align-self: flex-start;
+  min-height: var(--cs-tap);
+  padding: var(--cs-space-2) var(--cs-space-1);
   background-color: transparent;
   color: var(--cs-text);
+  border-bottom: 1px solid var(--cs-border-strong);
+  border-radius: 0;
 }
 .cs-btn--ghost:hover:not(:disabled) {
-  background-color: var(--cs-surface-sunken);
+  border-bottom-color: var(--cs-text);
 }
 
 .cs-btn--danger {
@@ -92,16 +208,11 @@
   background-color: var(--cs-danger-solid-hover);
 }
 
-/*
- * Warning: for an action that cannot be undone. Deliberately not the same
- * shape as a normal button, because colour must not be the only signal.
- */
+/* Irreversible: ink, with the one coral rule in the interface under it. */
 .cs-btn--warning {
   background-color: var(--cs-danger-solid);
   color: var(--cs-danger-ink);
-  border-color: var(--cs-text);
-  border-width: 2px;
-  box-shadow: 0 3px 0 var(--cs-text);
+  border-bottom: 3px solid var(--cs-alpa-solid);
 }
 .cs-btn--warning:hover:not(:disabled) {
   background-color: var(--cs-danger-solid-hover);
@@ -116,7 +227,8 @@
 }
 
 .cs-field__label {
-  font-size: var(--cs-text-base);
+  font-family: var(--cs-font-sans);
+  font-size: var(--cs-text-sm);
   font-weight: 600;
   color: var(--cs-text);
   line-height: var(--cs-leading-tight);
@@ -136,237 +248,282 @@
 .cs-field__error {
   font-size: var(--cs-text-sm);
   font-weight: 600;
-  color: var(--cs-danger);
+  color: var(--cs-text);
   line-height: var(--cs-leading-normal);
-  border-left: 4px solid var(--cs-danger);
+  border-left: 3px solid var(--cs-alpa-solid);
   padding-left: var(--cs-space-3);
 }
 
-/* Inputs are 18px, which also keeps iOS Safari from zooming on focus. */
+/* Inputs are a ruled line, like a form you write on. */
 .cs-input,
 .cs-select,
 .cs-textarea {
   width: 100%;
   min-height: var(--cs-tap);
-  padding: var(--cs-space-3);
+  padding: var(--cs-space-2) 0;
+  font-family: var(--cs-font-sans);
   font-size: var(--cs-text-base);
-  font-family: inherit;
   line-height: var(--cs-leading-normal);
   color: var(--cs-text);
-  background-color: var(--cs-surface);
-  border: 1.5px solid var(--cs-border-strong);
-  border-radius: var(--cs-radius-sm);
+  background-color: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--cs-border-strong);
+  border-radius: 0;
+}
+
+.cs-select {
+  padding-right: var(--cs-space-4);
 }
 
 .cs-textarea {
-  min-height: 7rem;
+  min-height: 6rem;
+  padding: var(--cs-space-2);
+  border: 1px solid var(--cs-border-strong);
   resize: vertical;
 }
 
-.cs-field--error :is(.cs-input, .cs-select, .cs-textarea) {
-  border-color: var(--cs-danger);
-  border-width: 2px;
-}
-
-/* ----------------------------------------------------------- status picker */
-
-.cs-status {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: var(--cs-tap-gap);
-}
-
-.cs-status__opt {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  min-height: var(--cs-tap);
-  padding: var(--cs-space-2) var(--cs-space-1);
-  border: 1.5px solid var(--cs-border-strong);
-  border-radius: var(--cs-radius-sm);
-  background-color: var(--cs-surface);
-  color: var(--cs-text-muted);
-  cursor: pointer;
-}
-
-.cs-status__opt:has(:focus-visible) {
-  outline: 3px solid var(--cs-focus);
+.cs-input:focus-visible,
+.cs-select:focus-visible,
+.cs-textarea:focus-visible {
   outline-offset: 2px;
 }
 
-.cs-status__code {
-  font-size: var(--cs-text-lg);
-  font-weight: 700;
-  line-height: 1;
+.cs-field--error :is(.cs-input, .cs-select, .cs-textarea) {
+  border-bottom-width: 2px;
+  border-bottom-color: var(--cs-alpa-solid);
 }
 
-.cs-status__text {
-  font-size: var(--cs-text-xs);
-  font-weight: 600;
-  line-height: 1;
-}
-
-.cs-status__opt--hadir.is-selected {
-  background-color: var(--cs-hadir-solid);
-  border-color: var(--cs-hadir-solid);
-  color: var(--cs-hadir-solid-ink);
-}
-.cs-status__opt--sakit.is-selected {
-  background-color: var(--cs-sakit-solid);
-  border-color: var(--cs-sakit-solid);
-  color: var(--cs-sakit-solid-ink);
-}
-.cs-status__opt--izin.is-selected {
-  background-color: var(--cs-izin-solid);
-  border-color: var(--cs-izin-solid);
-  color: var(--cs-izin-solid-ink);
-}
-.cs-status__opt--alpa.is-selected {
-  background-color: var(--cs-alpa-solid);
-  border-color: var(--cs-alpa-solid);
-  color: var(--cs-alpa-solid-ink);
-}
-
-/* ------------------------------------------------------------ status chips */
-
-.cs-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--cs-space-1);
-  padding: var(--cs-space-1) var(--cs-space-3);
-  border-radius: var(--cs-radius-full);
-  font-size: var(--cs-text-sm);
-  font-weight: 600;
-  line-height: var(--cs-leading-normal);
-}
-
-.cs-chip--hadir {
-  background-color: var(--cs-hadir-tint);
-  color: var(--cs-hadir-ink);
-}
-.cs-chip--sakit {
-  background-color: var(--cs-sakit-tint);
-  color: var(--cs-sakit-ink);
-}
-.cs-chip--izin {
-  background-color: var(--cs-izin-tint);
-  color: var(--cs-izin-ink);
-}
-.cs-chip--alpa {
-  background-color: var(--cs-alpa-tint);
-  color: var(--cs-alpa-ink);
-}
-
-/* ------------------------------------------------------------ page layout */
-
-.cs-page {
-  display: flex;
-  flex-direction: column;
-  gap: var(--cs-space-5);
-}
-
-.cs-card {
-  display: flex;
-  flex-direction: column;
-  gap: var(--cs-space-4);
-  padding: var(--cs-space-5);
-  background-color: var(--cs-surface);
-  border: 1px solid var(--cs-border);
-  border-radius: var(--cs-radius-lg);
-  box-shadow: var(--cs-shadow-sm);
-}
-
-.cs-card--success {
-  border-color: var(--cs-hadir-solid);
-  border-left-width: 5px;
-}
-
-.cs-card__head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--cs-space-3);
-}
-
-.cs-card__title {
-  display: flex;
-  align-items: center;
-  gap: var(--cs-space-2);
-  font-size: var(--cs-text-xl);
-  font-weight: 700;
-  line-height: var(--cs-leading-tight);
-  color: var(--cs-text);
-}
-
-.cs-icon {
-  width: 1.25rem;
-  height: 1.25rem;
-  flex: none;
-}
-
-.cs-muted {
-  font-size: var(--cs-text-sm);
-  color: var(--cs-text-muted);
-  line-height: var(--cs-leading-normal);
-}
-
-.cs-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--cs-tap-gap);
-}
-
-.cs-grid-2 {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--cs-space-4);
-}
-
-@media (min-width: 48rem) {
-  .cs-grid-2 {
-    grid-template-columns: 1fr 1fr;
-  }
-}
-
-.cs-tally {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--cs-tap-gap);
-  list-style: none;
-}
-
-/* ----------------------------------------------------------------- roster */
+/* ---------------------------------------------------------------- register */
 
 .cs-roster {
   display: flex;
   flex-direction: column;
-  gap: var(--cs-tap-gap);
   list-style: none;
+  border-top: 1px solid var(--cs-border);
 }
 
+/*
+ * On a phone a santri is a two-line entry; from 480px up it is a row.
+ *
+ * A name and four 48px marks cannot share a line on a narrow screen without
+ * either overflowing the page (320px overflowed by 25px, failing WCAG 1.4.10
+ * Reflow) or squeezing a name like "Muhammad Abdurrahman" into 119px. The
+ * breakpoint is set past the common phone widths rather than between them, so
+ * a 390px and a 412px phone do not behave differently.
+ */
 .cs-roster__row {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 1fr;
   gap: var(--cs-space-2);
-  padding: var(--cs-space-3);
-  background-color: var(--cs-surface-sunken);
-  border-radius: var(--cs-radius);
+  padding: var(--cs-space-3) 0;
+  border-bottom: 1px solid var(--cs-border);
+}
+
+@media (min-width: 30rem) {
+  .cs-roster__row {
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: var(--cs-space-3);
+    padding: var(--cs-space-2) 0;
+  }
 }
 
 .cs-roster__name {
+  font-family: var(--cs-font-display);
+  font-size: var(--cs-text-lg);
+  font-weight: 400;
+  line-height: var(--cs-leading-tight);
+  color: var(--cs-text);
+}
+
+/*
+ * Four marks per row.
+ *
+ * The one that is set is a filled block carrying its letter; the rest are just
+ * the letter in quiet ink. That turns forty outlined boxes into ten rows with
+ * ten blocks of colour, and the register can be read down in one pass.
+ */
+.cs-status {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(var(--cs-tap), 1fr));
+  gap: 2px;
+}
+
+@media (min-width: 30rem) {
+  .cs-status {
+    grid-template-columns: repeat(4, var(--cs-tap));
+  }
+}
+
+.cs-status__opt {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--cs-tap);
+  border: 1px solid transparent;
+  border-radius: var(--cs-radius-sm);
+  color: var(--cs-text-muted);
+  cursor: pointer;
+}
+
+.cs-status__opt:hover {
+  background-color: var(--cs-surface-sunken);
+}
+
+.cs-status__opt:has(:focus-visible) {
+  outline: 2px solid var(--cs-focus);
+  outline-offset: 2px;
+}
+
+.cs-status__code {
+  font-family: var(--cs-font-sans);
   font-size: var(--cs-text-base);
+  font-weight: 500;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  text-transform: lowercase;
+}
+
+/* The word is for assistive technology and for the legend, not for every cell. */
+.cs-status__text {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.cs-status__opt.is-selected .cs-status__code {
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.cs-status__opt--hadir.is-selected {
+  background-color: var(--cs-hadir-solid);
+  border-color: var(--cs-text);
+  color: var(--cs-hadir-solid-ink);
+}
+.cs-status__opt--sakit.is-selected {
+  background-color: var(--cs-sakit-solid);
+  border-color: var(--cs-text);
+  color: var(--cs-sakit-solid-ink);
+}
+.cs-status__opt--izin.is-selected {
+  background-color: var(--cs-izin-solid);
+  border-color: var(--cs-text);
+  color: var(--cs-izin-solid-ink);
+}
+.cs-status__opt--alpa.is-selected {
+  background-color: var(--cs-alpa-solid);
+  border-color: var(--cs-text);
+  color: var(--cs-alpa-solid-ink);
+}
+
+/* A legend, printed once, so the single letters are never a guess. */
+.cs-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cs-space-4);
+  list-style: none;
+  font-family: var(--cs-font-sans);
+  font-size: var(--cs-text-xs);
+  color: var(--cs-text-muted);
+}
+
+.cs-legend li {
+  display: flex;
+  align-items: center;
+  gap: var(--cs-space-2);
+}
+
+.cs-legend__mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 1px solid var(--cs-text);
+  border-radius: var(--cs-radius-sm);
+  font-weight: 700;
+  color: #000;
+}
+
+/* --------------------------------------------------------------- tallies */
+
+.cs-tally {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cs-space-4);
+  list-style: none;
+  padding-top: var(--cs-space-3);
+  border-top: 1px solid var(--cs-text);
+  font-family: var(--cs-font-sans);
+  font-size: var(--cs-text-sm);
+  font-variant-numeric: tabular-nums;
+  color: var(--cs-text);
+}
+
+.cs-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--cs-space-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.cs-chip::before {
+  content: '';
+  width: 0.625rem;
+  height: 0.625rem;
+  border: 1px solid var(--cs-text);
+  flex: none;
+  translate: 0 -1px;
+}
+
+.cs-chip--hadir::before { background-color: var(--cs-hadir-solid); }
+.cs-chip--sakit::before { background-color: var(--cs-sakit-solid); }
+.cs-chip--izin::before { background-color: var(--cs-izin-solid); }
+.cs-chip--alpa::before { background-color: var(--cs-alpa-solid); }
+
+/* ------------------------------------------------------------ empty state */
+
+.cs-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--cs-space-3);
+  padding: var(--cs-space-5) 0;
+  max-width: 36ch;
+}
+
+/* An empty screen is an invitation, not an illustration. */
+.cs-empty__icon {
+  display: none;
+}
+
+.cs-empty__title {
+  font-family: var(--cs-font-display);
+  font-size: var(--cs-text-xl);
   font-weight: 600;
   color: var(--cs-text);
   line-height: var(--cs-leading-tight);
 }
 
+.cs-empty__body {
+  font-size: var(--cs-text-base);
+  color: var(--cs-text-muted);
+  line-height: var(--cs-leading-normal);
+}
+
+/* ------------------------------------------------------------- add a name */
+
 .cs-addrow {
   display: flex;
   align-items: flex-end;
-  gap: var(--cs-tap-gap);
+  gap: var(--cs-space-3);
 }
 
 .cs-addrow .cs-field {
@@ -380,71 +537,57 @@
   margin-top: var(--cs-space-3);
 }
 
-/* ------------------------------------------------------------ empty state */
-
-.cs-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--cs-space-2);
-  padding: var(--cs-space-6) var(--cs-space-4);
-  text-align: center;
-  background-color: var(--cs-surface-sunken);
-  border-radius: var(--cs-radius);
-}
-
-.cs-empty__icon {
-  width: 2rem;
-  height: 2rem;
-  color: var(--cs-text-muted);
-}
-
-.cs-empty__title {
-  font-size: var(--cs-text-lg);
-  font-weight: 700;
-  color: var(--cs-text);
-}
-
-.cs-empty__body {
-  font-size: var(--cs-text-sm);
-  color: var(--cs-text-muted);
-  line-height: var(--cs-leading-normal);
-  max-width: 34ch;
-}
-
-/* -------------------------------------------------------------- save area */
-
 .cs-save {
   display: flex;
   flex-direction: column;
-  gap: var(--cs-space-2);
+  gap: var(--cs-space-3);
 }
 
-/* ------------------------------------------------------------- extra bits */
+/* ---------------------------------------------------- session picker rows */
 
-.cs-subtitle {
+.cs-session {
   display: flex;
-  align-items: center;
-  gap: var(--cs-space-2);
+  align-items: flex-start;
+  gap: var(--cs-space-3);
+  min-height: var(--cs-tap);
+  padding: var(--cs-space-3) 0;
+  border-bottom: 1px solid var(--cs-border);
+  cursor: pointer;
+}
+
+.cs-session.is-selected .cs-session__date {
+  font-weight: 600;
+}
+
+.cs-session:has(:focus-visible) {
+  outline: 2px solid var(--cs-focus);
+  outline-offset: 2px;
+}
+
+.cs-session input {
+  width: 1.375rem;
+  height: 1.375rem;
+  margin-top: 0.3rem;
+  flex: none;
+  accent-color: var(--cs-text);
+}
+
+.cs-session__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.cs-session__date {
+  font-family: var(--cs-font-display);
   font-size: var(--cs-text-lg);
-  font-weight: 700;
   color: var(--cs-text);
-  line-height: var(--cs-leading-tight);
 }
 
-.cs-card--inset {
-  background-color: var(--cs-surface-sunken);
-  box-shadow: none;
-}
-
-.cs-card--danger {
-  border-color: var(--cs-danger);
-  border-left-width: 5px;
-}
-
-.cs-names {
+.cs-session__names {
   font-size: var(--cs-text-sm);
-  color: var(--cs-text);
+  color: var(--cs-text-muted);
   line-height: var(--cs-leading-normal);
 }
 
@@ -459,12 +602,12 @@
 }
 
 .cs-check input {
-  width: 1.5rem;
-  height: 1.5rem;
-  accent-color: var(--cs-brand-solid);
+  width: 1.375rem;
+  height: 1.375rem;
+  accent-color: var(--cs-text);
 }
 
-/* ---------------------------------------------------------------- dialog */
+/* ----------------------------------------------------------------- dialog */
 
 .cs-dialog__backdrop {
   position: fixed;
@@ -474,25 +617,25 @@
   align-items: center;
   justify-content: center;
   padding: var(--cs-space-4);
-  background-color: rgb(0 0 0 / 0.55);
+  background-color: rgb(0 0 0 / 0.5);
 }
 
 .cs-dialog {
   display: flex;
   flex-direction: column;
   gap: var(--cs-space-4);
-  width: min(32rem, 100%);
+  width: min(30rem, 100%);
   max-height: 90vh;
   overflow-y: auto;
-  padding: var(--cs-space-5);
-  background-color: var(--cs-surface);
-  border-radius: var(--cs-radius-lg);
-  box-shadow: var(--cs-shadow-lg);
+  padding: var(--cs-space-6);
+  background-color: var(--cs-bg);
+  border-top: 4px solid var(--cs-text);
 }
 
 .cs-dialog__title {
+  font-family: var(--cs-font-display);
   font-size: var(--cs-text-xl);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--cs-text);
   line-height: var(--cs-leading-tight);
 }
@@ -500,7 +643,7 @@
 .cs-dialog__body {
   display: flex;
   flex-direction: column;
-  gap: var(--cs-space-2);
+  gap: var(--cs-space-3);
   font-size: var(--cs-text-base);
   color: var(--cs-text);
   line-height: var(--cs-leading-normal);
@@ -510,22 +653,19 @@
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
-  /* Deliberate distance between the safe and the destructive choice. */
-  gap: var(--cs-space-5);
+  gap: var(--cs-space-6);
 }
 
 /* ----------------------------------------------------------------- toasts */
 
 .cs-toast__wrap {
-  /* Always in the DOM for the live region, so it must not block taps when
-     there is no toast in it. */
   pointer-events: none;
   position: fixed;
   top: var(--cs-space-4);
   left: 50%;
   translate: -50% 0;
   z-index: 90;
-  width: min(32rem, calc(100vw - 2 * var(--cs-space-4)));
+  width: min(30rem, calc(100vw - 2 * var(--cs-space-4)));
 }
 
 .cs-toast {
@@ -534,108 +674,45 @@
   align-items: center;
   gap: var(--cs-space-3);
   padding: var(--cs-space-3) var(--cs-space-4);
-  border-radius: var(--cs-radius);
-  box-shadow: var(--cs-shadow-lg);
+  box-shadow: 0 6px 24px rgb(0 0 0 / 0.18);
   font-size: var(--cs-text-sm);
   line-height: var(--cs-leading-normal);
   background-color: var(--cs-text);
-  color: var(--cs-surface);
+  color: var(--cs-bg);
 }
 
 .cs-toast--error {
-  background-color: var(--cs-danger-solid);
-  color: var(--cs-danger-ink);
+  border-bottom: 3px solid var(--cs-alpa-solid);
 }
 
 .cs-toast__msg {
   flex: 1;
 }
 
-/* The undo target is a full-size control, not a word to aim at. */
 .cs-toast__action {
   flex: none;
   min-height: var(--cs-tap);
-  padding: 0 var(--cs-space-4);
-  border: 1.5px solid currentColor;
-  border-radius: var(--cs-radius-sm);
+  padding: 0 var(--cs-space-3);
+  border: 0;
+  border-bottom: 1px solid currentColor;
   background: transparent;
   color: inherit;
+  font-family: var(--cs-font-sans);
   font-size: var(--cs-text-sm);
-  font-weight: 700;
-  cursor: pointer;
-}
-
-/* --------------------------------------------------------- session picker */
-
-.cs-session {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--cs-space-3);
-  min-height: var(--cs-tap);
-  padding: var(--cs-space-3);
-  background-color: var(--cs-surface-sunken);
-  border: 1.5px solid var(--cs-border);
-  border-radius: var(--cs-radius);
-  cursor: pointer;
-}
-
-.cs-session.is-selected {
-  border-color: var(--cs-brand);
-  background-color: var(--cs-brand-tint);
-}
-
-.cs-session:has(:focus-visible) {
-  outline: 3px solid var(--cs-focus);
-  outline-offset: 2px;
-}
-
-.cs-session input {
-  width: 1.5rem;
-  height: 1.5rem;
-  margin-top: 2px;
-  flex: none;
-  accent-color: var(--cs-brand-solid);
-}
-
-.cs-session__text {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.cs-session__date {
-  font-size: var(--cs-text-base);
   font-weight: 600;
-  color: var(--cs-text);
+  cursor: pointer;
 }
 
-.cs-session__names {
-  font-size: var(--cs-text-sm);
-  color: var(--cs-text-muted);
-  line-height: var(--cs-leading-normal);
-}
-
-/* ------------------------------------------------------------ wide sheet */
+/* ------------------------------------------------------------- wide sheet */
 
 .cs-sheet {
   overflow-x: auto;
-  border: 1px solid var(--cs-border);
-  border-radius: var(--cs-radius);
-  /* Half-reveal the next column so it is visible that there is more to the
-     right; an arrow or dots are routinely missed. */
-  background:
-    linear-gradient(to right, var(--cs-surface) 30%, transparent),
-    linear-gradient(to left, var(--cs-surface) 30%, transparent) 100% 0,
-    radial-gradient(farthest-side at 0 50%, rgb(0 0 0 / 0.12), transparent),
-    radial-gradient(farthest-side at 100% 50%, rgb(0 0 0 / 0.12), transparent) 100% 0;
-  background-repeat: no-repeat;
-  background-size: 3rem 100%, 3rem 100%, 1rem 100%, 1rem 100%;
-  background-attachment: local, local, scroll, scroll;
+  border-top: 1px solid var(--cs-text);
+  border-bottom: 1px solid var(--cs-text);
 }
 
 .cs-sheet:focus-visible {
-  outline: 3px solid var(--cs-focus);
+  outline: 2px solid var(--cs-focus);
   outline-offset: 2px;
 }
 
@@ -643,4 +720,123 @@
   display: flex;
   gap: var(--cs-tap-gap);
   justify-content: center;
+}
+
+/* --------------------------------------------------------------- the app */
+
+.cs-app {
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--cs-bg);
+  color: var(--cs-text);
+}
+
+.cs-legend__mark--hadir { background-color: var(--cs-hadir-solid); }
+.cs-legend__mark--sakit { background-color: var(--cs-sakit-solid); }
+.cs-legend__mark--izin  { background-color: var(--cs-izin-solid); }
+.cs-legend__mark--alpa  { background-color: var(--cs-alpa-solid); }
+
+/* -------------------------------------------------------------- the shell */
+
+.cs-masthead {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background-color: var(--cs-bg);
+  border-bottom: 1px solid var(--cs-text);
+}
+
+.cs-masthead__inner {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--cs-space-4);
+  max-width: var(--cs-measure);
+  margin-inline: auto;
+  padding: var(--cs-space-3) var(--cs-space-4);
+}
+
+.cs-wordmark {
+  font-family: var(--cs-font-display);
+  font-size: var(--cs-text-lg);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: var(--cs-text);
+}
+
+.cs-masthead__sub {
+  font-size: var(--cs-text-xs);
+  color: var(--cs-text-muted);
+}
+
+/* Said only when it is true and useful. */
+.cs-masthead__offline {
+  font-size: var(--cs-text-xs);
+  font-weight: 600;
+  color: var(--cs-text);
+  border-bottom: 2px solid var(--cs-alpa-solid);
+}
+
+.cs-iconbtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--cs-tap);
+  height: var(--cs-tap);
+  border: 0;
+  background: transparent;
+  color: var(--cs-text);
+  cursor: pointer;
+}
+
+.cs-main {
+  flex: 1 0 auto;
+  width: 100%;
+  padding: var(--cs-space-6) var(--cs-space-4);
+  padding-bottom: calc(var(--cs-tap) + var(--cs-space-7));
+}
+
+.cs-footer {
+  max-width: var(--cs-measure);
+  margin-inline: auto;
+  padding: var(--cs-space-5) var(--cs-space-4);
+  padding-bottom: calc(var(--cs-tap) + var(--cs-space-6));
+  border-top: 1px solid var(--cs-border);
+  font-size: var(--cs-text-xs);
+  color: var(--cs-text-muted);
+}
+
+/* Tabs: labels on a rule, with the current one marked by weight and a rule. */
+.cs-tabs {
+  position: fixed;
+  bottom: 0;
+  inset-inline: 0;
+  z-index: 40;
+  display: flex;
+  justify-content: center;
+  gap: var(--cs-space-2);
+  padding: 0 var(--cs-space-2);
+  background-color: var(--cs-bg);
+  border-top: 1px solid var(--cs-text);
+}
+
+/* A step number in the margin: the guide really is a sequence, so the figure
+   is information. It is a numeral, not a badge. */
+.cs-step {
+  font-family: var(--cs-font-display);
+  font-size: var(--cs-text-xl);
+  font-weight: 600;
+  line-height: 1;
+  color: var(--cs-text-muted);
+}
+
+/* Decorative icon tiles carry nothing the heading does not already say. */
+.cs-hidden-tile {
+  display: none;
+}
+
+/* Tab labels must not wrap. */
+.cs-tabs button {
+  white-space: nowrap;
 }
