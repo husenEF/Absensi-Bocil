@@ -2,32 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from '../context/AppContext';
 import { escapeHtml } from '../roster';
+import { isTooLongForWhatsApp, shareToWhatsApp } from '../utils/share';
+import { Button } from '../ui/Button';
 import { formatIndonesianDate } from '../utils/date';
 import { db, ExcelReportRecord } from '../db';
-import { 
-  FileText, 
-  Copy, 
-  Check, 
-  RefreshCw, 
-  Info, 
-  CheckSquare, 
-  Square, 
-  AlertCircle,
-  X,
-  Play,
-  Calendar,
-  FileSpreadsheet,
-  Save,
-  Plus,
-  Trash2,
-  Sliders,
-  HelpCircle,
-  BookOpen,
-  UserCheck,
-  Smartphone,
-  ChevronRight,
-  UserPlus
-} from 'lucide-react';
+import { AlertCircle, BookOpen, Calendar, Check, CheckSquare, ChevronRight, Copy, FileSpreadsheet, FileText, HelpCircle, Info, Play, Plus, RefreshCw, Save, Send, Sliders, Smartphone, Square, Trash2, UserCheck, UserPlus, X } from 'lucide-react';
 
 interface StudentRow {
   name: string;
@@ -80,6 +59,31 @@ export const ReportGenerator: React.FC = () => {
   const [studentsData, setStudentsData] = useState<StudentRow[]>([]);
   const [catatan, setCatatan] = useState<string>('');
   
+  /**
+   * Hand the report to WhatsApp.
+   *
+   * Called straight from the tap so the share sheet keeps its user
+   * activation; awaiting anything first would lose it.
+   */
+  const handleShareReport = async () => {
+    if (!reportText) return;
+
+    if (isTooLongForWhatsApp(reportText)) {
+      showToast(
+        'Laporan terlalu panjang untuk satu pesan WhatsApp. Pilih lebih sedikit sesi.',
+        'error'
+      );
+      return;
+    }
+
+    const outcome = await shareToWhatsApp(reportText);
+    if (outcome === 'copied-and-opened') {
+      showToast('Teks laporan disalin dan WhatsApp dibuka.', 'success');
+    } else if (outcome === 'failed') {
+      showToast('Tidak dapat membuka WhatsApp. Salin teksnya secara manual.', 'error');
+    }
+  };
+
   // Mobile responsiveness helper
   const [editingStudentIndex, setEditingStudentIndex] = useState<number | null>(null);
 
@@ -526,9 +530,9 @@ export const ReportGenerator: React.FC = () => {
         >
           <AlertCircle className="w-5 h-5 text-red-650 dark:text-red-400 mt-0.5 shrink-0" />
           <div className="flex-1 space-y-1">
-            <h4 className="text-xs font-black uppercase text-red-650 dark:text-red-400 tracking-wider">🔔 Pengingat Pekan Ke-3 Bulanan</h4>
+            <h4 className="text-xs font-black uppercase text-red-650 dark:text-red-400 tracking-wider">Pengingat pekan ketiga</h4>
             <p className="text-xs text-zinc-650 dark:text-zinc-350 leading-relaxed font-semibold">
-              Hari ini sudah memasuki tanggal 15-21! Jangan lupa untuk segera mengkompilasi laporan kehadiran bwi-bulanan siswa, menyalin ke format WhatsApp, atau mengekspor berkas Excel berformat resmi.
+              Sudah tanggal 15-21. Waktunya menyusun laporan dua bulanan dan mengirimkannya ke koordinator.
             </p>
           </div>
           <button
@@ -549,7 +553,7 @@ export const ReportGenerator: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5 mt-1">
           <div className="flex items-center gap-2.5">
             <FileText className="w-5 h-5 text-red-650" />
-            <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-50 tracking-tight">Kompilator Laporan Sesi</h2>
+            <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-50 tracking-tight">Laporan</h2>
           </div>
 
           {/* Sub-tab Selection */}
@@ -583,7 +587,7 @@ export const ReportGenerator: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-2xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-2" htmlFor="report_period">
-              Pilih Periode Bwi-Bulanan Laporan
+              Periode laporan (dua bulan)
             </label>
             <select
               id="report_period"
@@ -599,7 +603,7 @@ export const ReportGenerator: React.FC = () => {
 
           <div>
             <label className="block text-2xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-2" htmlFor="report_schedule_filter">
-              Segmentasi Sesi Berdasarkan Kelas (Khusus WA)
+              Kelompok kelas (khusus laporan WhatsApp)
             </label>
             <select
               id="report_schedule_filter"
@@ -608,8 +612,8 @@ export const ReportGenerator: React.FC = () => {
               onChange={(e) => setReportScheduleFilter(e.target.value)}
               className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2.5 text-xs text-zinc-800 dark:text-white focus:outline-hidden font-bold cursor-pointer disabled:opacity-40"
             >
-              <option value="all" className="dark:bg-zinc-900 dark:text-white">-- Semua Sesi Kelas --</option>
-              <option value="unlinked" className="dark:bg-zinc-900 dark:text-white">Hanya Kelas Kustom (Tanpa Jadwal)</option>
+              <option value="all" className="dark:bg-zinc-900 dark:text-white">Semua kelas</option>
+              <option value="unlinked" className="dark:bg-zinc-900 dark:text-white">Hanya sesi tanpa jadwal</option>
               {schedules.map(s => (
                 <option key={s.id} value={s.id} className="dark:bg-zinc-900 dark:text-white">{s.title} ({s.hari})</option>
               ))}
@@ -621,24 +625,24 @@ export const ReportGenerator: React.FC = () => {
           <Info className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
           <span>
             {reportMode === 'whatsapp' 
-              ? 'Sistem akan mengompilasi data ke format chat WhatsApp berisi sub-bab list peserta sesuai format Koordinator.'
-              : 'Sistem menyajikan formulir tabel interaktif sesuai format Laporan Petugas Ngaglik yang siap diekspor ke Excel.'}
+              ? 'Laporan disusun dalam format teks siap kirim ke koordinator.'
+              : 'Isi lembar laporan resmi, lalu unduh sebagai Excel.'}
           </span>
         </p>
       </div>
 
       {records.length === 0 ? (
         <div className="p-8 text-center bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-xs">
-          <h3 className="text-sm font-extrabold text-zinc-900 dark:text-zinc-250">Tidak ada riwayat untuk dibuatkan laporan.</h3>
+          <h3 className="text-sm font-extrabold text-zinc-900 dark:text-zinc-250">Belum ada presensi untuk dilaporkan.</h3>
           <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-2">
-            Harap isi presensi terlebih dahulu atau muat data simulasi Mei-Juni 2026.
+            Catat presensi terlebih dahulu, atau muat data contoh untuk mencoba.
           </p>
           <button
             onClick={handleLoadSampleData}
             className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 bg-red-650 hover:bg-red-750 text-white text-[11px] font-black rounded-lg cursor-pointer"
           >
             <Play className="w-3" />
-            <span>Muat Data Contoh Simulasi (Periode Mei-Juni 2026)</span>
+            <span>Muat data contoh</span>
           </button>
         </div>
       ) : (
@@ -659,7 +663,7 @@ export const ReportGenerator: React.FC = () => {
                 <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-xs">
                   <div className="flex items-center justify-between mb-3.5 border-b border-zinc-150 dark:border-zinc-805 pb-2.5">
                     <h3 className="text-xs font-black text-zinc-800 dark:text-zinc-200 uppercase tracking-wider">
-                      List Sesi Hadir Periode ({filteredRecordsForReport.length})
+                      Sesi pada periode ini ({filteredRecordsForReport.length})
                     </h3>
                     <span className="text-[10px] bg-red-500/10 text-red-650 dark:text-red-400 px-2 py-0.5 rounded-md font-bold uppercase">
                       {currentPeriod ? currentPeriod.label : '-'}
@@ -675,37 +679,33 @@ export const ReportGenerator: React.FC = () => {
                       {filteredRecordsForReport.map((rec) => {
                         const isSelected = reportSelectedRecordIds.includes(rec.id!);
                         return (
-                          <div 
+                          /* A real checkbox: this was a div with an onClick,
+                             so it could not be reached or operated by keyboard
+                             and announced as nothing at all. */
+                          <label
                             key={rec.id}
-                            onClick={() => {
-                              if (rec.id) {
-                                setReportSelectedRecordIds(prev =>
-                                  prev.includes(rec.id!) ? prev.filter(x => x !== rec.id) : [...prev, rec.id!]
-                                );
-                              }
-                            }}
-                            className={`p-3.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
-                              isSelected 
-                                ? 'bg-red-500/[0.02] border-red-500/20 dark:border-red-600/30' 
-                                : 'bg-zinc-50 dark:bg-zinc-950 border-zinc-200/60 dark:border-zinc-805 opacity-60 hover:opacity-100'
-                            }`}
+                            className={`cs-session${isSelected ? ' is-selected' : ''}`}
                           >
-                            <div className="space-y-1 min-w-0">
-                              <p className="text-xs font-black text-zinc-900 dark:text-zinc-150 flex items-center gap-1.5">
-                                <Calendar className="w-3.5 h-3.5 text-zinc-400" />
-                                <span>{formatIndonesianDate(rec.tanggal)}</span>
-                              </p>
-                              <p className="text-[10px] text-zinc-500 dark:text-zinc-400 truncate max-w-sm">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => {
+                                if (rec.id) {
+                                  setReportSelectedRecordIds(prev =>
+                                    prev.includes(rec.id!) ? prev.filter(x => x !== rec.id) : [...prev, rec.id!]
+                                  );
+                                }
+                              }}
+                            />
+                            <span className="cs-session__text">
+                              <span className="cs-session__date">
+                                {formatIndonesianDate(rec.tanggal)}
+                              </span>
+                              <span className="cs-session__names">
                                 Hadir ({rec.peserta.length}): {rec.peserta.join(', ')}
-                              </p>
-                            </div>
-
-                            {isSelected ? (
-                              <CheckSquare className="w-5 h-5 text-red-650" />
-                            ) : (
-                              <Square className="w-5 h-5 text-zinc-350 dark:text-zinc-750" />
-                            )}
-                          </div>
+                              </span>
+                            </span>
+                          </label>
                         );
                       })}
                     </div>
@@ -719,7 +719,7 @@ export const ReportGenerator: React.FC = () => {
                       className="px-5 py-2.5 bg-red-650 hover:bg-red-755 text-white text-xs font-black rounded-xl transition-colors shrink-0 cursor-pointer shadow-xs inline-flex items-center gap-1.5"
                     >
                       <RefreshCw className="w-3.5 h-3.5" />
-                      <span>Kompilasikan Laporan</span>
+                      <span>Susun laporan</span>
                     </button>
                   </div>
                 </div>
@@ -729,7 +729,7 @@ export const ReportGenerator: React.FC = () => {
               <div className="lg:col-span-5">
                 <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-xs space-y-4 sticky top-24">
                   <div className="border-b border-zinc-150 dark:border-zinc-805 pb-3 flex items-center justify-between">
-                    <h3 className="text-xs font-black text-zinc-800 dark:text-zinc-200 uppercase tracking-wider">Hasil WhatsApp Lapor</h3>
+                    <h3 className="text-xs font-black text-zinc-800 dark:text-zinc-200 uppercase tracking-wider">Hasil laporan WhatsApp</h3>
                     <span className="text-[10px] bg-zinc-100 dark:bg-zinc-800 text-zinc-650 dark:text-zinc-3 font-bold px-2 py-0.5 rounded-md uppercase font-mono">Template WA</span>
                   </div>
 
@@ -743,27 +743,24 @@ export const ReportGenerator: React.FC = () => {
                         value={reportText}
                       />
 
-                      <div className="flex gap-2.5">
-                        <button
-                          type="button"
-                          onClick={handleCopyReport}
-                          className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-black rounded-xl cursor-pointer transition-all border border-transparent"
+                      <div className="cs-row">
+                        <Button
+                          variant="primary"
+                          icon={<Send className="cs-icon" />}
+                          onClick={handleShareReport}
                         >
-                          {copied ? (
-                            <>
-                              <Check className="w-4 h-4 text-emerald-400" />
-                              <span>Berhasil Disalin!</span>
-                            </>
-                          ) : (
-                            <>
-                              <Copy className="w-4 h-4" />
-                              <span>Salin Ke Clipboard</span>
-                            </>
-                          )}
-                        </button>
+                          Bagikan ke WhatsApp
+                        </Button>
+                        <Button
+                          icon={copied ? <Check className="cs-icon" /> : <Copy className="cs-icon" />}
+                          onClick={handleCopyReport}
+                        >
+                          {copied ? 'Tersalin' : 'Salin teks'}
+                        </Button>
                       </div>
-                      <p className="text-[10px] text-zinc-500 dark:text-zinc-400 text-center">
-                        💡 Rekatkan langsung teks hasil salinan tadi pada chat WhatsApp Koordinator Kursus.
+                      <p className="cs-muted">
+                        WhatsApp akan terbuka dengan teks ini sudah terisi. Anda yang
+                        menekan kirim.
                       </p>
                     </div>
                   ) : (
@@ -771,9 +768,9 @@ export const ReportGenerator: React.FC = () => {
                       <div className="p-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-full text-zinc-400">
                         <FileText className="w-8 h-8" />
                       </div>
-                      <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Laporan belum dikompilasikan.</p>
+                      <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Laporan belum disusun.</p>
                       <p className="text-[10px] text-zinc-400 max-w-xs leading-normal">
-                        Silakan tentukan saringan periode bwi-bulanan, pilih sesi kelas belajar di samping kiri, lalu klik <b>Kompilasikan Laporan</b>.
+                        Pilih periode dan sesi di samping, lalu tekan <b>Susun laporan</b>.
                       </p>
                     </div>
                   )}
@@ -795,9 +792,9 @@ export const ReportGenerator: React.FC = () => {
               <div className="bg-amber-500/10 dark:bg-amber-950/20 border border-amber-500/20 rounded-2xl p-4 flex items-start gap-3">
                 <Sliders className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
                 <div className="space-y-1">
-                  <h4 className="text-xs font-black uppercase text-amber-700 dark:text-amber-400 tracking-wider">Lembar Kerja Interaktif Resmi</h4>
+                  <h4 className="text-xs font-black uppercase text-amber-700 dark:text-amber-400 tracking-wider">Lembar laporan Excel</h4>
                   <p className="text-xs text-zinc-650 dark:text-zinc-350 leading-relaxed font-semibold">
-                    Atur data presensi, lengkapi status SPP, catatan hafalan, serta pengiriman buletin. Data akan otomatis tersimpan dalam database lokal per periode ketika mengklik <b>Simpan Lembar Kerja</b>. Ekspor langsung menghasilkan format resmi Excel berwarna!
+                    Atur data presensi, lengkapi status SPP, catatan hafalan, serta pengiriman buletin. Data akan otomatis tersimpan dalam database lokal per periode ketika mengklik <b>Simpan draf</b>. Ekspor langsung menghasilkan format resmi Excel berwarna!
                   </p>
                 </div>
               </div>
@@ -805,7 +802,7 @@ export const ReportGenerator: React.FC = () => {
               {/* Metadata Inputs Section */}
               <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-xs space-y-4">
                 <h3 className="text-xs font-black text-zinc-800 dark:text-zinc-200 uppercase tracking-wider border-b border-zinc-100 dark:border-zinc-805 pb-2">
-                  Metadata Laporan Excel
+                  Keterangan laporan
                 </h3>
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -853,7 +850,7 @@ export const ReportGenerator: React.FC = () => {
                 <div className="pt-2">
                   <div className="flex items-center gap-1.5 mb-2">
                     <Calendar className="w-3.5 h-3.5 text-zinc-400" />
-                    <span className="text-[10px] font-black uppercase text-zinc-500 dark:text-zinc-400 tracking-wider">Atur Label Tanggal/Pekan Sesi (Kolom Presensi)</span>
+                    <span className="text-[10px] font-black uppercase text-zinc-500 dark:text-zinc-400 tracking-wider">Nama kolom pekan</span>
                   </div>
                   <div className="grid grid-cols-5 gap-2">
                     {weeks.map((wk, idx) => (
@@ -881,10 +878,10 @@ export const ReportGenerator: React.FC = () => {
                   <div>
                     <h3 className="text-xs font-black text-zinc-800 dark:text-zinc-200 uppercase tracking-wider flex items-center gap-1.5">
                       <BookOpen className="w-4 h-4 text-red-650" />
-                      <span>Daftar Nilai &amp; Presensi Santri ({studentsData.length} baris)</span>
+                      <span>Daftar santri ({studentsData.length})</span>
                     </h3>
                     <p className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-1">
-                      Prapopulasi otomatis dilakukan berdasarkan kecocokan nama dan tanggal pada log presensi.
+                      Terisi otomatis dari presensi yang sudah Anda catat.
                     </p>
                   </div>
                   <button
@@ -892,12 +889,24 @@ export const ReportGenerator: React.FC = () => {
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-zinc-100 dark:bg-zinc-950 hover:bg-zinc-200 dark:hover:bg-zinc-850 border border-zinc-200 dark:border-zinc-800 text-zinc-850 dark:text-zinc-200 text-2xs font-extrabold uppercase tracking-wider rounded-xl cursor-pointer transition-colors"
                   >
                     <UserPlus className="w-3.5 h-3.5" />
-                    <span>Tambah Santri</span>
+                    <span>Tambah santri</span>
                   </button>
                 </div>
 
-                {/* Spreadsheet View Container */}
-                <div className="overflow-x-auto border border-zinc-150 dark:border-zinc-805 rounded-xl">
+                {/* The sheet is 17 columns wide, so on a phone it has to scroll
+                    sideways. Make that scroll reachable by keyboard and say it
+                    is there, and offer the per-santri form as the way to fill
+                    it in without scrolling at all. */}
+                <p className="cs-muted">
+                  Tabel ini lebar. Geser ke samping untuk melihat semua kolom, atau
+                  tekan <b>Ubah</b> pada baris santri untuk mengisi lewat formulir.
+                </p>
+                <div
+                  className="cs-sheet"
+                  role="region"
+                  aria-label="Lembar laporan santri"
+                  tabIndex={0}
+                >
                   <table className="w-full min-w-[1250px] border-collapse text-left text-xs font-medium">
                     <thead>
                       <tr className="bg-zinc-50 dark:bg-zinc-950 text-2xs font-black uppercase tracking-wider text-zinc-500 dark:text-zinc-400 border-b border-zinc-150 dark:border-zinc-805">
@@ -914,7 +923,7 @@ export const ReportGenerator: React.FC = () => {
                         <th className="p-2 border-r border-zinc-150 dark:border-zinc-805 text-right w-28">SPP NOMINAL</th>
                         <th className="p-2 border-r border-zinc-150 dark:border-zinc-805 text-center w-16">BULETIN CETAK</th>
                         <th className="p-2 border-r border-zinc-150 dark:border-zinc-805 text-center w-16">BULETIN DGTL</th>
-                        <th className="p-2 text-center w-16">Aksi</th>
+                        <th className="p-2 text-center w-44">Aksi</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-zinc-150 dark:divide-zinc-805">
@@ -929,13 +938,7 @@ export const ReportGenerator: React.FC = () => {
                           <tr key={rIdx} className={`hover:bg-zinc-50 dark:hover:bg-zinc-950/60 transition-colors ${rowBg}`}>
                             {/* NO */}
                             <td className="p-1.5 border-r border-zinc-150 dark:border-zinc-805 text-center font-bold text-zinc-550">
-                              <button
-                                onClick={() => setEditingStudentIndex(rIdx)}
-                                className="w-7 h-7 flex items-center justify-center rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-red-500/10 hover:text-red-650 dark:hover:text-red-400 text-zinc-600 dark:text-zinc-400 font-bold transition-all cursor-pointer"
-                                title="Edit Detail Baris ini di Modal khusus Handphone"
-                              >
-                                {rIdx + 1}
-                              </button>
+                              <span>{rIdx + 1}</span>
                             </td>
 
                             {/* NAMA SANTRI */}
@@ -1084,17 +1087,22 @@ export const ReportGenerator: React.FC = () => {
                               />
                             </td>
 
-                            {/* ACTIONS */}
+                            {/* ACTIONS — labelled, because an icon with a title
+                                tooltip tells a phone user nothing. */}
                             <td className="p-1.5 text-center">
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteStudentRow(rIdx)}
-                                className="p-1.5 text-zinc-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors cursor-pointer"
-                                title="Hapus Baris Santri"
-                                disabled={studentsData.length <= 1}
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
+                              <div className="cs-sheet__actions">
+                                <Button onClick={() => setEditingStudentIndex(rIdx)}>
+                                  Ubah
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  icon={<Trash2 className="cs-icon" />}
+                                  onClick={() => handleDeleteStudentRow(rIdx)}
+                                  disabled={studentsData.length <= 1}
+                                >
+                                  Hapus
+                                </Button>
+                              </div>
                             </td>
                           </tr>
                         );
@@ -1193,7 +1201,7 @@ export const ReportGenerator: React.FC = () => {
                 {/* Catatan Area */}
                 <div>
                   <label className="block text-2xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-2">
-                    Catatan Khusus Bulanan
+                    Catatan
                   </label>
                   <textarea
                     rows={2}
@@ -1213,7 +1221,7 @@ export const ReportGenerator: React.FC = () => {
                       className="px-4 py-2 bg-zinc-100 dark:bg-zinc-850 hover:bg-zinc-200 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-white text-xs font-black rounded-xl transition-colors cursor-pointer inline-flex items-center gap-1.5"
                     >
                       <RefreshCw className="w-3.5 h-3.5" />
-                      <span>Sinkron Kehadiran</span>
+                      <span>Ambil ulang dari presensi</span>
                     </button>
                   </div>
 
@@ -1224,7 +1232,7 @@ export const ReportGenerator: React.FC = () => {
                       className="px-4.5 py-2.5 bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-black rounded-xl transition-colors cursor-pointer inline-flex items-center gap-1.5"
                     >
                       <Save className="w-3.5 h-3.5 text-zinc-300" />
-                      <span>Simpan Lembar Kerja</span>
+                      <span>Simpan draf</span>
                     </button>
                     <button
                       type="button"
@@ -1232,7 +1240,7 @@ export const ReportGenerator: React.FC = () => {
                       className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-xl shadow-xs transition-colors cursor-pointer inline-flex items-center gap-1.5"
                     >
                       <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-100" />
-                      <span>Ekspor Excel Resmi (.xls)</span>
+                      <span>Unduh Excel</span>
                     </button>
                   </div>
                 </div>
@@ -1254,7 +1262,7 @@ export const ReportGenerator: React.FC = () => {
                           <span className="text-[10px] bg-red-500/10 text-red-650 dark:text-red-400 px-2 py-0.5 rounded-md font-bold uppercase">
                             Baris #{editingStudentIndex + 1}
                           </span>
-                          <h4 className="text-sm font-black text-zinc-900 dark:text-zinc-100 uppercase mt-1">Detail Nilai &amp; SPP</h4>
+                          <h4 className="text-sm font-black text-zinc-900 dark:text-zinc-100 uppercase mt-1">Detail santri</h4>
                         </div>
                         <button
                           onClick={() => setEditingStudentIndex(null)}
