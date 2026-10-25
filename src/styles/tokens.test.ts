@@ -99,7 +99,16 @@ describe('sizing rules', () => {
     expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\)/);
   });
 
-  it('gives every focusable control a visible 3px focus ring', () => {
-    expect(css).toMatch(/:focus-visible\s*{[^}]*outline:\s*3px solid var\(--cs-focus\)/);
+  it('gives every focusable control a visible focus ring, offset from it', () => {
+    // WCAG 2.4.13 asks for an indicator at least as thick as a 2px perimeter.
+    // The ring is ink at 21:1, and the offset leaves a paper gap so it stays
+    // visible on an ink button.
+    const match = css.match(/:focus-visible\s*{([^}]*)}/);
+    expect(match, 'no :focus-visible rule').not.toBeNull();
+    const rule = (match as RegExpMatchArray)[1];
+    const width = Number(/outline:\s*(\d+)px/.exec(rule)?.[1] ?? 0);
+    expect(width).toBeGreaterThanOrEqual(2);
+    expect(rule).toContain('var(--cs-focus)');
+    expect(rule).toMatch(/outline-offset:\s*[1-9]/);
   });
 });

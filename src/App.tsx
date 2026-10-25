@@ -8,10 +8,6 @@ import { ReportGenerator } from './pages/ReportGenerator';
 import { ScheduleManagement } from './pages/ScheduleManagement';
 import { SyncManagement } from './pages/SyncManagement';
 
-// Import custom app logo image generated
-// @ts-ignore
-import logoImg from './assets/images/classsync_cyber_logo_1784268435718.jpg';
-
 import { 
   PlusCircle, 
   History, 
@@ -71,7 +67,7 @@ const MainAppContent: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#fbefef] dark:bg-zinc-950 text-zinc-850 dark:text-zinc-100 flex flex-col antialiased transition-colors duration-200">
+    <div className="cs-app">
       
       {/* Incoming data waits for an answer here rather than on the Sinkron
           page: a sync link opens the app on whatever tab was last used, and
@@ -132,42 +128,25 @@ const MainAppContent: React.FC = () => {
       </div>
 
       {/* Modernist Header */}
-      <header className="bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border-b border-zinc-150 dark:border-zinc-805/80 sticky top-0 z-40">
-        <div className="max-w-4xl mx-auto px-4 py-3.5 flex items-center justify-between gap-3">
+      <header className="cs-masthead">
+        <div className="cs-masthead__inner">
           <div className="flex items-center gap-2.5">
-            {/* Premium custom high-fidelity brand launcher logo */}
-            <div className="relative">
-              <img 
-                src={logoImg} 
-                alt="ClassSync logo" 
-                referrerPolicy="no-referrer"
-                className="w-11 h-11 object-cover rounded-xl shadow-xs border border-zinc-200/40 dark:border-zinc-800"
-              />
-              <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-brick-ember border-2 border-white dark:border-zinc-900" />
-            </div>
-
             <div>
-              <h1 className="text-sm sm:text-base font-black tracking-tight text-brick-ember leading-tight font-sans">
-                ClassSync<span className="text-zinc-700 dark:text-zinc-200 font-semibold tracking-normal text-sm ml-0.5 font-sans lowercase">.app</span>
-              </h1>
-              <p className="text-sm text-zinc-500 dark:text-zinc-400 font-black mt-0.5">Presensi kelas, tanpa internet</p>
+              <h1 className="cs-wordmark">ClassSync</h1>
+              <p className="cs-masthead__sub">Presensi kelas, tanpa internet</p>
             </div>
           </div>
 
           {/* Config & Dark toggle buttons */}
           <div className="flex items-center gap-1.5">
-            <div className={`px-2.5 py-1 rounded-md text-sm font-black border ${
-              onlineStatus
-                ? 'bg-zinc-50 dark:bg-zinc-950 text-zinc-600 dark:text-zinc-400 border-zinc-200/85 dark:border-zinc-850'
-                : 'bg-brick-ember/10 text-brick-ember border-brick-ember/20'
-            }`}>
-              {onlineStatus ? 'Siap dipakai' : 'Offline'}
-            </div>
+            {onlineStatus ? null : (
+              <span className="cs-masthead__offline">Mode offline</span>
+            )}
 
             <button
               type="button"
               onClick={() => setDarkMode(prev => !prev)}
-              className="p-1.5 rounded-lg bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-850 text-zinc-650 hover:bg-zinc-100 dark:hover:bg-zinc-900 cursor-pointer transition-colors"
+              className="cs-iconbtn"
               title="Ganti tema terang atau gelap"
               aria-label="Ganti tema terang atau gelap"
             >
@@ -196,7 +175,7 @@ const MainAppContent: React.FC = () => {
       )}
 
       {/* Main Responsive Body Container */}
-      <main className="flex-grow max-w-4xl w-full mx-auto px-4 py-6 space-y-5 pb-24">
+      <main className="cs-main">
         
         {/* Main database protection notice banner */}
         {!hideDbNotice && (
@@ -235,7 +214,7 @@ const MainAppContent: React.FC = () => {
       </main>
 
       {/* Footer view */}
-      <footer className="border-t border-zinc-200 dark:border-zinc-800/80 bg-white/50 dark:bg-zinc-900/40 py-6 select-none mt-12 pb-28">
+      <footer className="cs-footer">
         <div className="max-w-4xl mx-auto px-4 text-center space-y-1.5">
           <p className="text-sm font-black text-zinc-450 dark:text-zinc-500">ClassSync — presensi kelas dan laporan WhatsApp</p>
           <p className="text-sm text-zinc-400 dark:text-zinc-500 font-semibold font-mono">Semua data tersimpan di ponsel ini.</p>
@@ -243,7 +222,7 @@ const MainAppContent: React.FC = () => {
       </footer>
 
       {/* Sticky Mobile bottom tabs for high-fidelity native feeling */}
-      <nav aria-label="Menu utama" className="fixed bottom-0 inset-x-0 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border-t border-zinc-150 dark:border-zinc-805 px-2 py-3.5 flex items-center justify-around gap-1 z-40 shadow-[0_-5px_20px_rgba(0,0,0,0.05)] select-none">
+      <nav aria-label="Menu utama" className="cs-tabs">
         <div className="max-w-xl w-full mx-auto flex items-center justify-around gap-1">
           
           {/* Tab 1: Input presensi */}

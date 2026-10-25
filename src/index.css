@@ -1,160 +1,133 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,400;0,500;0,600;1,7..72,400&family=Public+Sans:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 @import "./styles/tokens.css";
 @import "./styles/components.css";
 
-:root {
-  --pink-tint: #faf9f6; /* Elegant warm minimalist white background */
-  --rose-warm: #f4f2eb; /* Soft minimalist light gray panels */
-  --rose-dusty: #e8e5db; /* Warm subtle borders */
-  --lavender-soft: #ff8a50; /* Softer secondary cyber orange */
-  --plum-dark: #cc4400; /* Deep rich corporate cyber orange */
-  --plum-deep: #882200; /* Rich warm dark terracotta */
-  --brick-ember: #ff5500; /* Primary Hackceleration Cyber Orange */
+/*
+ * The theme below maps Tailwind's zinc/red scales onto ink and paper.
+ *
+ * The pages carry a few hundred `text-zinc-500`, `border-zinc-200`,
+ * `bg-red-650` classes from earlier versions. Rather than rewrite every one,
+ * the scales are repointed here: a grey stays a grey but becomes our grey, and
+ * the old brand reds become ink, because in this design colour is reserved for
+ * the four attendance marks. Anything that still needs to be coloured says so
+ * explicitly with a `--cs-*` token.
+ */
 
-  --zinc-50: #faf9f6; /* Elegant minimalist warm white */
-  --zinc-100: #f4f2eb;
-  --zinc-150: #e8e5db;
-  --zinc-200: #dad7cb;
-  --zinc-250: #dad7cb;
-  --zinc-300: #a19d90;
-  --zinc-350: #6b685d; /* slate-600 equivalent */
-  --zinc-400: #4a473e; /* slate-700 equivalent */
-  --zinc-450: #2c2924; /* deep charcoal */
-  --zinc-500: #1c1a16; /* near-black */
-  --zinc-600: #1c1a16; 
-  --zinc-650: #0c0b0a; /* true deep black */
-  --zinc-700: #0c0b0a;
-  --zinc-750: #0c0b0a;
-  --zinc-800: #0c0b0a;
-  --zinc-850: #0c0b0a;
-  --zinc-900: #0c0b0a;
-  --zinc-950: #0c0b0a;
+:root {
+  --paper: #ffffff;
+  --paper-sunken: #f6f5f2;
+  --rule: #e2dfd8;
+  --rule-strong: #8c8880;
+  --ink: #000000;
+  --ink-muted: #5b5b5b;
+  --ink-soft: #767676;
 }
 
 html.dark {
-  --pink-tint: #000000; /* Absolute pitch black background */
-  --rose-warm: #0a0a0c; /* Premium dark charcoal/obsidian panels */
-  --rose-dusty: #1c1c1f; /* Sleek high-tech border color */
-  --lavender-soft: #ff5500; /* Glowing electric cyber orange */
-  --plum-dark: #ff6a1a; /* Bright neon orange highlight */
-  --plum-deep: #ffa066; /* Soft warm peach highlight text */
-  --brick-ember: #ff5500; /* Primary Hackceleration Cyber Orange */
-
-  --zinc-50: #ffffff;
-  --zinc-100: #ffffff;
-  --zinc-150: #ffffff;
-  --zinc-200: #ffffff;
-  --zinc-250: #ffffff;
-  --zinc-300: #f4f4f5;
-  --zinc-350: #f4f4f5;
-  --zinc-400: #ffe8db; /* soft warm orange text */
-  --zinc-450: #ffc9b3; 
-  --zinc-500: #ffd8c7; 
-  --zinc-600: #ffc9b3;
-  --zinc-650: #ff5500; /* Hackceleration Electric Orange */
-  --zinc-700: #160a04; /* deep dark warm copper background */
-  --zinc-750: #100702; 
-  --zinc-800: #0a0401; 
-  --zinc-850: #050200; 
-  --zinc-900: #020100; /* Obsidian black */
-  --zinc-950: #000000; /* Absolute black */
+  --paper: #111010;
+  --paper-sunken: #1b1a18;
+  --rule: #302e2b;
+  --rule-strong: #8c8880;
+  --ink: #fafaf8;
+  --ink-muted: #adaaa4;
+  --ink-soft: #8d8a85;
 }
 
 @theme {
-  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --font-sans: 'Public Sans', system-ui, -apple-system, sans-serif;
+  --font-serif: 'Literata', Georgia, serif;
+  /* The monospace face is gone; nothing in the interface is code. */
+  --font-mono: 'Public Sans', system-ui, sans-serif;
 
-  /* Dynamically mapped variables that seamlessly adapt to themes */
-  --color-pink-tint: var(--pink-tint);
-  --color-rose-warm: var(--rose-warm);
-  --color-rose-dusty: var(--rose-dusty);
-  --color-lavender-soft: var(--lavender-soft);
+  /* Greys, lightest to darkest, so existing utilities keep their intent. */
+  --color-zinc-50: var(--paper);
+  --color-zinc-100: var(--paper);
+  --color-zinc-150: var(--paper-sunken);
+  --color-zinc-200: var(--rule);
+  --color-zinc-250: var(--rule);
+  --color-zinc-300: var(--rule);
+  --color-zinc-350: var(--rule-strong);
+  --color-zinc-400: var(--ink-soft);
+  --color-zinc-450: var(--ink-muted);
+  --color-zinc-500: var(--ink-muted);
+  --color-zinc-550: var(--ink-muted);
+  --color-zinc-600: var(--ink-muted);
+  --color-zinc-650: var(--ink);
+  --color-zinc-700: var(--ink);
+  --color-zinc-750: var(--ink);
+  --color-zinc-800: var(--ink);
+  --color-zinc-850: var(--ink);
+  --color-zinc-900: var(--ink);
+  --color-zinc-950: var(--ink);
 
-  /* Premium high-contrast shades */
-  --color-plum-dark: var(--plum-dark);
-  --color-plum-deep: var(--plum-deep);
+  --color-stone-50: var(--paper);
+  --color-stone-100: var(--paper);
+  --color-stone-200: var(--paper-sunken);
+  --color-stone-300: var(--rule);
+  --color-stone-900: var(--ink);
+  --color-stone-905: var(--paper);
 
-  /* Legacy variable mappings for backward compatibility */
-  --color-brick-ember: var(--brick-ember);
-  --color-grey: var(--lavender-soft);
-  --color-white: var(--zinc-50);
-  --color-cool-steel: var(--rose-warm);
-  --color-smoky-rose: var(--rose-dusty);
+  /* The old accent becomes ink: actions no longer carry colour. */
+  --color-red-400: var(--ink-muted);
+  --color-red-500: var(--ink);
+  --color-red-600: var(--ink);
+  --color-red-650: var(--ink);
+  --color-red-700: var(--ink);
+  --color-red-750: var(--ink);
+  --color-red-755: var(--paper-sunken);
+  --color-brick-ember: var(--ink);
+  --color-grey: var(--ink-muted);
+  --color-white: var(--paper);
+  --color-cool-steel: var(--paper-sunken);
+  --color-smoky-rose: var(--rule);
 
-  /* Mapping custom palette to existing utility colors for seamless UI integration */
-  --color-red-500: var(--lavender-soft);
-  --color-red-600: var(--brick-ember);
-  --color-red-650: var(--plum-dark);
-  --color-red-700: var(--plum-deep);
-  /* Darker than red-650 so `hover:bg-red-750` actually darkens the button.
-     This previously resolved to --rose-dusty (#e8e5db), which made white
-     button labels disappear on hover. */
-  --color-red-750: var(--plum-deep);
-  --color-red-755: var(--rose-warm);
-  --color-red-400: var(--pink-tint);
-  
-  /* Dynamic zinc scale for both light and dark modes */
-  --color-zinc-50: var(--zinc-50);
-  --color-zinc-100: var(--zinc-100);
-  --color-zinc-150: var(--zinc-150);
-  --color-zinc-200: var(--zinc-200);
-  --color-zinc-250: var(--zinc-250);
-  --color-zinc-300: var(--zinc-300);
-  --color-zinc-350: var(--zinc-350);
-  --color-zinc-400: var(--zinc-400);
-  --color-zinc-450: var(--zinc-450);
-  --color-zinc-500: var(--zinc-500);
-  --color-zinc-600: var(--zinc-600);
-  --color-zinc-650: var(--zinc-650);
-  --color-zinc-700: var(--zinc-700);
-  --color-zinc-750: var(--zinc-750);
-  --color-zinc-800: var(--zinc-800);
-  --color-zinc-850: var(--zinc-850);
-  --color-zinc-900: var(--zinc-900);
-  --color-zinc-950: var(--zinc-950);
-
-  --color-stone-50: var(--zinc-50);
-  --color-stone-100: var(--zinc-50);
-  --color-stone-200: var(--rose-warm);
-  --color-stone-300: var(--lavender-soft);
-  --color-stone-900: var(--rose-warm);
-  --color-stone-905: var(--pink-tint);
-
-  /* Custom Gradients from palette */
-  --background-image-gradient-brick-top: linear-gradient(0deg, var(--pink-tint), var(--rose-warm), var(--rose-dusty), var(--lavender-soft));
-  --background-image-gradient-brick-right: linear-gradient(90deg, var(--pink-tint), var(--rose-warm), var(--rose-dusty), var(--lavender-soft));
-  --background-image-gradient-brick-bottom: linear-gradient(180deg, var(--pink-tint), var(--rose-warm), var(--rose-dusty), var(--lavender-soft));
-  --background-image-gradient-brick-left: linear-gradient(270deg, var(--pink-tint), var(--rose-warm), var(--rose-dusty), var(--lavender-soft));
-  --background-image-gradient-brick-diagonal: linear-gradient(135deg, var(--pink-tint), var(--rose-warm), var(--rose-dusty), var(--lavender-soft));
+  /* Kept so legacy references resolve; none of them should be used. */
+  --color-pink-tint: var(--paper);
+  --color-rose-warm: var(--paper-sunken);
+  --color-rose-dusty: var(--rule);
+  --color-lavender-soft: var(--ink-muted);
+  --color-plum-dark: var(--ink);
+  --color-plum-deep: var(--ink);
 }
 
 @variant dark (&:where(.dark, .dark *));
 
 body {
-  font-family: var(--font-sans);
-  background-color: var(--pink-tint); /* Warm minimalist white or obsidian black */
-  color: var(--zinc-500); /* Highly legible adaptively */
-  transition: background-color 0.2s ease, color 0.2s ease;
+  font-family: var(--cs-font-sans);
+  font-size: var(--cs-text-base);
+  line-height: var(--cs-leading-normal);
+  background-color: var(--cs-bg);
+  color: var(--cs-text);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
-html.dark body {
-  background-color: #000000; /* Deep pitch black */
-  color: #f8fafc; /* Crisp white */
+/* Dates, names and headings are set in the serif; everything else is not. */
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--cs-font-display);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: var(--cs-leading-tight);
 }
 
-/* Custom styles for animations or PWA scrollbars */
+/* Every figure in the app sits in a column of other figures. */
+time,
+output,
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 10px;
+  height: 10px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: var(--rule-strong);
 }
