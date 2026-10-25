@@ -7,6 +7,7 @@ import {STATUS_LABEL, STATUS_ORDER} from '../styles/palette';
 import {Button} from '../ui/Button';
 import {Field} from '../ui/Field';
 import {StatusPicker} from '../ui/StatusPicker';
+import {ConfirmDialog} from '../ui/ConfirmDialog';
 
 const INDO_DAYS = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 
@@ -66,6 +67,9 @@ export const AttendanceInput: React.FC = () => {
     handleSaveAttendance,
     lastSaved,
     dismissLastSaved,
+    pendingOverwrite,
+    confirmOverwrite,
+    cancelOverwrite,
     schedules,
     setActiveTab,
   } = useApp();
@@ -331,6 +335,30 @@ export const AttendanceInput: React.FC = () => {
           </Button>
         </div>
       </form>
+
+      {/* Overwriting a saved session says what is being replaced, rather than
+          the browser's unstyled "are you sure". */}
+      <ConfirmDialog
+        open={pendingOverwrite !== null}
+        title="Perbarui presensi hari ini?"
+        body={
+          <>
+            <p>
+              Sudah ada presensi tersimpan untuk{' '}
+              {pendingOverwrite ? formatIndonesianDate(pendingOverwrite.tanggal) : ''} berisi{' '}
+              {pendingOverwrite?.existingCount ?? 0} santri hadir.
+            </p>
+            <p>
+              Catatan itu akan diganti dengan yang baru ({pendingOverwrite?.peserta.length ?? 0}{' '}
+              hadir).
+            </p>
+          </>
+        }
+        confirmLabel="Perbarui presensi"
+        cancelLabel="Jangan ganti"
+        onCancel={cancelOverwrite}
+        onConfirm={() => void confirmOverwrite()}
+      />
     </motion.div>
   );
 };
