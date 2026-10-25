@@ -1,11 +1,23 @@
 import Dexie, { type Table } from 'dexie';
+import { nameKey, rosterFromRecords, statusesFromPeserta, type StatusMap, type StudentRecord } from './roster';
+
+export type { StudentRecord };
 
 export interface AbsensiRecord {
   id?: number;
   tanggal: string; // "YYYY-MM-DD"
-  peserta: string[]; // List of names
+  peserta: string[]; // Names of those present. Still authoritative - see below.
   scheduleId?: number; // Optional reference to connected weekly schedule
   createdAt: number;
+  /**
+   * Per-santri status, keyed by lower-cased name: hadir | sakit | izin | alpa.
+   *
+   * Added in v4 alongside `peserta`, never instead of it, so that an older
+   * build opening the same database still reads attendance correctly and every
+   * existing export keeps its current output. `peserta` must always equal the
+   * names whose status is 'hadir'.
+   */
+  statuses?: StatusMap;
 }
 
 export interface ScheduleRecord {
@@ -48,6 +60,7 @@ class AttendanceDatabase extends Dexie {
   absensi!: Table<AbsensiRecord>;
   schedules!: Table<ScheduleRecord>;
   excelReports!: Table<ExcelReportRecord>;
+  students!: Table<StudentRecord>;
 
   constructor() {
     super('AttendanceDatabase');
@@ -56,7 +69,71 @@ class AttendanceDatabase extends Dexie {
       schedules: '++id, tanggal, waktu, notified',
       excelReports: '++id, periodKey'
     });
+
+    /**
+     * v4 adds the santri roster and per-santri statuses.
+     *
+     * Purely additive: no existing field changes meaning or goes away, so the
+     * upgrade is safe to run and safe to roll back from. The backfill below
+     * runs before any new code reads the new tables.
+     *
+     * `scheduleId` also becomes an index - the app already queried on it, which
+     * silently failed against an unindexed property and returned nothing.
+     */
+    this.version(4)
+      .stores({
+        absensi: '++id, tanggal, createdAt, scheduleId',
+        schedules: '++id, tanggal, waktu, notified',
+        excelReports: '++id, periodKey',
+        students: '++id, &nameKey, name, active'
+      })
+      .upgrade(async (tx) => {
+        const absensi = tx.table<AbsensiRecord>('absensi');
+        const students = tx.table<StudentRecord>('students');
+
+        const existing = await absensi.toArray();
+
+        // Seed the roster from every name that has ever been recorded.
+        const now = Date.now();
+        const roster = rosterFromRecords(existing);
+        if (roster.length > 0) {
+          await students.bulkAdd(
+            roster.map((s) => ({
+              name: s.name,
+              nameKey: s.nameKey,
+              active: true,
+              createdAt: now
+            }))
+          );
+        }
+
+        // Everyone a record listed as present becomes 'hadir'. Santri the
+        // record never mentioned are left out rather than marked absent.
+        for (const record of existing) {
+          if (record.id === undefined || record.statuses) continue;
+          await absensi.update(record.id, {
+            statuses: statusesFromPeserta(record.peserta ?? [])
+          });
+        }
+      });
   }
+}
+
+/** Add a santri to the roster, or return the existing one. */
+export async function upsertStudent(name: string): Promise<StudentRecord | undefined> {
+  const key = nameKey(name);
+  if (!key) return undefined;
+
+  const found = await db.students.where('nameKey').equals(key).first();
+  if (found) return found;
+
+  const id = await db.students.add({
+    name: name.trim(),
+    nameKey: key,
+    active: true,
+    createdAt: Date.now()
+  });
+  return db.students.get(id);
 }
 
 export const db = new AttendanceDatabase();

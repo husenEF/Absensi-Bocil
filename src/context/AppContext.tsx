@@ -1,8 +1,10 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useRef } from 'react';
 import QRCode from 'qrcode';
 import jsQR from 'jsqr';
-import { db, AbsensiRecord, ScheduleRecord, checkForAndMigratePreviousDatabases } from '../db';
+import { db, upsertStudent, AbsensiRecord, ScheduleRecord, StudentRecord, checkForAndMigratePreviousDatabases } from '../db';
+import { buildStatusMap, nameKey, parseNameList, presentNames, rosterFromRecords, statusesFromPeserta, tally, type StatusKey, type StatusMap, type StatusTally } from '../roster';
 import { formatIndonesianDate, formatDateShort } from '../utils/date';
+import { biMonthlyWeeks, getBiMonthlyLabel, getRecordBiMonth, todayYMD } from '../utils/period';
 
 interface BiMonthlyPeriod {
   year: number;
@@ -17,8 +19,9 @@ interface AppContextType {
   setActiveTab: (tab: 'input' | 'riwayat' | 'laporan' | 'jadwal' | 'sinkronisasi') => void;
   darkMode: boolean;
   setDarkMode: React.Dispatch<React.SetStateAction<boolean>>;
-  toast: { message: string; type: 'success' | 'error' | 'info' } | null;
-  showToast: (message: string, type: 'success' | 'error' | 'info') => void;
+  toast: ToastState | null;
+  showToast: (message: string, type: 'success' | 'error' | 'info', action?: ToastAction) => void;
+  dismissToast: () => void;
   onlineStatus: boolean;
   deferredPrompt: any;
   executePWAPrompt: () => void;
@@ -47,6 +50,15 @@ interface AppContextType {
   lastAttendanceForSchedule: string[];
   currentActiveNames: string[];
   allRegisteredStudents: string[];
+  students: StudentRecord[];
+  sessionStatusFor: (studentName: string) => StatusKey;
+  setSessionStatus: (studentName: string, status: StatusKey) => void;
+  handleMarkAllPresent: () => void;
+  sessionTally: StatusTally;
+  untouchedCount: number;
+  handleAddStudent: (rawName: string) => Promise<boolean>;
+  lastSaved: { tanggal: string; tally: StatusTally } | null;
+  dismissLastSaved: () => void;
   handleToggleStudent: (studentName: string) => void;
   isStudentSelected: (studentName: string) => boolean;
   handleSaveAttendance: (e: React.FormEvent) => Promise<void>;
@@ -64,6 +76,7 @@ interface AppContextType {
   cancelEditing: () => void;
   saveEditedRecord: (id: number) => Promise<void>;
   handleDeleteRecord: (id: number, tanggal: string) => Promise<void>;
+  handleClearAllRecords: () => Promise<void>;
 
   // Schedules States & Handlers
   scheduleTitle: string;
@@ -100,6 +113,12 @@ interface AppContextType {
   handleGenerateQrCode: () => Promise<void>;
   handleCopyDirectSyncLink: () => Promise<void>;
   handleSmartMergeImport: (jsonData: any) => Promise<void>;
+  pendingImport: PendingImport | null;
+  confirmPendingImport: () => Promise<void>;
+  cancelPendingImport: () => void;
+  pendingOverwrite: PendingOverwrite | null;
+  confirmOverwrite: () => Promise<void>;
+  cancelOverwrite: () => void;
   handleFullBackupExport: () => Promise<void>;
   handleLoadSampleData: () => Promise<void>;
 
@@ -138,27 +157,29 @@ interface AppContextType {
   capitalizeWords: (str: string) => string;
 }
 
+/** Beyond this a QR stops being reliably scannable from another screen. */
+export const QR_SAFE_CHARS = 1200;
+
+export type ToastAction = { label: string; onAction: () => void };
+export type PendingImport = { data: any; sessions: number; schedules: number };
+
+export type PendingOverwrite = {
+  existingId: number;
+  tanggal: string;
+  existingCount: number;
+  peserta: string[];
+  statuses: StatusMap;
+  scheduleId?: number;
+};
+
+export type ToastState = {
+  message: string;
+  type: 'success' | 'error' | 'info';
+  action?: ToastAction;
+};
+
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-const getBiMonthlyLabel = (blockIndex: number, year: number) => {
-  const labels = [
-    "Januari - Februari",
-    "Maret - April",
-    "Mei - Juni",
-    "Juli - Agustus",
-    "September - Oktober",
-    "November - Desember"
-  ];
-  return `${labels[blockIndex]} ${year}`;
-};
-
-const getRecordBiMonth = (dateStr: string) => {
-  const date = new Date(dateStr);
-  const year = date.getFullYear();
-  const month = date.getMonth();
-  const blockIndex = Math.floor(month / 2);
-  return { year, blockIndex, key: `${year}-${blockIndex}` };
-};
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Active Tab navigation
@@ -170,11 +191,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return saved === 'dark';
   });
 
-  // Today dates YYYY-MM-DD
-  const [tanggalInput, setTanggalInput] = useState<string>(() => {
-    const now = new Date();
-    return now.toISOString().split('T')[0];
-  });
+  // Today's date, in local time. toISOString() is UTC, which gave the wrong
+  // day to anyone west of UTC and to WIB users before 07:00.
+  const [tanggalInput, setTanggalInput] = useState<string>(() => todayYMD());
   const [namesInput, setNamesInput] = useState<string>('');
 
   // Linked Schedule
@@ -183,6 +202,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Records & schedules fetched
   const [records, setRecords] = useState<AbsensiRecord[]>([]);
+  const [students, setStudents] = useState<StudentRecord[]>([]);
+  const [sessionStatuses, setSessionStatuses] = useState<StatusMap>({});
+  const [touchedStudents, setTouchedStudents] = useState<Set<string>>(new Set());
+  const [lastSaved, setLastSaved] = useState<{ tanggal: string; tally: StatusTally } | null>(null);
   const [schedules, setSchedules] = useState<ScheduleRecord[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
@@ -243,7 +266,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const streamRef = useRef<MediaStream | null>(null);
 
   // Toasts
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const [toast, setToast] = useState<ToastState | null>(null);
+  const [pendingImport, setPendingImport] = useState<PendingImport | null>(null);
+  const [pendingOverwrite, setPendingOverwrite] = useState<PendingOverwrite | null>(null);
+  const toastTimer = useRef<number | null>(null);
+  const restoringRef = useRef(false);
 
   // New Schedules Form States
   const [scheduleTitle, setScheduleTitle] = useState<string>('');
@@ -254,9 +281,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const reportTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Fast trigger helper: toast notifications
-  const showToast = (message: string, type: 'success' | 'error' | 'info') => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 4000);
+  /**
+   * A toast, optionally carrying one action.
+   *
+   * An undo action gets a longer life than a plain message: a toast that
+   * disappears before the teacher has read it is not an undo at all.
+   */
+  const showToast = (
+    message: string,
+    type: 'success' | 'error' | 'info',
+    action?: ToastAction
+  ) => {
+    if (toastTimer.current !== null) {
+      window.clearTimeout(toastTimer.current);
+    }
+    setToast({ message, type, action });
+    toastTimer.current = window.setTimeout(
+      () => setToast(null),
+      action ? 9000 : 4000
+    );
+  };
+
+  const dismissToast = () => {
+    if (toastTimer.current !== null) {
+      window.clearTimeout(toastTimer.current);
+    }
+    setToast(null);
   };
 
   // online monitoring
@@ -282,17 +332,57 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   // Read entire records from DB
+  /**
+   * Make sure every santri named in a record exists on the roster.
+   *
+   * The v4 upgrade seeds the roster once, but records also arrive later —
+   * from a QR or file sync, from the sample data, or from a backup import —
+   * and those paths write attendance without touching the roster. Reconciling
+   * on load keeps the two in step however the data got here.
+   */
+  const reconcileRoster = async (fromRecords: AbsensiRecord[]) => {
+    try {
+      const existing = await db.students.toArray();
+      const known = new Set(existing.map(s => s.nameKey));
+      const missing = rosterFromRecords(fromRecords).filter(s => !known.has(s.nameKey));
+
+      if (missing.length === 0) return existing;
+
+      const now = Date.now();
+      await db.students.bulkAdd(
+        missing.map(s => ({ name: s.name, nameKey: s.nameKey, active: true, createdAt: now }))
+      );
+      return db.students.toArray();
+    } catch (err) {
+      console.error('[Reconcile roster error]', err);
+      return db.students.toArray();
+    }
+  };
+
+  const loadStudents = async (fromRecords?: AbsensiRecord[]) => {
+    try {
+      const all = fromRecords
+        ? await reconcileRoster(fromRecords)
+        : await db.students.toArray();
+      setStudents(all);
+    } catch (err) {
+      console.error('[Load students error]', err);
+    }
+  };
+
   const loadRecords = async () => {
     try {
       setLoading(true);
       const data = await db.absensi.orderBy('tanggal').reverse().toArray();
       setRecords(data);
+      // Keep the roster in step with whatever records just arrived.
+      await loadStudents(data);
       // Clean up selections that might have been deleted
       const existingIds = data.map(d => d.id).filter(Boolean) as number[];
       setSelectedRecordIds(prev => prev.filter(id => existingIds.includes(id)));
     } catch (error) {
       console.error('Failed to load records from IndexedDB:', error);
-      showToast('Gagal memuat data dari database lokal.', 'error');
+      showToast('Tidak dapat memuat data dari ponsel ini.', 'error');
     } finally {
       setLoading(false);
     }
@@ -327,10 +417,56 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Smart Sync Merge Import Function
+  /**
+   * Stage an incoming dataset and ask before merging.
+   *
+   * Scanning a QR, pasting a code or picking a backup file all used to merge
+   * straight into the teacher's database with no confirmation and no way back.
+   */
   const handleSmartMergeImport = async (jsonData: any) => {
+    if (!jsonData || jsonData.app !== 'ClassSync') {
+      showToast('Berkas ini bukan cadangan ClassSync.', 'error');
+      return;
+    }
+
+    setPendingImport({
+      data: jsonData,
+      sessions: Array.isArray(jsonData.absensi) ? jsonData.absensi.length : 0,
+      schedules: Array.isArray(jsonData.schedules) ? jsonData.schedules.length : 0
+    });
+  };
+
+  const cancelPendingImport = () => setPendingImport(null);
+
+  const confirmPendingImport = async () => {
+    const staged = pendingImport;
+    setPendingImport(null);
+    if (!staged) return;
+    await applySmartMergeImport(staged.data);
+  };
+
+  const applySmartMergeImport = async (jsonData: any) => {
+    // Bring the roster across first, so santri who were absent in every
+    // session still exist on the receiving phone.
+    if (Array.isArray(jsonData.students)) {
+      for (const incoming of jsonData.students) {
+        const key = incoming?.nameKey ?? nameKey(incoming?.name ?? '');
+        if (!key) continue;
+        const found = await db.students.where('nameKey').equals(key).first();
+        if (!found) {
+          await db.students.add({
+            name: incoming.name ?? key,
+            nameKey: key,
+            active: incoming.active !== false,
+            createdAt: incoming.createdAt ?? Date.now()
+          });
+        }
+      }
+    }
+
     try {
       if (!jsonData || jsonData.app !== 'ClassSync') {
-        showToast('Format tidak valid atau bukan dari aplikasi ClassSync.', 'error');
+        showToast('Berkas ini bukan cadangan ClassSync.', 'error');
         return;
       }
 
@@ -390,11 +526,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           if (existing) {
             const combinedNames = Array.from(new Set([...existing.peserta, ...r.peserta]));
             if (combinedNames.length > existing.peserta.length) {
-              await db.absensi.update(existing.id!, { peserta: combinedNames });
+              // Statuses have to follow the names, or the history screen and
+              // the report end up disagreeing about the same child.
+              const mergedStatuses: StatusMap = {
+                ...(existing.statuses ?? {}),
+                ...((r as AbsensiRecord).statuses ?? {})
+              };
+              for (const name of combinedNames) {
+                mergedStatuses[nameKey(name)] = 'hadir';
+              }
+              await db.absensi.update(existing.id!, {
+                peserta: combinedNames,
+                statuses: mergedStatuses
+              });
               mergedAbsensiCount++;
             }
           } else {
             const { id, ...cleanRecord } = r;
+            if (!cleanRecord.statuses) {
+              cleanRecord.statuses = statusesFromPeserta(cleanRecord.peserta ?? []);
+            }
             if (localScheduleId !== undefined) {
               cleanRecord.scheduleId = localScheduleId;
             }
@@ -428,6 +579,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     loadRecords();
     loadSchedules();
+    loadStudents();
 
     const urlParams = new URLSearchParams(window.location.search);
     const syncToken = urlParams.get('sync');
@@ -436,16 +588,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       window.history.replaceState({}, document.title, cleanUrl);
 
       setTimeout(() => {
-        const conf = window.confirm("Ditemukan berkas integrasi presensi masuk dari HP tujuan via tautan! Apakah Anda setuju menggabungkannya ke database lokal IndexedDB secara pintar?");
-        if (conf) {
-          try {
-            const decodedString = decodeURIComponent(escape(atob(syncToken)));
-            const jsonData = JSON.parse(decodedString);
-            handleSmartMergeImport(jsonData);
-          } catch (err) {
-            console.error('[Decode Sync URL Param Error]', err);
-            showToast('Tautan sinkronisasi terkompresi rusak atau tidak terbaca.', 'error');
-          }
+        // Staged rather than merged: the confirmation dialog shows what is in
+        // the link before any of it touches the teacher's data.
+        try {
+          const decodedString = decodeURIComponent(escape(atob(syncToken)));
+          const jsonData = JSON.parse(decodedString);
+          handleSmartMergeImport(jsonData);
+        } catch (err) {
+          console.error('[Decode Sync URL Param Error]', err);
+          showToast('Tautan sinkronisasi rusak atau tidak terbaca.', 'error');
         }
       }, 800);
     }
@@ -651,57 +802,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const bimonthlyWeeks = useMemo(() => {
     if (!currentPeriod) return [];
-    const periodRecords = records.filter(r => getRecordBiMonth(r.tanggal).key === currentPeriod.key);
-
-    let baseDateStr = '';
-    if (periodRecords.length > 0) {
-      const dates = periodRecords.map(r => r.tanggal);
-      dates.sort();
-      baseDateStr = dates[0];
-    } else {
-      const monthStart = currentPeriod.blockIndex * 2;
-      const mStr = String(monthStart + 1).padStart(2, '0');
-      baseDateStr = `${currentPeriod.year}-${mStr}-01`;
-    }
-
-    const baseDate = new Date(baseDateStr);
-    const periodsList = [];
-    const indonesianMonths = [
-      "Januari", "Februari", "Maret", "April", "Mei", "Juni",
-      "Juli", "Agustus", "September", "Oktober", "November", "Desember"
-    ];
-
-    for (let i = 0; i < 4; i++) {
-      const start = new Date(baseDate.getTime());
-      start.setDate(baseDate.getDate() + (i * 7));
-
-      const end = new Date(start.getTime());
-      end.setDate(start.getDate() + 6);
-
-      const startStr = start.toISOString().split('T')[0];
-      const endStr = end.toISOString().split('T')[0];
-
-      const startDay = start.getDate();
-      const endDay = end.getDate();
-      const startMonth = indonesianMonths[start.getMonth()];
-      const endMonth = indonesianMonths[end.getMonth()];
-      const startYear = start.getFullYear();
-
-      let periodLabel = `${startDay}-${endDay} ${startMonth} ${startYear}`;
-      if (startMonth !== endMonth) {
-        periodLabel = `${startDay} ${startMonth}-${endDay} ${endMonth} ${startYear}`;
-      }
-
-      periodsList.push({
-        id: i + 1,
-        title: periodLabel,
-        start: startStr,
-        end: endStr,
-        isWeek1: i === 0
-      });
-    }
-
-    return periodsList;
+    const periodDates = records
+      .filter(r => getRecordBiMonth(r.tanggal).key === currentPeriod.key)
+      .map(r => r.tanggal);
+    return biMonthlyWeeks(currentPeriod, periodDates);
   }, [currentPeriod, records]);
 
   // Update selection states for reports when filters or period changes
@@ -726,21 +830,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       .join(' ');
   };
 
+  /**
+   * The santri roster.
+   *
+   * This used to fall back to six invented names when the database was empty,
+   * so a brand-new teacher's first save recorded children who do not exist.
+   * An empty roster is now genuinely empty, and the UI asks them to add the
+   * first santri.
+   */
   const allRegisteredStudents = useMemo(() => {
-    const listSet = new Set<string>();
-    records.forEach(rec => {
-      rec.peserta.forEach(name => {
-        const clean = name.trim();
-        if (clean) listSet.add(clean);
-      });
-    });
-
-    if (listSet.size === 0) {
-      return ['Husen', 'Budi', 'Ahmad', 'Siti', 'Umar', 'Fatimah'];
-    }
-
-    return Array.from(listSet).sort((a, b) => a.localeCompare(b, 'id', { sensitivity: 'base' }));
-  }, [records]);
+    return students
+      .filter(s => s.active)
+      .map(s => s.name)
+      .sort((a, b) => a.localeCompare(b, 'id', { sensitivity: 'base' }));
+  }, [students]);
 
   const currentActiveNames = useMemo(() => {
     return namesInput
@@ -767,89 +870,275 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return currentActiveNames.some(name => name.toLowerCase() === studentName.toLowerCase());
   };
 
+  /**
+   * Status for one santri in the session being edited.
+   *
+   * Everyone starts at Hadir, so the teacher only touches the exceptions —
+   * the pattern every established register app uses.
+   */
+  /**
+   * Load the statuses already saved for this date and class.
+   *
+   * Without this, reopening a session saved earlier starts every santri back
+   * at Hadir, so saving again quietly erased the absences already recorded —
+   * the record's own `statuses` were never read back in.
+   */
+  useEffect(() => {
+    let cancelled = false;
+
+    const load = async () => {
+      if (!tanggalInput) return;
+      try {
+        const sameDate = await db.absensi.where('tanggal').equals(tanggalInput).toArray();
+        const linkedId = selectedScheduleId ? Number(selectedScheduleId) : undefined;
+        const existing = sameDate.find(r => (r.scheduleId ?? undefined) === linkedId);
+        if (cancelled) return;
+
+        if (existing?.statuses && Object.keys(existing.statuses).length > 0) {
+          setSessionStatuses(existing.statuses);
+          setTouchedStudents(new Set(Object.keys(existing.statuses)));
+        } else if (existing) {
+          const fromNames = statusesFromPeserta(existing.peserta ?? []);
+          setSessionStatuses(fromNames);
+          setTouchedStudents(new Set(Object.keys(fromNames)));
+        } else {
+          setSessionStatuses({});
+          setTouchedStudents(new Set());
+        }
+      } catch (err) {
+        console.error('[Load session statuses error]', err);
+      }
+    };
+
+    load();
+    return () => { cancelled = true; };
+  }, [tanggalInput, selectedScheduleId, records]);
+
+  const sessionStatusFor = (studentName: string): StatusKey => {
+    return sessionStatuses[nameKey(studentName)] ?? 'hadir';
+  };
+
+  const setSessionStatus = (studentName: string, status: StatusKey) => {
+    setSessionStatuses(prev => ({ ...prev, [nameKey(studentName)]: status }));
+    setTouchedStudents(prev => {
+      const next = new Set(prev);
+      next.add(nameKey(studentName));
+      return next;
+    });
+  };
+
+  const handleMarkAllPresent = () => {
+    const next: StatusMap = {};
+    allRegisteredStudents.forEach(name => {
+      next[nameKey(name)] = 'hadir';
+    });
+    setSessionStatuses(next);
+    setTouchedStudents(new Set(allRegisteredStudents.map(nameKey)));
+    showToast('Semua santri ditandai hadir.', 'info');
+  };
+
+  const sessionTally = useMemo<StatusTally>(() => {
+    return tally(buildStatusMap(allRegisteredStudents, sessionStatuses));
+  }, [allRegisteredStudents, sessionStatuses]);
+
+  /** Santri whose status the teacher has not looked at yet. */
+  const untouchedCount = useMemo(() => {
+    return allRegisteredStudents.filter(n => !touchedStudents.has(nameKey(n))).length;
+  }, [allRegisteredStudents, touchedStudents]);
+
+  const dismissLastSaved = () => setLastSaved(null);
+
+  const handleAddStudent = async (rawName: string): Promise<boolean> => {
+    const names = parseNameList(rawName);
+    if (names.length === 0) {
+      showToast('Masukkan nama santri terlebih dahulu.', 'error');
+      return false;
+    }
+
+    try {
+      for (const name of names) {
+        await upsertStudent(name);
+      }
+      await loadStudents();
+      showToast(
+        names.length === 1
+          ? `${names[0]} ditambahkan ke daftar santri.`
+          : `${names.length} santri ditambahkan.`,
+        'success'
+      );
+      return true;
+    } catch (err) {
+      console.error('[Add student error]', err);
+      showToast('Gagal menambahkan santri.', 'error');
+      return false;
+    }
+  };
+
   // Create or Update Attendance Record
   const handleSaveAttendance = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!tanggalInput) {
-      showToast('Mohon pilih tanggal kegiatan belajar.', 'error');
+      showToast('Pilih tanggal kegiatan terlebih dahulu.', 'error');
       return;
     }
 
-    if (!namesInput.trim()) {
-      showToast('Mohon masukkan minimal satu nama peserta.', 'error');
+    // The roster is the source of truth. Names typed into the box are added
+    // to it first, so both ways of working end up in the same place.
+    const typed = parseNameList(namesInput);
+    const rosterNames = allRegisteredStudents.length > 0 ? allRegisteredStudents : typed;
+
+    if (rosterNames.length === 0) {
+      showToast('Tambahkan santri terlebih dahulu.', 'error');
       return;
     }
 
-    const parsedPeserta = namesInput
-      .split(',')
-      .map(name => capitalizeWords(name.trim()))
-      .filter(name => name.length > 0);
+    const statuses = buildStatusMap(rosterNames, sessionStatuses);
+    const parsedPeserta = presentNames(rosterNames, statuses);
 
-    if (parsedPeserta.length === 0) {
-      showToast('Daftar peserta tidak valid.', 'error');
-      return;
+    if (parsedPeserta.length === 0 && sessionTally.hadir === 0) {
+      const proceed = window.confirm(
+        'Tidak ada santri yang hadir pada sesi ini. Simpan tetap?'
+      );
+      if (!proceed) return;
     }
 
     try {
-      const existing = await db.absensi.where('tanggal').equals(tanggalInput).first();
+      // A date can hold more than one session when each is linked to a
+      // different schedule, so match on the pair rather than the date alone.
+      const sameDate = await db.absensi.where('tanggal').equals(tanggalInput).toArray();
+      const linkedId = selectedScheduleId ? Number(selectedScheduleId) : undefined;
+      const existing = sameDate.find(r => (r.scheduleId ?? undefined) === linkedId);
 
       if (existing) {
-        const confirmOverwrite = window.confirm(
-          `Data presensi untuk tanggal ${formatIndonesianDate(tanggalInput)} sudah ada. Apakah Anda ingin memperbaruinya?`
-        );
-        if (!confirmOverwrite) return;
-
-        await db.absensi.update(existing.id!, {
-          peserta: parsedPeserta,
-          scheduleId: selectedScheduleId,
-          createdAt: Date.now()
-        });
-        showToast(`Presensi tanggal ${formatIndonesianDate(tanggalInput)} berhasil diperbarui!`, 'success');
-      } else {
-        await db.absensi.add({
+        // Overwriting a saved session replaces it, so it is staged and the
+        // page asks first — with what is being replaced, not "are you sure".
+        setPendingOverwrite({
+          existingId: existing.id!,
           tanggal: tanggalInput,
+          existingCount: existing.peserta?.length ?? 0,
           peserta: parsedPeserta,
-          scheduleId: selectedScheduleId,
-          createdAt: Date.now()
+          statuses,
+          scheduleId: selectedScheduleId
         });
-        showToast('Presensi berhasil disimpan!', 'success');
+        return;
       }
+
+      await db.absensi.add({
+        tanggal: tanggalInput,
+        peserta: parsedPeserta,
+        statuses,
+        scheduleId: selectedScheduleId,
+        createdAt: Date.now()
+      });
+      showToast('Presensi tersimpan.', 'success');
 
       setNamesInput('');
       setSelectedScheduleId(undefined);
+      setSessionStatuses({});
+      setTouchedStudents(new Set());
+      setLastSaved({ tanggal: tanggalInput, tally: tally(statuses) });
       loadRecords();
-
-      setTimeout(() => {
-        setActiveTab('riwayat');
-      }, 500);
+      loadStudents();
+      // Saving used to jump to the Riwayat tab half a second later, which left
+      // the teacher on a screen they did not ask for. They stay here, and the
+      // confirmation offers the next step instead.
 
     } catch (err) {
       console.error('Error adding attendance:', err);
-      showToast('Gagal menyimpan ke database lokal.', 'error');
+      showToast('Tidak dapat menyimpan ke ponsel ini.', 'error');
     }
   };
 
   // Delete Individual Record
-  const handleDeleteRecord = async (id: number, tanggal: string) => {
-    const confirmDelete = window.confirm(
-      `Apakah Anda yakin ingin menghapus data presensi tanggal ${formatIndonesianDate(tanggal)}?`
-    );
-    if (!confirmDelete) return;
+  /**
+   * Delete one session.
+   *
+   * This asked for confirmation through a native dialog. Deleting a single
+   * session is routine and perfectly reversible, so it now happens at once
+   * and offers an undo instead — the dialog only taught people to dismiss
+   * dialogs. Irreversible actions still confirm; see handleClearAllRecords.
+   */
+  const cancelOverwrite = () => setPendingOverwrite(null);
+
+  const confirmOverwrite = async () => {
+    const staged = pendingOverwrite;
+    setPendingOverwrite(null);
+    if (!staged) return;
 
     try {
+      await db.absensi.update(staged.existingId, {
+        peserta: staged.peserta,
+        statuses: staged.statuses,
+        scheduleId: staged.scheduleId,
+        createdAt: Date.now()
+      });
+      showToast(`Presensi ${formatIndonesianDate(staged.tanggal)} diperbarui.`, 'success');
+
+      setNamesInput('');
+      setSelectedScheduleId(undefined);
+      setSessionStatuses({});
+      setTouchedStudents(new Set());
+      setLastSaved({ tanggal: staged.tanggal, tally: tally(staged.statuses) });
+      loadRecords();
+    } catch (err) {
+      console.error('Error updating attendance:', err);
+      showToast('Tidak dapat menyimpan ke ponsel ini.', 'error');
+    }
+  };
+
+  const handleDeleteRecord = async (id: number, tanggal: string) => {
+    try {
+      const removed = await db.absensi.get(id);
+      if (!removed) return;
+
       await db.absensi.delete(id);
-      showToast('Data presensi berhasil dihapus.', 'success');
 
       if (reportGenerated) {
         setReportGenerated(false);
         setReportText('');
       }
 
-      loadRecords();
+      await loadRecords();
+
+      showToast(`Presensi ${formatIndonesianDate(tanggal)} dihapus.`, 'success', {
+        label: 'Urungkan',
+        onAction: async () => {
+          // A second tap before React commits would add the record twice.
+          if (restoringRef.current) return;
+          restoringRef.current = true;
+          try {
+            const { id: _oldId, ...rest } = removed;
+            await db.absensi.add(rest);
+            await loadRecords();
+            showToast('Presensi dikembalikan.', 'success');
+          } catch (err) {
+            console.error('Error restoring record:', err);
+            showToast('Tidak dapat mengembalikan presensi.', 'error');
+          } finally {
+            restoringRef.current = false;
+          }
+        }
+      });
     } catch (err) {
       console.error('Error deleting record:', err);
-      showToast('Gagal menghapus data.', 'error');
+      showToast('Tidak dapat menghapus.', 'error');
+    }
+  };
+
+  /**
+   * Erase every session. Irreversible, so it keeps a confirmation — and
+   * offers a backup first, which is the difference between "confirmed" and
+   * actually recoverable.
+   */
+  const handleClearAllRecords = async () => {
+    try {
+      await db.absensi.clear();
+      await loadRecords();
+      showToast('Semua presensi dihapus.', 'success');
+    } catch (err) {
+      console.error('Error clearing records:', err);
+      showToast('Gagal menghapus presensi.', 'error');
     }
   };
 
@@ -884,9 +1173,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       .filter(name => name.length > 0);
 
     try {
+      // Keep the invariant that peserta is exactly the names marked hadir.
+      // Absences recorded for other santri are preserved; names dropped from
+      // the hadir list stop being claimed as present.
+      const existingRecord = await db.absensi.get(id);
+      const updatedStatuses: StatusMap = {};
+      for (const [key, value] of Object.entries(existingRecord?.statuses ?? {})) {
+        if (value !== 'hadir') updatedStatuses[key] = value as StatusKey;
+      }
+      for (const name of updatedPeserta) {
+        updatedStatuses[nameKey(name)] = 'hadir';
+      }
+
       await db.absensi.update(id, {
         tanggal: editingTanggal,
         peserta: updatedPeserta,
+        statuses: updatedStatuses,
         scheduleId: editingScheduleId,
         createdAt: Date.now()
       });
@@ -901,7 +1203,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     } catch (err) {
       console.error('Error updating edited record:', err);
-      showToast('Gagal memperbarui presensi.', 'error');
+      showToast('Tidak dapat memperbarui presensi.', 'error');
     }
   };
 
@@ -928,7 +1230,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const handleExportCSV = () => {
     const selected = records.filter(r => r.id && selectedRecordIds.includes(r.id));
     if (selected.length === 0) {
-      showToast('Silakan pilih minimal satu presensi untuk diekspor.', 'error');
+      showToast('Pilih minimal satu sesi untuk diekspor.', 'error');
       return;
     }
 
@@ -946,7 +1248,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const handleExportJSON = () => {
     const selected = records.filter(r => r.id && selectedRecordIds.includes(r.id));
     if (selected.length === 0) {
-      showToast('Silakan pilih minimal satu presensi untuk diekspor.', 'error');
+      showToast('Pilih minimal satu sesi untuk diekspor.', 'error');
       return;
     }
 
@@ -957,7 +1259,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const handleCopySelectedCSV = () => {
     const selected = records.filter(r => r.id && selectedRecordIds.includes(r.id));
     if (selected.length === 0) {
-      showToast('Silakan pilih minimal satu presensi untuk disalin.', 'error');
+      showToast('Pilih minimal satu sesi untuk disalin.', 'error');
       return;
     }
 
@@ -971,22 +1273,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const csvContent = [headers, ...rows].join('\n');
     navigator.clipboard.writeText(csvContent)
       .then(() => showToast('Format CSV berhasil disalin ke clipboard!', 'success'))
-      .catch(() => showToast('Gagal menyalin teks.', 'error'));
+      .catch(() => showToast('Tidak dapat menyalin teks.', 'error'));
   };
 
   // Form schedules add/delete
   const handleAddSchedule = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!scheduleTitle.trim()) {
-      showToast('Mohon masukkan judul sesi jadwal.', 'error');
+      showToast('Isi nama kelas.', 'error');
       return;
     }
     if (!scheduleHari) {
-      showToast('Mohon tentukan hari sesi jadwal.', 'error');
+      showToast('Pilih hari kelas.', 'error');
       return;
     }
     if (!scheduleWaktu) {
-      showToast('Mohon tentukan waktu sesi jadwal.', 'error');
+      showToast('Isi jam mulai kelas.', 'error');
       return;
     }
 
@@ -1005,7 +1307,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       loadSchedules();
     } catch (err) {
       console.error("Failed to add schedule:", err);
-      showToast('Gagal mendaftarkan jadwal ke DB.', 'error');
+      showToast('Tidak dapat menyimpan jadwal.', 'error');
     }
   };
 
@@ -1019,7 +1321,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       loadSchedules();
     } catch (err) {
       console.error("Failed to delete schedule:", err);
-      showToast('Gagal menghapus jadwal.', 'error');
+      showToast('Tidak dapat menghapus jadwal.', 'error');
     }
   };
 
@@ -1027,26 +1329,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const handleGenerateSyncHash = async () => {
     try {
       const allAbsensi = await db.absensi.toArray();
+      const allStudents = await db.students.toArray();
       const allSchedules = await db.schedules.toArray();
 
       if (allAbsensi.length === 0 && allSchedules.length === 0) {
-        showToast('Database lokal Anda masih kosong, tidak ada data untuk disinkronisasi.', 'error');
+        showToast('Belum ada data untuk dibagikan.', 'error');
         return;
       }
 
       const backupData = {
         app: 'ClassSync',
-        version: '2.1',
+        version: '2.2',
         exportedAt: Date.now(),
         absensi: allAbsensi,
-        schedules: allSchedules
+        schedules: allSchedules,
+        // Santri who were never 'hadir' appear in no record's peserta, so
+        // without this the roster cannot be rebuilt and they vanish.
+        students: allStudents
       };
 
       const jsonString = JSON.stringify(backupData);
       const u8String = unescape(encodeURIComponent(jsonString));
       const b64 = btoa(u8String);
       setSyncHashOutput(b64);
-      showToast('Kode Sinkronisasi Instan berhasil dibuat! Silakan salin.', 'success');
+      showToast('Kode dibuat. Salin lalu tempel di HP tujuan.', 'success');
     } catch (err) {
       console.error('[Generate Sync Hash Error]', err);
       showToast('Gagal menciptakan kode sinkronisasi.', 'error');
@@ -1055,7 +1361,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const handleImportSyncHash = async () => {
     if (!syncInputText || syncInputText.trim() === '') {
-      showToast('Masukkan kode sinkronisasi terlebih dahulu.', 'error');
+      showToast('Tempel kode sinkronisasi terlebih dahulu.', 'error');
       return;
     }
 
@@ -1064,12 +1370,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const decodedString = decodeURIComponent(escape(atob(cleanHash)));
       const jsonData = JSON.parse(decodedString);
 
+      // Staged, not merged yet — keep the pasted code so "Jangan gabungkan"
+      // does not leave the teacher with nothing to retry.
       await handleSmartMergeImport(jsonData);
-      setSyncInputText('');
-      setSyncHashOutput('');
     } catch (err) {
       console.error('[Decode Sync Hash Error]', err);
-      showToast('Kode sinkronisasi salah atau tidak dapat dibaca.', 'error');
+      showToast('Kode tidak terbaca. Periksa lalu tempel ulang.', 'error');
     }
   };
 
@@ -1090,8 +1396,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     } catch (err: any) {
       console.error('[Camera Access Error]', err);
-      setScanError('Gagal mengakses kamera. Mohon pastikan izin akses kamera aktif.');
-      showToast('Gagal membuka kamera perangkat.', 'error');
+      setScanError('Tidak dapat membuka kamera. Periksa izin kamera di pengaturan browser.');
+      showToast('Tidak dapat membuka kamera.', 'error');
     }
   };
 
@@ -1148,25 +1454,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const handleGenerateQrCode = async () => {
     try {
       const allAbsensi = await db.absensi.toArray();
+      const allStudents = await db.students.toArray();
       const allSchedules = await db.schedules.toArray();
 
       if (allAbsensi.length === 0 && allSchedules.length === 0) {
-        showToast('Database lokal Anda kosong. Tidak ada data untuk dibagikan!', 'error');
+        showToast('Belum ada data untuk dibagikan.', 'error');
         return;
       }
 
       const backupData = {
         app: 'ClassSync',
-        version: '2.1',
+        version: '2.2',
         exportedAt: Date.now(),
         absensi: allAbsensi,
-        schedules: allSchedules
+        schedules: allSchedules,
+        // Santri who were never 'hadir' appear in no record's peserta, so
+        // without this the roster cannot be rebuilt and they vanish.
+        students: allStudents
       };
 
       const jsonString = JSON.stringify(backupData);
 
-      if (jsonString.length > 3900) {
-        showToast('Data Anda terlalu besar untuk QR Code! Mohon gunakan Metode 3 (Ekspor Berkas JSON) agar aman.', 'error');
+      // A QR holding ~1.2 KB is already at the edge of what a mid-range phone
+      // can read off another phone's screen, and splitting across several
+      // codes is a known usability failure. Send people to the file instead.
+      if (jsonString.length > QR_SAFE_CHARS) {
+        showToast('Data Anda sudah terlalu banyak untuk QR. Gunakan "Unduh cadangan" lalu kirim filenya.', 'error');
         return;
       }
 
@@ -1195,19 +1508,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const handleCopyDirectSyncLink = async () => {
     try {
       const allAbsensi = await db.absensi.toArray();
+      const allStudents = await db.students.toArray();
       const allSchedules = await db.schedules.toArray();
 
       if (allAbsensi.length === 0 && allSchedules.length === 0) {
-        showToast('Database lokal kosong. Belum ada data untuk dipasang ke tautan!', 'error');
+        showToast('Belum ada data untuk dibuatkan tautan.', 'error');
         return;
       }
 
       const backupData = {
         app: 'ClassSync',
-        version: '2.1',
+        version: '2.2',
         exportedAt: Date.now(),
         absensi: allAbsensi,
-        schedules: allSchedules
+        schedules: allSchedules,
+        // Santri who were never 'hadir' appear in no record's peserta, so
+        // without this the roster cannot be rebuilt and they vanish.
+        students: allStudents
       };
 
       const jsonString = JSON.stringify(backupData);
@@ -1222,7 +1539,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         })
         .catch(() => {
           setSyncHashOutput(syncUrl);
-          showToast('Tautan gagal otomatis disalin. Silakan gunakan tab Teks untuk menyalinnya.', 'info');
+          showToast('Tautan tidak dapat disalin otomatis. Gunakan "Buat kode" di bawah.', 'info');
         });
     } catch (error) {
       console.error('[Copy Sync Link Tool Error]', error);
@@ -1233,13 +1550,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const handleFullBackupExport = async () => {
     try {
       const allAbsensi = await db.absensi.toArray();
+      const allStudents = await db.students.toArray();
       const allSchedules = await db.schedules.toArray();
       const backupData = {
         app: 'ClassSync',
-        version: '2.1',
+        version: '2.2',
         exportedAt: Date.now(),
         absensi: allAbsensi,
-        schedules: allSchedules
+        schedules: allSchedules,
+        // Santri who were never 'hadir' appear in no record's peserta, so
+        // without this the roster cannot be rebuilt and they vanish.
+        students: allStudents
       };
       const jsonContent = JSON.stringify(backupData, null, 2);
       downloadFile(jsonContent, `ClassSync-cadangan-lengkap-${new Date().toISOString().split('T')[0]}.json`, 'application/json;charset=utf-8;');
@@ -1270,7 +1591,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (!confirmLoad) return;
 
       await db.absensi.clear();
-      await db.absensi.bulkAdd(sampleRecords);
+      await db.absensi.bulkAdd(
+        sampleRecords.map(r => ({ ...r, statuses: statusesFromPeserta(r.peserta) }))
+      );
       showToast('Berhasil memuat data contoh untuk periode Mei-Juni 2026!', 'success');
       loadRecords();
 
@@ -1291,6 +1614,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const label = currentPeriod ? currentPeriod.label : "Mei-Juni 2026";
     const lines = [
+      // Verbatim: this is the report the coordinator reads, and its wording
+      // is a contract with them, not UI copy. Do not 'improve' it.
       `Mohon untuk dikirimkan Laporan Kursus periode ${label}`,
       ""
     ];
@@ -1362,7 +1687,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           setTimeout(() => setCopied(false), 3000);
         }
       } catch (fallbackErr) {
-        showToast('Salin otomatis gagal. Mohon pilih dan salin teks secara manual.', 'error');
+        showToast('Tidak dapat menyalin otomatis. Pilih teksnya lalu salin manual.', 'error');
       }
     }
   };
@@ -1426,6 +1751,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setDarkMode,
       toast,
       showToast,
+      dismissToast,
       onlineStatus,
       deferredPrompt,
       executePWAPrompt,
@@ -1452,6 +1778,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       lastAttendanceForSchedule,
       currentActiveNames,
       allRegisteredStudents,
+      students,
+      sessionStatusFor,
+      setSessionStatus,
+      handleMarkAllPresent,
+      sessionTally,
+      untouchedCount,
+      handleAddStudent,
+      lastSaved,
+      dismissLastSaved,
       handleToggleStudent,
       isStudentSelected,
       handleSaveAttendance,
@@ -1468,6 +1803,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       cancelEditing,
       saveEditedRecord,
       handleDeleteRecord,
+      handleClearAllRecords,
 
       scheduleTitle,
       setScheduleTitle,
@@ -1502,6 +1838,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       handleGenerateQrCode,
       handleCopyDirectSyncLink,
       handleSmartMergeImport,
+      pendingImport,
+      pendingOverwrite,
+      confirmOverwrite,
+      cancelOverwrite,
+      confirmPendingImport,
+      cancelPendingImport,
       handleFullBackupExport,
       handleLoadSampleData,
 
