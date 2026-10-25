@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AppProvider, useApp } from './context/AppContext';
+import { ConfirmDialog } from './ui/ConfirmDialog';
 import { AttendanceInput } from './pages/AttendanceInput';
 import { AttendanceHistory } from './pages/AttendanceHistory';
 import { ReportGenerator } from './pages/ReportGenerator';
@@ -39,6 +40,9 @@ const MainAppContent: React.FC = () => {
     setDarkMode,
     toast,
     dismissToast,
+    pendingImport,
+    confirmPendingImport,
+    cancelPendingImport,
     onlineStatus,
     deferredPrompt,
     executePWAPrompt,
@@ -69,10 +73,38 @@ const MainAppContent: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#fbefef] dark:bg-zinc-950 text-zinc-850 dark:text-zinc-100 flex flex-col antialiased transition-colors duration-200">
       
+      {/* Incoming data waits for an answer here rather than on the Sinkron
+          page: a sync link opens the app on whatever tab was last used, and
+          the link is stripped from the URL straight away, so a dialog that
+          only existed on one page meant the data was silently dropped. */}
+      <ConfirmDialog
+        open={pendingImport !== null}
+        title="Gabungkan data ini?"
+        body={
+          <>
+            <p>
+              Data yang masuk berisi {pendingImport?.sessions ?? 0} sesi presensi dan{' '}
+              {pendingImport?.schedules ?? 0} jadwal.
+            </p>
+            <p>
+              Data ini akan digabungkan dengan yang sudah ada di HP ini. Presensi pada
+              tanggal yang sama akan disatukan, bukan ditimpa.
+            </p>
+          </>
+        }
+        confirmLabel="Gabungkan data"
+        cancelLabel="Jangan gabungkan"
+        onCancel={cancelPendingImport}
+        onConfirm={() => void confirmPendingImport()}
+      />
+
       {/* Messages, with an optional single action such as Urungkan. */}
-      <AnimatePresence>
-        {toast && (
-          <div className="cs-toast__wrap" role="status" aria-live="polite">
+      {/* The live region is always in the DOM. A region created together with
+          its text is not announced by most screen readers, so every toast —
+          including the undo — was silent to assistive technology. */}
+      <div className="cs-toast__wrap" role="status" aria-live="polite">
+        <AnimatePresence>
+          {toast && (
             <motion.div
               initial={{ opacity: 0, scale: 0.96, y: -16 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -95,9 +127,9 @@ const MainAppContent: React.FC = () => {
                 </button>
               )}
             </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>
+      </div>
 
       {/* Modernist Header */}
       <header className="bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border-b border-zinc-150 dark:border-zinc-805/80 sticky top-0 z-40">

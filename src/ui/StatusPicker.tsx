@@ -4,6 +4,8 @@ import {STATUS_CODE, STATUS_LABEL, STATUS_ORDER, type StatusKey} from '../styles
 type Props = {
   /** Who this row is about — used to build each option's accessible name. */
   readonly personName: string;
+  /** Unique per row. Names alone collide when two differ only by case. */
+  readonly groupId: string;
   readonly value: StatusKey;
   readonly onChange: (next: StatusKey) => void;
 };
@@ -19,8 +21,8 @@ type Props = {
  * Implemented as real radios so arrow keys work and the group announces as
  * "Status kehadiran <name>, Hadir, 1 of 4".
  */
-export const StatusPicker: React.FC<Props> = ({personName, value, onChange}) => {
-  const groupName = `status-${personName.replace(/\s+/g, '-').toLowerCase()}`;
+export const StatusPicker: React.FC<Props> = ({personName, groupId, value, onChange}) => {
+  const groupName = `status-${groupId}`;
 
   return (
     <div

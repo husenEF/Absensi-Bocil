@@ -46,9 +46,6 @@ export const SyncManagement: React.FC = () => {
     handleGenerateQrCode,
     handleCopyDirectSyncLink,
     handleSmartMergeImport,
-    pendingImport,
-    confirmPendingImport,
-    cancelPendingImport,
     handleFullBackupExport,
     handleLoadSampleData,
     showToast
@@ -360,13 +357,16 @@ export const SyncManagement: React.FC = () => {
           </div>
         </div>
 
-        {/* Demo data load shortcut for easier reviews */}
+        {/* Only offered when there is nothing to destroy. Loading the sample
+            wipes every real session, and it used to sit here permanently,
+            styled like any other button, next to the backup controls. */}
+        {records.length === 0 && schedules.length === 0 ? (
         <div className="bg-red-500/[0.01] dark:bg-red-950/[0.05] border border-red-500/10 dark:border-red-900/10 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 select-none">
           <div className="flex items-center gap-2">
             <Database className="w-4.5 h-4.5 text-red-650" />
             <div>
               <h4 className="text-sm font-bold text-zinc-800 dark:text-zinc-200">Coba dengan data contoh</h4>
-              <p className="text-sm text-zinc-400">Mengisi aplikasi dengan presensi contoh supaya Anda bisa mencoba laporannya.</p>
+              <p className="text-sm text-zinc-400">Mengisi aplikasi dengan presensi contoh supaya Anda bisa mencoba laporannya. Hapus kapan saja lewat Riwayat.</p>
             </div>
           </div>
 
@@ -378,31 +378,9 @@ export const SyncManagement: React.FC = () => {
             Muat data contoh
           </button>
         </div>
+        ) : null}
       </div>
 
-      {/* Nothing merges until the teacher has seen what is in it. Scanning a
-          QR, pasting a code and opening a backup all used to write straight
-          into their data with no confirmation and no way back. */}
-      <ConfirmDialog
-        open={pendingImport !== null}
-        title="Gabungkan data ini?"
-        body={
-          <>
-            <p>
-              Data yang masuk berisi {pendingImport?.sessions ?? 0} sesi presensi dan{' '}
-              {pendingImport?.schedules ?? 0} jadwal.
-            </p>
-            <p>
-              Data ini akan digabungkan dengan yang sudah ada di HP ini. Presensi pada
-              tanggal yang sama akan disatukan, bukan ditimpa.
-            </p>
-          </>
-        }
-        confirmLabel="Gabungkan data"
-        cancelLabel="Jangan gabungkan"
-        onCancel={cancelPendingImport}
-        onConfirm={() => void confirmPendingImport()}
-      />
     </motion.div>
   );
 };

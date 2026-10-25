@@ -76,6 +76,7 @@ interface AppContextType {
   cancelEditing: () => void;
   saveEditedRecord: (id: number) => Promise<void>;
   handleDeleteRecord: (id: number, tanggal: string) => Promise<void>;
+  handleClearAllRecords: () => Promise<void>;
 
   // Schedules States & Handlers
   scheduleTitle: string;
@@ -112,6 +113,12 @@ interface AppContextType {
   handleGenerateQrCode: () => Promise<void>;
   handleCopyDirectSyncLink: () => Promise<void>;
   handleSmartMergeImport: (jsonData: any) => Promise<void>;
+  pendingImport: PendingImport | null;
+  confirmPendingImport: () => Promise<void>;
+  cancelPendingImport: () => void;
+  pendingOverwrite: PendingOverwrite | null;
+  confirmOverwrite: () => Promise<void>;
+  cancelOverwrite: () => void;
   handleFullBackupExport: () => Promise<void>;
   handleLoadSampleData: () => Promise<void>;
 
@@ -263,6 +270,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [pendingImport, setPendingImport] = useState<PendingImport | null>(null);
   const [pendingOverwrite, setPendingOverwrite] = useState<PendingOverwrite | null>(null);
   const toastTimer = useRef<number | null>(null);
+  const restoringRef = useRef(false);
 
   // New Schedules Form States
   const [scheduleTitle, setScheduleTitle] = useState<string>('');
@@ -438,6 +446,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const applySmartMergeImport = async (jsonData: any) => {
+    // Bring the roster across first, so santri who were absent in every
+    // session still exist on the receiving phone.
+    if (Array.isArray(jsonData.students)) {
+      for (const incoming of jsonData.students) {
+        const key = incoming?.nameKey ?? nameKey(incoming?.name ?? '');
+        if (!key) continue;
+        const found = await db.students.where('nameKey').equals(key).first();
+        if (!found) {
+          await db.students.add({
+            name: incoming.name ?? key,
+            nameKey: key,
+            active: incoming.active !== false,
+            createdAt: incoming.createdAt ?? Date.now()
+          });
+        }
+      }
+    }
+
     try {
       if (!jsonData || jsonData.app !== 'ClassSync') {
         showToast('Berkas ini bukan cadangan ClassSync.', 'error');
@@ -500,11 +526,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           if (existing) {
             const combinedNames = Array.from(new Set([...existing.peserta, ...r.peserta]));
             if (combinedNames.length > existing.peserta.length) {
-              await db.absensi.update(existing.id!, { peserta: combinedNames });
+              // Statuses have to follow the names, or the history screen and
+              // the report end up disagreeing about the same child.
+              const mergedStatuses: StatusMap = {
+                ...(existing.statuses ?? {}),
+                ...((r as AbsensiRecord).statuses ?? {})
+              };
+              for (const name of combinedNames) {
+                mergedStatuses[nameKey(name)] = 'hadir';
+              }
+              await db.absensi.update(existing.id!, {
+                peserta: combinedNames,
+                statuses: mergedStatuses
+              });
               mergedAbsensiCount++;
             }
           } else {
             const { id, ...cleanRecord } = r;
+            if (!cleanRecord.statuses) {
+              cleanRecord.statuses = statusesFromPeserta(cleanRecord.peserta ?? []);
+            }
             if (localScheduleId !== undefined) {
               cleanRecord.scheduleId = localScheduleId;
             }
@@ -835,6 +876,44 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
    * Everyone starts at Hadir, so the teacher only touches the exceptions —
    * the pattern every established register app uses.
    */
+  /**
+   * Load the statuses already saved for this date and class.
+   *
+   * Without this, reopening a session saved earlier starts every santri back
+   * at Hadir, so saving again quietly erased the absences already recorded —
+   * the record's own `statuses` were never read back in.
+   */
+  useEffect(() => {
+    let cancelled = false;
+
+    const load = async () => {
+      if (!tanggalInput) return;
+      try {
+        const sameDate = await db.absensi.where('tanggal').equals(tanggalInput).toArray();
+        const linkedId = selectedScheduleId ? Number(selectedScheduleId) : undefined;
+        const existing = sameDate.find(r => (r.scheduleId ?? undefined) === linkedId);
+        if (cancelled) return;
+
+        if (existing?.statuses && Object.keys(existing.statuses).length > 0) {
+          setSessionStatuses(existing.statuses);
+          setTouchedStudents(new Set(Object.keys(existing.statuses)));
+        } else if (existing) {
+          const fromNames = statusesFromPeserta(existing.peserta ?? []);
+          setSessionStatuses(fromNames);
+          setTouchedStudents(new Set(Object.keys(fromNames)));
+        } else {
+          setSessionStatuses({});
+          setTouchedStudents(new Set());
+        }
+      } catch (err) {
+        console.error('[Load session statuses error]', err);
+      }
+    };
+
+    load();
+    return () => { cancelled = true; };
+  }, [tanggalInput, selectedScheduleId, records]);
+
   const sessionStatusFor = (studentName: string): StatusKey => {
     return sessionStatuses[nameKey(studentName)] ?? 'hadir';
   };
@@ -1025,6 +1104,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       showToast(`Presensi ${formatIndonesianDate(tanggal)} dihapus.`, 'success', {
         label: 'Urungkan',
         onAction: async () => {
+          // A second tap before React commits would add the record twice.
+          if (restoringRef.current) return;
+          restoringRef.current = true;
           try {
             const { id: _oldId, ...rest } = removed;
             await db.absensi.add(rest);
@@ -1032,7 +1114,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             showToast('Presensi dikembalikan.', 'success');
           } catch (err) {
             console.error('Error restoring record:', err);
-            showToast('Gagal mengembalikan presensi.', 'error');
+            showToast('Tidak dapat mengembalikan presensi.', 'error');
+          } finally {
+            restoringRef.current = false;
           }
         }
       });
@@ -1089,9 +1173,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       .filter(name => name.length > 0);
 
     try {
+      // Keep the invariant that peserta is exactly the names marked hadir.
+      // Absences recorded for other santri are preserved; names dropped from
+      // the hadir list stop being claimed as present.
+      const existingRecord = await db.absensi.get(id);
+      const updatedStatuses: StatusMap = {};
+      for (const [key, value] of Object.entries(existingRecord?.statuses ?? {})) {
+        if (value !== 'hadir') updatedStatuses[key] = value as StatusKey;
+      }
+      for (const name of updatedPeserta) {
+        updatedStatuses[nameKey(name)] = 'hadir';
+      }
+
       await db.absensi.update(id, {
         tanggal: editingTanggal,
         peserta: updatedPeserta,
+        statuses: updatedStatuses,
         scheduleId: editingScheduleId,
         createdAt: Date.now()
       });
@@ -1232,6 +1329,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const handleGenerateSyncHash = async () => {
     try {
       const allAbsensi = await db.absensi.toArray();
+      const allStudents = await db.students.toArray();
       const allSchedules = await db.schedules.toArray();
 
       if (allAbsensi.length === 0 && allSchedules.length === 0) {
@@ -1241,10 +1339,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       const backupData = {
         app: 'ClassSync',
-        version: '2.1',
+        version: '2.2',
         exportedAt: Date.now(),
         absensi: allAbsensi,
-        schedules: allSchedules
+        schedules: allSchedules,
+        // Santri who were never 'hadir' appear in no record's peserta, so
+        // without this the roster cannot be rebuilt and they vanish.
+        students: allStudents
       };
 
       const jsonString = JSON.stringify(backupData);
@@ -1269,9 +1370,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const decodedString = decodeURIComponent(escape(atob(cleanHash)));
       const jsonData = JSON.parse(decodedString);
 
+      // Staged, not merged yet — keep the pasted code so "Jangan gabungkan"
+      // does not leave the teacher with nothing to retry.
       await handleSmartMergeImport(jsonData);
-      setSyncInputText('');
-      setSyncHashOutput('');
     } catch (err) {
       console.error('[Decode Sync Hash Error]', err);
       showToast('Kode tidak terbaca. Periksa lalu tempel ulang.', 'error');
@@ -1353,6 +1454,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const handleGenerateQrCode = async () => {
     try {
       const allAbsensi = await db.absensi.toArray();
+      const allStudents = await db.students.toArray();
       const allSchedules = await db.schedules.toArray();
 
       if (allAbsensi.length === 0 && allSchedules.length === 0) {
@@ -1362,10 +1464,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       const backupData = {
         app: 'ClassSync',
-        version: '2.1',
+        version: '2.2',
         exportedAt: Date.now(),
         absensi: allAbsensi,
-        schedules: allSchedules
+        schedules: allSchedules,
+        // Santri who were never 'hadir' appear in no record's peserta, so
+        // without this the roster cannot be rebuilt and they vanish.
+        students: allStudents
       };
 
       const jsonString = JSON.stringify(backupData);
@@ -1403,6 +1508,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const handleCopyDirectSyncLink = async () => {
     try {
       const allAbsensi = await db.absensi.toArray();
+      const allStudents = await db.students.toArray();
       const allSchedules = await db.schedules.toArray();
 
       if (allAbsensi.length === 0 && allSchedules.length === 0) {
@@ -1412,10 +1518,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       const backupData = {
         app: 'ClassSync',
-        version: '2.1',
+        version: '2.2',
         exportedAt: Date.now(),
         absensi: allAbsensi,
-        schedules: allSchedules
+        schedules: allSchedules,
+        // Santri who were never 'hadir' appear in no record's peserta, so
+        // without this the roster cannot be rebuilt and they vanish.
+        students: allStudents
       };
 
       const jsonString = JSON.stringify(backupData);
@@ -1441,13 +1550,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const handleFullBackupExport = async () => {
     try {
       const allAbsensi = await db.absensi.toArray();
+      const allStudents = await db.students.toArray();
       const allSchedules = await db.schedules.toArray();
       const backupData = {
         app: 'ClassSync',
-        version: '2.1',
+        version: '2.2',
         exportedAt: Date.now(),
         absensi: allAbsensi,
-        schedules: allSchedules
+        schedules: allSchedules,
+        // Santri who were never 'hadir' appear in no record's peserta, so
+        // without this the roster cannot be rebuilt and they vanish.
+        students: allStudents
       };
       const jsonContent = JSON.stringify(backupData, null, 2);
       downloadFile(jsonContent, `ClassSync-cadangan-lengkap-${new Date().toISOString().split('T')[0]}.json`, 'application/json;charset=utf-8;');
@@ -1478,7 +1591,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (!confirmLoad) return;
 
       await db.absensi.clear();
-      await db.absensi.bulkAdd(sampleRecords);
+      await db.absensi.bulkAdd(
+        sampleRecords.map(r => ({ ...r, statuses: statusesFromPeserta(r.peserta) }))
+      );
       showToast('Berhasil memuat data contoh untuk periode Mei-Juni 2026!', 'success');
       loadRecords();
 
