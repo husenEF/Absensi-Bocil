@@ -115,16 +115,16 @@ const MainAppContent: React.FC = () => {
             </div>
 
             <div>
-              <h1 className="text-sm sm:text-base font-black tracking-tight text-brick-ember leading-tight uppercase font-sans">
-                ClassSync<span className="text-zinc-700 dark:text-zinc-200 font-semibold tracking-normal text-xs ml-0.5 font-sans lowercase">.app</span>
+              <h1 className="text-sm sm:text-base font-black tracking-tight text-brick-ember leading-tight font-sans">
+                ClassSync<span className="text-zinc-700 dark:text-zinc-200 font-semibold tracking-normal text-sm ml-0.5 font-sans lowercase">.app</span>
               </h1>
-              <p className="text-[10px] text-zinc-500 dark:text-zinc-400 font-black tracking-widest uppercase mt-0.5">Presensi Offline &amp; WA Lapor</p>
+              <p className="text-sm text-zinc-500 dark:text-zinc-400 font-black mt-0.5">Presensi Offline &amp; WA Lapor</p>
             </div>
           </div>
 
           {/* Config & Dark toggle buttons */}
           <div className="flex items-center gap-1.5">
-            <div className={`px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider border ${
+            <div className={`px-2.5 py-1 rounded-md text-sm font-black border ${
               onlineStatus
                 ? 'bg-zinc-50 dark:bg-zinc-950 text-zinc-600 dark:text-zinc-400 border-zinc-200/85 dark:border-zinc-850'
                 : 'bg-brick-ember/10 text-brick-ember border-brick-ember/20'
@@ -147,7 +147,7 @@ const MainAppContent: React.FC = () => {
       {/* PWA Promotion notification */}
       {deferredPrompt && (
         <div className="bg-brick-ember text-white">
-          <div className="max-w-4xl mx-auto px-4 py-2.5 flex items-center justify-between gap-2.5 text-2xs font-extrabold uppercase tracking-wider">
+          <div className="max-w-4xl mx-auto px-4 py-2.5 flex items-center justify-between gap-2.5 text-sm font-extrabold">
             <div className="flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5 animate-pulse" />
               <span>Instal ClassSync di layar HP Anda!</span>
@@ -176,8 +176,8 @@ const MainAppContent: React.FC = () => {
             <div className="flex items-start gap-3 pl-1.5">
               <Database className="w-5 h-5 text-brick-ember shrink-0 mt-0.5" />
               <div className="space-y-1">
-                <h4 className="text-xs font-black text-zinc-800 dark:text-zinc-100 uppercase tracking-widest">Database Terproteksi Aman</h4>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed font-semibold">
+                <h4 className="text-sm font-black text-zinc-800 dark:text-zinc-100">Database Terproteksi Aman</h4>
+                <p className="text-sm text-zinc-500 dark:text-zinc-400 leading-relaxed font-semibold">
                   Aplikasi menyimpan seluruh presensi langsung di penyimpanan internal ponsel Anda (IndexedDB) secara offline. Data aman, privat, dan tidak dikirim ke server luar guna menjaga hak privasi siswa.
                 </p>
               </div>
@@ -204,8 +204,8 @@ const MainAppContent: React.FC = () => {
       {/* Footer view */}
       <footer className="border-t border-zinc-200 dark:border-zinc-800/80 bg-white/50 dark:bg-zinc-900/40 py-6 select-none mt-12 pb-28">
         <div className="max-w-4xl mx-auto px-4 text-center space-y-1.5">
-          <p className="text-[10px] uppercase font-black tracking-widest text-zinc-450 dark:text-zinc-500">AbsenBocil 😊 Siswa Presensi &amp; WhatsApp Bulanan Lapor</p>
-          <p className="text-3xs text-zinc-400 dark:text-zinc-500 font-semibold font-mono">Tersimpan secara sandboxed penuh di Browser lokal Anda. Hak Cipta Terlindungi.</p>
+          <p className="text-sm font-black text-zinc-450 dark:text-zinc-500">AbsenBocil 😊 Siswa Presensi &amp; WhatsApp Bulanan Lapor</p>
+          <p className="text-sm text-zinc-400 dark:text-zinc-500 font-semibold font-mono">Tersimpan secara sandboxed penuh di Browser lokal Anda. Hak Cipta Terlindungi.</p>
         </div>
       </footer>
 
@@ -223,7 +223,7 @@ const MainAppContent: React.FC = () => {
             }`}
           >
             <PlusCircle className={`w-5 h-5 transition-transform duration-300 ${activeTab === 'input' ? 'scale-110 text-brick-ember' : ''}`} />
-            <span className="text-[10px] sm:text-xs mt-1 tracking-tight">Presensi</span>
+            <span className="text-sm sm:text-sm mt-1 tracking-tight">Presensi</span>
             {activeTab === 'input' && (
               <motion.div layoutId="nav-dot" className="absolute -bottom-2.5 w-6 h-1 bg-brick-ember rounded-full" />
             )}
@@ -239,7 +239,7 @@ const MainAppContent: React.FC = () => {
             }`}
           >
             <History className={`w-5 h-5 transition-transform duration-300 ${activeTab === 'riwayat' ? 'scale-110 text-brick-ember' : ''}`} />
-            <span className="text-[10px] sm:text-xs mt-1 tracking-tight">Riwayat</span>
+            <span className="text-sm sm:text-sm mt-1 tracking-tight">Riwayat</span>
             {activeTab === 'riwayat' && (
               <motion.div layoutId="nav-dot" className="absolute -bottom-2.5 w-6 h-1 bg-brick-ember rounded-full" />
             )}
@@ -255,7 +255,7 @@ const MainAppContent: React.FC = () => {
             }`}
           >
             <FileText className={`w-5 h-5 transition-transform duration-300 ${activeTab === 'laporan' ? 'scale-110 text-brick-ember' : ''}`} />
-            <span className="text-[10px] sm:text-xs mt-1 tracking-tight">Laporan</span>
+            <span className="text-sm sm:text-sm mt-1 tracking-tight">Laporan</span>
             {activeTab === 'laporan' && (
               <motion.div layoutId="nav-dot" className="absolute -bottom-2.5 w-6 h-1 bg-brick-ember rounded-full" />
             )}
@@ -271,7 +271,7 @@ const MainAppContent: React.FC = () => {
             }`}
           >
             <Clock className={`w-5 h-5 transition-transform duration-300 ${activeTab === 'jadwal' ? 'scale-110 text-brick-ember' : ''}`} />
-            <span className="text-[10px] sm:text-xs mt-1 tracking-tight">Jadwal</span>
+            <span className="text-sm sm:text-sm mt-1 tracking-tight">Jadwal</span>
             {activeTab === 'jadwal' && (
               <motion.div layoutId="nav-dot" className="absolute -bottom-2.5 w-6 h-1 bg-brick-ember rounded-full" />
             )}
@@ -287,7 +287,7 @@ const MainAppContent: React.FC = () => {
             }`}
           >
             <ArrowRightLeft className={`w-5 h-5 transition-transform duration-300 ${activeTab === 'sinkronisasi' ? 'scale-110 text-brick-ember' : ''}`} />
-            <span className="text-[10px] sm:text-xs mt-1 tracking-tight">Sinkron HP</span>
+            <span className="text-sm sm:text-sm mt-1 tracking-tight">Sinkron HP</span>
             {activeTab === 'sinkronisasi' && (
               <motion.div layoutId="nav-dot" className="absolute -bottom-2.5 w-6 h-1 bg-brick-ember rounded-full" />
             )}
