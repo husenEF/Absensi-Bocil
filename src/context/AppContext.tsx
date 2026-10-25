@@ -19,8 +19,9 @@ interface AppContextType {
   setActiveTab: (tab: 'input' | 'riwayat' | 'laporan' | 'jadwal' | 'sinkronisasi') => void;
   darkMode: boolean;
   setDarkMode: React.Dispatch<React.SetStateAction<boolean>>;
-  toast: { message: string; type: 'success' | 'error' | 'info' } | null;
-  showToast: (message: string, type: 'success' | 'error' | 'info') => void;
+  toast: ToastState | null;
+  showToast: (message: string, type: 'success' | 'error' | 'info', action?: ToastAction) => void;
+  dismissToast: () => void;
   onlineStatus: boolean;
   deferredPrompt: any;
   executePWAPrompt: () => void;
@@ -149,6 +150,13 @@ interface AppContextType {
   capitalizeWords: (str: string) => string;
 }
 
+export type ToastAction = { label: string; onAction: () => void };
+export type ToastState = {
+  message: string;
+  type: 'success' | 'error' | 'info';
+  action?: ToastAction;
+};
+
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 
@@ -237,7 +245,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const streamRef = useRef<MediaStream | null>(null);
 
   // Toasts
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const [toast, setToast] = useState<ToastState | null>(null);
+  const toastTimer = useRef<number | null>(null);
 
   // New Schedules Form States
   const [scheduleTitle, setScheduleTitle] = useState<string>('');
@@ -248,9 +257,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const reportTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Fast trigger helper: toast notifications
-  const showToast = (message: string, type: 'success' | 'error' | 'info') => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 4000);
+  /**
+   * A toast, optionally carrying one action.
+   *
+   * An undo action gets a longer life than a plain message: a toast that
+   * disappears before the teacher has read it is not an undo at all.
+   */
+  const showToast = (
+    message: string,
+    type: 'success' | 'error' | 'info',
+    action?: ToastAction
+  ) => {
+    if (toastTimer.current !== null) {
+      window.clearTimeout(toastTimer.current);
+    }
+    setToast({ message, type, action });
+    toastTimer.current = window.setTimeout(
+      () => setToast(null),
+      action ? 9000 : 4000
+    );
+  };
+
+  const dismissToast = () => {
+    if (toastTimer.current !== null) {
+      window.clearTimeout(toastTimer.current);
+    }
+    setToast(null);
   };
 
   // online monitoring
@@ -898,25 +930,61 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Delete Individual Record
+  /**
+   * Delete one session.
+   *
+   * This asked for confirmation through a native dialog. Deleting a single
+   * session is routine and perfectly reversible, so it now happens at once
+   * and offers an undo instead — the dialog only taught people to dismiss
+   * dialogs. Irreversible actions still confirm; see handleClearAllRecords.
+   */
   const handleDeleteRecord = async (id: number, tanggal: string) => {
-    const confirmDelete = window.confirm(
-      `Apakah Anda yakin ingin menghapus data presensi tanggal ${formatIndonesianDate(tanggal)}?`
-    );
-    if (!confirmDelete) return;
-
     try {
+      const removed = await db.absensi.get(id);
+      if (!removed) return;
+
       await db.absensi.delete(id);
-      showToast('Data presensi berhasil dihapus.', 'success');
 
       if (reportGenerated) {
         setReportGenerated(false);
         setReportText('');
       }
 
-      loadRecords();
+      await loadRecords();
+
+      showToast(`Presensi ${formatIndonesianDate(tanggal)} dihapus.`, 'success', {
+        label: 'Urungkan',
+        onAction: async () => {
+          try {
+            const { id: _oldId, ...rest } = removed;
+            await db.absensi.add(rest);
+            await loadRecords();
+            showToast('Presensi dikembalikan.', 'success');
+          } catch (err) {
+            console.error('Error restoring record:', err);
+            showToast('Gagal mengembalikan presensi.', 'error');
+          }
+        }
+      });
     } catch (err) {
       console.error('Error deleting record:', err);
       showToast('Gagal menghapus data.', 'error');
+    }
+  };
+
+  /**
+   * Erase every session. Irreversible, so it keeps a confirmation — and
+   * offers a backup first, which is the difference between "confirmed" and
+   * actually recoverable.
+   */
+  const handleClearAllRecords = async () => {
+    try {
+      await db.absensi.clear();
+      await loadRecords();
+      showToast('Semua presensi dihapus.', 'success');
+    } catch (err) {
+      console.error('Error clearing records:', err);
+      showToast('Gagal menghapus presensi.', 'error');
     }
   };
 
@@ -1493,6 +1561,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setDarkMode,
       toast,
       showToast,
+      dismissToast,
       onlineStatus,
       deferredPrompt,
       executePWAPrompt,
@@ -1544,6 +1613,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       cancelEditing,
       saveEditedRecord,
       handleDeleteRecord,
+      handleClearAllRecords,
 
       scheduleTitle,
       setScheduleTitle,
