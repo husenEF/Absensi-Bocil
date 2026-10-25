@@ -1,74 +1,49 @@
-import React from 'react';
-import { motion } from 'motion/react';
-import { useApp } from '../context/AppContext';
-import { formatIndonesianDate } from '../utils/date';
-import { 
-  Calendar, 
-  Users, 
-  UserPlus, 
-  BookOpen, 
-  Clock, 
-  Plus, 
-  Check, 
-  Save 
-} from 'lucide-react';
+import React, {useState} from 'react';
+import {motion} from 'motion/react';
+import {Calendar, Check, Plus, Save, UserPlus, Users} from 'lucide-react';
+import {useApp} from '../context/AppContext';
+import {formatIndonesianDate} from '../utils/date';
+import {STATUS_LABEL, STATUS_ORDER} from '../styles/palette';
+import {Button} from '../ui/Button';
+import {Field} from '../ui/Field';
+import {StatusPicker} from '../ui/StatusPicker';
+import {ConfirmDialog} from '../ui/ConfirmDialog';
 
 const INDO_DAYS = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 
-const getWeekdayOccurrences = (hariName: string, countPast: number = 8, countFuture: number = 1) => {
+const formatYMD = (d: Date) => {
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+};
+
+/** Past and upcoming occurrences of a schedule's weekday, for catching up. */
+const getWeekdayOccurrences = (hariName: string, countPast = 8, countFuture = 1) => {
   const dayIndex = INDO_DAYS.indexOf(hariName);
   if (dayIndex === -1) return [];
 
   const now = new Date();
-  const currentDayIndex = now.getDay();
-  const daysDiff = dayIndex - currentDayIndex;
+  const thisWeek = new Date();
+  thisWeek.setDate(now.getDate() + (dayIndex - now.getDay()));
 
-  const thisWeekOcc = new Date();
-  thisWeekOcc.setDate(now.getDate() + daysDiff);
-  
-  const list = [];
-  
-  const formatYMD = (d: Date) => {
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    return `${yyyy}-${mm}-${dd}`;
-  };
+  const list: Array<{dateStr: string; label: string}> = [];
 
-  // Future occurrences (next 1 week)
   for (let i = countFuture; i >= 1; i--) {
-    const d = new Date(thisWeekOcc);
-    d.setDate(thisWeekOcc.getDate() + (i * 7));
-    const dateStr = formatYMD(d);
-    list.push({
-      dateStr,
-      labelFormatted: `Pekan Depan: ${formatIndonesianDate(dateStr)}`
-    });
+    const d = new Date(thisWeek);
+    d.setDate(thisWeek.getDate() + i * 7);
+    list.push({dateStr: formatYMD(d), label: `Pekan depan — ${formatIndonesianDate(formatYMD(d))}`});
   }
 
-  // Current week occurrence
-  const twStr = formatYMD(thisWeekOcc);
-  list.push({
-    dateStr: twStr,
-    labelFormatted: `Pekan Ini (Default): ${formatIndonesianDate(twStr)}`
-  });
+  const tw = formatYMD(thisWeek);
+  list.push({dateStr: tw, label: `Pekan ini — ${formatIndonesianDate(tw)}`});
 
-  // Past occurrences (last 8 weeks)
   for (let i = 1; i <= countPast; i++) {
-    const d = new Date(thisWeekOcc);
-    d.setDate(thisWeekOcc.getDate() - (i * 7));
+    const d = new Date(thisWeek);
+    d.setDate(thisWeek.getDate() - i * 7);
     const dateStr = formatYMD(d);
-    
-    let relLabel = '';
-    if (i === 1) relLabel = 'Pekan Lalu';
-    else if (i === 2) relLabel = '2 Pekan Lalu';
-    else if (i === 3) relLabel = '3 Pekan Lalu';
-    else relLabel = `${i} Pekan Lalu`;
-
-    list.push({
-      dateStr,
-      labelFormatted: `${relLabel}: ${formatIndonesianDate(dateStr)}`
-    });
+    const rel = i === 1 ? 'Pekan lalu' : `${i} pekan lalu`;
+    list.push({dateStr, label: `${rel} — ${formatIndonesianDate(dateStr)}`});
   }
 
   return list;
@@ -82,291 +57,309 @@ export const AttendanceInput: React.FC = () => {
     setNamesInput,
     selectedScheduleId,
     setSelectedScheduleId,
-    lastAttendanceForSchedule,
-    currentActiveNames,
     allRegisteredStudents,
-    handleToggleStudent,
-    isStudentSelected,
+    sessionStatusFor,
+    setSessionStatus,
+    handleMarkAllPresent,
+    sessionTally,
+    untouchedCount,
+    handleAddStudent,
     handleSaveAttendance,
+    lastSaved,
+    dismissLastSaved,
+    pendingOverwrite,
+    confirmOverwrite,
+    cancelOverwrite,
     schedules,
-    capitalizeWords
+    setActiveTab,
   } = useApp();
+
+  const [newName, setNewName] = useState('');
+  const [newNameError, setNewNameError] = useState<string | undefined>();
+  const [showBulk, setShowBulk] = useState(false);
+
+  const linkedSchedule = schedules.find((s) => s.id === selectedScheduleId);
+  const occurrences = linkedSchedule?.hari ? getWeekdayOccurrences(linkedSchedule.hari) : [];
+  const hasRoster = allRegisteredStudents.length > 0;
+
+  const submitNewName = async () => {
+    if (!newName.trim()) {
+      setNewNameError('Masukkan nama santri.');
+      return;
+    }
+    const ok = await handleAddStudent(newName);
+    if (ok) {
+      setNewName('');
+      setNewNameError(undefined);
+    }
+  };
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0 }}
-      className="space-y-6"
+      initial={{opacity: 0, y: 10}}
+      animate={{opacity: 1, y: 0}}
+      exit={{opacity: 0}}
+      className="cs-page"
     >
-      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-xs relative overflow-hidden">
-        {/* Accent Bar - Swiss Red Design */}
-        <div className="absolute top-0 left-0 right-0 h-1.5 bg-red-650" />
+      {/* What was just saved — shown in place, so saving does not move the
+          teacher to a screen they did not ask for. */}
+      {lastSaved ? (
+        <section className="cs-card cs-card--success" aria-live="polite">
+          <h2 className="cs-card__title">
+            <Check className="cs-icon" aria-hidden="true" />
+            Presensi tersimpan
+          </h2>
+          <p className="cs-muted">{formatIndonesianDate(lastSaved.tanggal)}</p>
+          <ul className="cs-tally" aria-label="Ringkasan kehadiran">
+            {STATUS_ORDER.map((key) => (
+              <li key={key} className={`cs-chip cs-chip--${key}`}>
+                {STATUS_LABEL[key]} {lastSaved.tally[key]}
+              </li>
+            ))}
+          </ul>
+          <div className="cs-row">
+            <Button variant="secondary" onClick={() => setActiveTab('riwayat')}>
+              Lihat riwayat
+            </Button>
+            <Button variant="ghost" onClick={dismissLastSaved}>
+              Catat sesi lain
+            </Button>
+          </div>
+        </section>
+      ) : null}
 
-        <div className="flex items-center gap-2.5 mb-5 mt-1">
-          <Calendar className="w-5 h-5 text-red-650" />
-          <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-50 tracking-tight">Presensi Sesi Baru</h2>
-        </div>
+      <form onSubmit={handleSaveAttendance} className="cs-page">
+        <section className="cs-card">
+          <h2 className="cs-card__title">
+            <Calendar className="cs-icon" aria-hidden="true" />
+            Presensi sesi baru
+          </h2>
 
-        <form onSubmit={handleSaveAttendance} className="space-y-5">
-          {/* Tanggal & Jadwal Linked */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <div>
-              <label className="block text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-2" htmlFor="tanggal_kegiatan">
-                Pilih Tanggal Kegiatan / Kursus
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-zinc-400">
-                  <Calendar className="w-4 h-4" />
-                </div>
+          <div className="cs-grid-2">
+            <Field
+              id="tanggal_kegiatan"
+              label="Tanggal kegiatan"
+              hint={tanggalInput ? formatIndonesianDate(tanggalInput) : undefined}
+            >
+              {(p) => (
                 <input
+                  {...p}
+                  className="cs-input"
                   type="date"
-                  id="tanggal_kegiatan"
                   required
                   value={tanggalInput}
                   onChange={(e) => setTanggalInput(e.target.value)}
-                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-9 pr-4 py-2.5 text-xs text-zinc-800 dark:text-white dark:placeholder-zinc-400 focus:outline-hidden focus:ring-1 focus:ring-red-600 focus:border-red-600 transition-all font-semibold cursor-pointer"
                 />
-              </div>
-              
-              {tanggalInput && (
-                <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-2 font-medium">
-                  Terpilih: <span className="font-semibold text-zinc-700 dark:text-zinc-250">{formatIndonesianDate(tanggalInput)}</span>
-                </p>
               )}
+            </Field>
 
-              {/* Dynamic Weekday Suggestion Dropdown if Linked Schedule is Active */}
-              {(() => {
-                const linkedSchedule = schedules.find(s => s.id === selectedScheduleId);
-                if (linkedSchedule && linkedSchedule.hari) {
-                  const occurrencesList = getWeekdayOccurrences(linkedSchedule.hari);
-                  const isCustomDate = !occurrencesList.some(occ => occ.dateStr === tanggalInput);
-                  
-                  return (
-                    <div className="mt-3.5 bg-red-500/[0.02] dark:bg-red-950/[0.1] border border-red-500/10 dark:border-red-900/20 rounded-xl p-3.5">
-                      <label className="block text-[10px] font-black uppercase text-red-650 dark:text-red-400 tracking-wider mb-1.5">
-                        📅 Sesi Rutin Hari {linkedSchedule.hari}:
-                      </label>
-                      <select
-                        value={tanggalInput}
-                        onChange={(e) => {
-                          if (e.target.value) {
-                            setTanggalInput(e.target.value);
-                          }
-                        }}
-                        className="w-full text-xs bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg py-1.5 px-2 text-zinc-800 dark:text-zinc-150 focus:outline-hidden cursor-pointer"
-                      >
-                        {occurrencesList.map(occ => (
-                          <option key={occ.dateStr} value={occ.dateStr} className="dark:bg-zinc-900 dark:text-white">
-                            {occ.labelFormatted}
-                          </option>
-                        ))}
-                        {isCustomDate && (
-                          <option value={tanggalInput} className="dark:bg-zinc-900 dark:text-white">
-                            Tanggal Kustom Lainnya: {formatIndonesianDate(tanggalInput)}
-                          </option>
-                        )}
-                      </select>
-                      <p className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-2 leading-normal">
-                        Ingin mengisi presensi yang terlewat? Pilih dari tanggal-tanggal di hari <b>{linkedSchedule.hari}</b> di atas.
-                      </p>
-                    </div>
-                  );
-                }
-                return null;
-              })()}
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-2" htmlFor="linked_schedule">
-                Hubungkan Dengan Jadwal Rutin (Opsional)
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-zinc-400">
-                  <Clock className="w-4 h-4" />
-                </div>
+            <Field
+              id="linked_schedule"
+              label="Hubungkan dengan jadwal rutin"
+              optional
+              hint="Sesi yang terhubung akan dikelompokkan di laporan."
+            >
+              {(p) => (
                 <select
-                  id="linked_schedule"
-                  value={selectedScheduleId || ''}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    if (val === '') {
-                      setSelectedScheduleId(undefined);
-                    } else {
-                      const schedId = Number(val);
-                      setSelectedScheduleId(schedId);
-                      const foundSched = schedules.find(s => s.id === schedId);
-                      if (foundSched) {
-                        if (foundSched.hari) {
-                          const occurrences = getWeekdayOccurrences(foundSched.hari);
-                          // Default to this week's occurrence
-                          const curWeekOccStr = occurrences.find(o => o.labelFormatted.includes('Pekan Ini'))?.dateStr || occurrences[1]?.dateStr;
-                          if (curWeekOccStr) {
-                            setTanggalInput(curWeekOccStr);
-                          }
-                        } else if (foundSched.tanggal) {
-                          setTanggalInput(foundSched.tanggal);
-                        }
-                      }
-                    }
-                  }}
-                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-9 pr-4 py-2.5 text-xs text-zinc-800 dark:text-white focus:outline-hidden focus:ring-1 focus:ring-red-600 focus:border-red-600 transition-all font-semibold cursor-pointer"
+                  {...p}
+                  className="cs-select"
+                  value={selectedScheduleId ?? ''}
+                  onChange={(e) =>
+                    setSelectedScheduleId(e.target.value ? Number(e.target.value) : undefined)
+                  }
                 >
-                  <option value="" className="dark:bg-zinc-900 dark:text-white">-- Tidak Terhubung Jadwal --</option>
+                  <option value="">Tidak terhubung jadwal</option>
                   {schedules.map((s) => (
-                    <option key={s.id} value={s.id} className="dark:bg-zinc-900 dark:text-white">
-                      {s.title} ({s.hari ? `Setiap ${s.hari}` : s.tanggal} • {s.waktu})
+                    <option key={s.id} value={s.id}>
+                      {s.title} — setiap {s.hari}, {s.waktu}
                     </option>
                   ))}
                 </select>
-              </div>
-              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-2 leading-relaxed">
-                Menghubungkan ke jadwal rutin mempermudah segmentasi lapor mingguan otomatis dan memicu pengingat notifikasi.
-              </p>
-            </div>
+              )}
+            </Field>
           </div>
 
-          {/* Quick load previous students names if connected schedule has history */}
-          {selectedScheduleId && lastAttendanceForSchedule.length > 0 && (
-            <motion.div 
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              className="p-3 bg-red-500/[0.01] dark:bg-red-950/[0.05] border border-red-500/10 dark:border-red-900/10 rounded-xl"
+          {occurrences.length > 0 ? (
+            <Field
+              id="jump_occurrence"
+              label={`Pindah ke sesi hari ${linkedSchedule?.hari}`}
+              hint="Untuk mengisi presensi yang terlewat."
             >
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <Users className="w-3.5 h-3.5 text-red-650 shrink-0" />
-                  <span className="text-[11px] font-bold text-zinc-700 dark:text-zinc-300 truncate">
-                    Daftar Sesi Sebelumnya ({lastAttendanceForSchedule.length} Orang):
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const confirmLoadList = window.confirm(`Apakah Anda ingin memasukkan kembali daftar nama dari sesi sebelumnya? (${lastAttendanceForSchedule.join(', ')})`);
-                    if (confirmLoadList) {
-                      setNamesInput(lastAttendanceForSchedule.join(', '));
-                    }
-                  }}
-                  className="py-1 px-3 text-[10px] font-bold tracking-tight bg-red-650 text-white hover:bg-red-700 rounded-md transition-colors shadow-2xs self-end"
+              {(p) => (
+                <select
+                  {...p}
+                  className="cs-select"
+                  value={occurrences.some((o) => o.dateStr === tanggalInput) ? tanggalInput : ''}
+                  onChange={(e) => e.target.value && setTanggalInput(e.target.value)}
                 >
-                  Gunakan Daftar Nama Ini
-                </button>
-              </div>
-              <p className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-1 truncate">
-                {lastAttendanceForSchedule.join(', ')}
+                  {!occurrences.some((o) => o.dateStr === tanggalInput) ? (
+                    <option value="">Tanggal lain — {formatIndonesianDate(tanggalInput)}</option>
+                  ) : null}
+                  {occurrences.map((o) => (
+                    <option key={o.dateStr} value={o.dateStr}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </Field>
+          ) : null}
+        </section>
+
+        <section className="cs-card">
+          <div className="cs-card__head">
+            <h2 className="cs-card__title">
+              <Users className="cs-icon" aria-hidden="true" />
+              Daftar santri
+            </h2>
+            {hasRoster ? (
+              <Button variant="ghost" icon={<Check className="cs-icon" />} onClick={handleMarkAllPresent}>
+                Tandai semua hadir
+              </Button>
+            ) : null}
+          </div>
+
+          {hasRoster ? (
+            <>
+              <p className="cs-muted" aria-live="polite">
+                {allRegisteredStudents.length} santri ·{' '}
+                {STATUS_ORDER.map((k) => `${STATUS_LABEL[k]} ${sessionTally[k]}`).join(' · ')}
               </p>
-            </motion.div>
+
+              <ul className="cs-roster">
+                {allRegisteredStudents.map((name, index) => (
+                  <li key={name} className="cs-roster__row">
+                    <span className="cs-roster__name">{name}</span>
+                    <StatusPicker
+                      personName={name}
+                      groupId={String(index)}
+                      value={sessionStatusFor(name)}
+                      onChange={(status) => setSessionStatus(name, status)}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : (
+            /* A real empty state. This screen used to show six invented
+               students here, which a new teacher would save as real data. */
+            <div className="cs-empty">
+              <Users className="cs-empty__icon" aria-hidden="true" />
+              <h3 className="cs-empty__title">Belum ada santri</h3>
+              <p className="cs-empty__body">
+                Tambahkan nama santri di bawah. Daftar ini tersimpan, jadi Anda cukup
+                mengetiknya sekali.
+              </p>
+            </div>
           )}
 
-          {/* Input nama peserta */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="block text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider" htmlFor="daftar_peserta">
-                Ketik Nama Peserta didik <span className="text-red-650 text-xs">*</span>
-              </label>
-              <span className="text-[10px] text-zinc-400 font-semibold italic">pisahkan dengan tanda koma ( , )</span>
-            </div>
-            
-            <div className="relative">
-              <textarea
-                id="daftar_peserta"
-                required
-                rows={4}
-                value={namesInput}
-                onChange={(e) => setNamesInput(e.target.value)}
-                placeholder="Contoh: Husen, Budi, Ahmad, Siti, Umar..."
-                className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-xs text-zinc-800 dark:text-white dark:placeholder-zinc-400 focus:outline-hidden focus:ring-1 focus:ring-red-600 focus:border-red-600 transition-all font-sans leading-relaxed font-semibold"
-              />
-            </div>
-          </div>
-
-          {/* Preset / Daftar Cepat badge nama */}
-          <div className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200/60 dark:border-zinc-800 p-4 rounded-xl">
-            <h3 className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-2.5 flex items-center gap-1.5 select-none">
-              <Plus className="w-3.5 h-3.5 text-zinc-400" />
-              <span>Daftar Cepat Peserta (Badge Tap)</span>
-            </h3>
-
-            {allRegisteredStudents.length > 0 ? (
-              <div className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto pr-1">
-                {allRegisteredStudents.map((studentName) => {
-                  const selected = isStudentSelected(studentName);
-                  return (
-                    <button
-                      key={studentName}
-                      type="button"
-                      onClick={() => handleToggleStudent(studentName)}
-                      className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-all ${
-                        selected 
-                          ? 'bg-red-650 text-white ring-1 ring-red-650 shadow-2xs' 
-                          : 'bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 border border-zinc-250 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800'
-                      }`}
-                    >
-                      {selected ? <Check className="w-3" /> : <Plus className="w-3 text-zinc-400" />}
-                      <span>{studentName}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            ) : (
-              <p className="text-2xs text-zinc-400 italic">Belum ada historical peserta didik di database lokal Anda.</p>
-            )}
-
-            {/* Quick manual additions directly to textarea */}
-            <div className="mt-4 flex items-center gap-2 max-w-sm">
-              <input
-                type="text"
-                id="quick_add_name"
-                placeholder="Tambah nama peserta didik baru..."
-                className="flex-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-3xs text-zinc-700 dark:text-zinc-300 focus:outline-hidden"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    const inputEl = e.currentTarget as HTMLInputElement;
-                    const val = inputEl.value.trim();
-                    if (val) {
-                      const capitalized = capitalizeWords(val);
-                      handleToggleStudent(capitalized);
-                      inputEl.value = '';
+          <div className="cs-addrow">
+            <Field id="quick_add_name" label="Tambah santri" error={newNameError}>
+              {(p) => (
+                <input
+                  {...p}
+                  className="cs-input"
+                  type="text"
+                  value={newName}
+                  onChange={(e) => {
+                    setNewName(e.target.value);
+                    if (newNameError) setNewNameError(undefined);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      void submitNewName();
                     }
-                  }
-                }}
-              />
-              <button
-                type="button"
-                className="px-2.5 py-1.5 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-850 dark:hover:bg-zinc-800 text-white text-3xs font-extrabold rounded-lg transition-colors cursor-pointer inline-flex items-center gap-1"
-                onClick={(e) => {
-                  const inputEl = (e.currentTarget.previousSibling as HTMLInputElement);
-                  const val = inputEl.value.trim();
-                  if (val) {
-                    const capitalized = capitalizeWords(val);
-                    handleToggleStudent(capitalized);
-                    inputEl.value = '';
-                  }
-                }}
-              >
-                <UserPlus className="w-3 h-3" />
-                <span>Tambah</span>
-              </button>
-            </div>
-            <p className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-2">
-              💡 Ketik nama baru lalu ketuk <b>Tambah</b> atau tekan tombol <b>Enter</b> untuk memunculkan badge cepat.
-            </p>
+                  }}
+                />
+              )}
+            </Field>
+            <Button icon={<UserPlus className="cs-icon" />} onClick={submitNewName}>
+              Tambah
+            </Button>
           </div>
 
-          {/* Actions Submit */}
-          <div className="pt-2 flex justify-end">
-            <button
-              type="submit"
-              className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-red-650 hover:bg-red-750 active:bg-red-800 text-white font-extrabold rounded-xl text-xs transition-colors shadow-xs hover:shadow-sm cursor-pointer border border-transparent"
+          <div>
+            <Button
+              variant="ghost"
+              icon={<Plus className="cs-icon" />}
+              aria-expanded={showBulk}
+              onClick={() => setShowBulk((v) => !v)}
             >
-              <Save className="w-4 h-4" />
-              <span>Simpan Data Presensi</span>
-            </button>
+              Tambah beberapa nama sekaligus
+            </Button>
+            {showBulk ? (
+              <div className="cs-bulk">
+                <Field
+                  id="daftar_peserta"
+                  label="Nama santri"
+                  hint="Pisahkan dengan koma. Contoh: Husen, Budi, Ahmad"
+                >
+                  {(p) => (
+                    <textarea
+                      {...p}
+                      className="cs-textarea"
+                      rows={3}
+                      value={namesInput}
+                      onChange={(e) => setNamesInput(e.target.value)}
+                    />
+                  )}
+                </Field>
+                <Button
+                  onClick={async () => {
+                    const ok = await handleAddStudent(namesInput);
+                    if (ok) setNamesInput('');
+                  }}
+                >
+                  Tambahkan ke daftar
+                </Button>
+              </div>
+            ) : null}
           </div>
-        </form>
-      </div>
+        </section>
+
+        <div className="cs-save">
+          {hasRoster && untouchedCount > 0 ? (
+            <p className="cs-muted" aria-live="polite">
+              {untouchedCount} santri masih bertanda Hadir dan belum Anda periksa.
+            </p>
+          ) : null}
+          <Button
+            type="submit"
+            variant="primary"
+            size="lg"
+            block
+            icon={<Save className="cs-icon" />}
+            disabled={!hasRoster}
+          >
+            Simpan presensi
+          </Button>
+        </div>
+      </form>
+
+      {/* Overwriting a saved session says what is being replaced, rather than
+          the browser's unstyled "are you sure". */}
+      <ConfirmDialog
+        open={pendingOverwrite !== null}
+        title="Perbarui presensi hari ini?"
+        body={
+          <>
+            <p>
+              Sudah ada presensi tersimpan untuk{' '}
+              {pendingOverwrite ? formatIndonesianDate(pendingOverwrite.tanggal) : ''} berisi{' '}
+              {pendingOverwrite?.existingCount ?? 0} santri hadir.
+            </p>
+            <p>
+              Catatan itu akan diganti dengan yang baru ({pendingOverwrite?.peserta.length ?? 0}{' '}
+              hadir).
+            </p>
+          </>
+        }
+        confirmLabel="Perbarui presensi"
+        cancelLabel="Jangan ganti"
+        onCancel={cancelOverwrite}
+        onConfirm={() => void confirmOverwrite()}
+      />
     </motion.div>
   );
 };

@@ -1,32 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from '../context/AppContext';
+import { escapeHtml } from '../roster';
+import { isTooLongForWhatsApp, shareToWhatsApp } from '../utils/share';
+import { Button } from '../ui/Button';
 import { formatIndonesianDate } from '../utils/date';
 import { db, ExcelReportRecord } from '../db';
-import { 
-  FileText, 
-  Copy, 
-  Check, 
-  RefreshCw, 
-  Info, 
-  CheckSquare, 
-  Square, 
-  AlertCircle,
-  X,
-  Play,
-  Calendar,
-  FileSpreadsheet,
-  Save,
-  Plus,
-  Trash2,
-  Sliders,
-  HelpCircle,
-  BookOpen,
-  UserCheck,
-  Smartphone,
-  ChevronRight,
-  UserPlus
-} from 'lucide-react';
+import { AlertCircle, BookOpen, Calendar, Check, CheckSquare, ChevronRight, Copy, FileSpreadsheet, FileText, HelpCircle, Info, Play, Plus, RefreshCw, Save, Send, Sliders, Smartphone, Square, Trash2, UserCheck, UserPlus, X } from 'lucide-react';
 
 interface StudentRow {
   name: string;
@@ -79,6 +59,31 @@ export const ReportGenerator: React.FC = () => {
   const [studentsData, setStudentsData] = useState<StudentRow[]>([]);
   const [catatan, setCatatan] = useState<string>('');
   
+  /**
+   * Hand the report to WhatsApp.
+   *
+   * Called straight from the tap so the share sheet keeps its user
+   * activation; awaiting anything first would lose it.
+   */
+  const handleShareReport = async () => {
+    if (!reportText) return;
+
+    if (isTooLongForWhatsApp(reportText)) {
+      showToast(
+        'Laporan terlalu panjang untuk satu pesan WhatsApp. Pilih lebih sedikit sesi.',
+        'error'
+      );
+      return;
+    }
+
+    const outcome = await shareToWhatsApp(reportText);
+    if (outcome === 'copied-and-opened') {
+      showToast('Teks laporan disalin dan WhatsApp dibuka.', 'success');
+    } else if (outcome === 'failed') {
+      showToast('Tidak dapat membuka WhatsApp. Salin teksnya secara manual.', 'error');
+    }
+  };
+
   // Mobile responsiveness helper
   const [editingStudentIndex, setEditingStudentIndex] = useState<number | null>(null);
 
@@ -367,10 +372,10 @@ export const ReportGenerator: React.FC = () => {
         <td colspan="17" class="title-main">LAPORAN PETUGAS NGAGLIK</td>
       </tr>
       <tr>
-        <td colspan="17" class="title-sub">LAPORAN BULAN : ${periodLabel.toUpperCase()}</td>
+        <td colspan="17" class="title-sub">LAPORAN BULAN : ${escapeHtml(periodLabel.toUpperCase())}</td>
       </tr>
       <tr>
-        <td colspan="17" class="title-tanggal">TANGGAL AKTIF PEMBELAJARAN : ${tanggalAktif.toUpperCase() || '-'}</td>
+        <td colspan="17" class="title-tanggal">TANGGAL AKTIF PEMBELAJARAN : ${escapeHtml(tanggalAktif.toUpperCase()) || '-'}</td>
       </tr>
       
       <!-- Blank Separator Row -->
@@ -393,11 +398,11 @@ export const ReportGenerator: React.FC = () => {
       
       <!-- Double Table Headers (Row 2) -->
       <tr class="hdr" style="height: 25px;">
-        <th style="width: 85px; border: 1px solid #7f7f7f;">${weeks[0] || 'Pekan 1'}</th>
-        <th style="width: 85px; border: 1px solid #7f7f7f;">${weeks[1] || 'Pekan 2'}</th>
-        <th style="width: 85px; border: 1px solid #7f7f7f;">${weeks[2] || 'Pekan 3'}</th>
-        <th style="width: 85px; border: 1px solid #7f7f7f;">${weeks[3] || 'Pekan 4'}</th>
-        <th style="width: 85px; border: 1px solid #7f7f7f;">${weeks[4] || 'Pekan 5'}</th>
+        <th style="width: 85px; border: 1px solid #7f7f7f;">${escapeHtml(weeks[0]) || 'Pekan 1'}</th>
+        <th style="width: 85px; border: 1px solid #7f7f7f;">${escapeHtml(weeks[1]) || 'Pekan 2'}</th>
+        <th style="width: 85px; border: 1px solid #7f7f7f;">${escapeHtml(weeks[2]) || 'Pekan 3'}</th>
+        <th style="width: 85px; border: 1px solid #7f7f7f;">${escapeHtml(weeks[3]) || 'Pekan 4'}</th>
+        <th style="width: 85px; border: 1px solid #7f7f7f;">${escapeHtml(weeks[4]) || 'Pekan 5'}</th>
         <th style="width: 110px; border: 1px solid #7f7f7f;">KETERANGAN</th>
         <th style="width: 100px; border: 1px solid #7f7f7f;">NOMINAL (Rp)</th>
         <th style="width: 60px; border: 1px solid #7f7f7f;">Cetak</th>
@@ -418,23 +423,23 @@ export const ReportGenerator: React.FC = () => {
       
       // Merge "Nama Guru" and "Kitab" vertically for the entire list!
       if (idx === 0) {
-        html += `<td rowspan="${studentsData.length}" class="bg-guru" style="border: 1px solid #7f7f7f;">${guruName}</td>`;
-        html += `<td rowspan="${studentsData.length}" class="bg-guru" style="border: 1px solid #7f7f7f;">${kitabName}</td>`;
+        html += `<td rowspan="${studentsData.length}" class="bg-guru" style="border: 1px solid #7f7f7f;">${escapeHtml(guruName)}</td>`;
+        html += `<td rowspan="${studentsData.length}" class="bg-guru" style="border: 1px solid #7f7f7f;">${escapeHtml(kitabName)}</td>`;
       }
       
-      html += `<td ${nameBg} style="border: 1px solid #7f7f7f;">${row.name || ''}</td>`;
-      html += `<td style="border: 1px solid #7f7f7f;">${row.category || ''}</td>`;
+      html += `<td ${nameBg} style="border: 1px solid #7f7f7f;">${escapeHtml(row.name)}</td>`;
+      html += `<td style="border: 1px solid #7f7f7f;">${escapeHtml(row.category)}</td>`;
       
       // Attendance status (5 columns)
       for (let w = 0; w < 5; w++) {
         const val = row.attendance[w] || '';
-        html += `<td style="border: 1px solid #7f7f7f; font-weight: bold;">${val}</td>`;
+        html += `<td style="border: 1px solid #7f7f7f; font-weight: bold;">${escapeHtml(val)}</td>`;
       }
       
-      html += `<td class="text-left" style="border: 1px solid #7f7f7f;">${row.pendampingan || ''}</td>`;
-      html += `<td style="border: 1px solid #7f7f7f;">${row.hs || ''}</td>`;
-      html += `<td style="border: 1px solid #7f7f7f;">${row.jm || ''}</td>`;
-      html += `<td style="border: 1px solid #7f7f7f; font-weight: bold;">${row.sppKeterangan || ''}</td>`;
+      html += `<td class="text-left" style="border: 1px solid #7f7f7f;">${escapeHtml(row.pendampingan)}</td>`;
+      html += `<td style="border: 1px solid #7f7f7f;">${escapeHtml(row.hs)}</td>`;
+      html += `<td style="border: 1px solid #7f7f7f;">${escapeHtml(row.jm)}</td>`;
+      html += `<td style="border: 1px solid #7f7f7f; font-weight: bold;">${escapeHtml(row.sppKeterangan)}</td>`;
       html += `<td style="border: 1px solid #7f7f7f;">${row.sppNominal > 0 ? row.sppNominal : ''}</td>`;
       html += `<td style="border: 1px solid #7f7f7f; font-weight: bold;">${row.buletinCetak ? 'V' : ''}</td>`;
       html += `<td style="border: 1px solid #7f7f7f; font-weight: bold;">${row.buletinDigital ? 'V' : ''}</td>`;
@@ -525,9 +530,9 @@ export const ReportGenerator: React.FC = () => {
         >
           <AlertCircle className="w-5 h-5 text-red-650 dark:text-red-400 mt-0.5 shrink-0" />
           <div className="flex-1 space-y-1">
-            <h4 className="text-xs font-black uppercase text-red-650 dark:text-red-400 tracking-wider">🔔 Pengingat Pekan Ke-3 Bulanan</h4>
-            <p className="text-xs text-zinc-650 dark:text-zinc-350 leading-relaxed font-semibold">
-              Hari ini sudah memasuki tanggal 15-21! Jangan lupa untuk segera mengkompilasi laporan kehadiran bwi-bulanan siswa, menyalin ke format WhatsApp, atau mengekspor berkas Excel berformat resmi.
+            <h4 className="text-sm font-black text-red-650 dark:text-red-400">Pengingat pekan ketiga</h4>
+            <p className="text-sm text-zinc-650 dark:text-zinc-350 leading-relaxed font-semibold">
+              Sudah tanggal 15-21. Waktunya menyusun laporan dua bulanan dan mengirimkannya ke koordinator.
             </p>
           </div>
           <button
@@ -548,14 +553,14 @@ export const ReportGenerator: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5 mt-1">
           <div className="flex items-center gap-2.5">
             <FileText className="w-5 h-5 text-red-650" />
-            <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-50 tracking-tight">Kompilator Laporan Sesi</h2>
+            <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-50 tracking-tight">Laporan</h2>
           </div>
 
           {/* Sub-tab Selection */}
           <div className="flex bg-zinc-100 dark:bg-zinc-950 p-1 rounded-xl border border-zinc-200/60 dark:border-zinc-850 self-start sm:self-auto">
             <button
               onClick={() => setReportMode('whatsapp')}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-extrabold uppercase tracking-wider transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-sm font-extrabold transition-all cursor-pointer ${
                 reportMode === 'whatsapp'
                   ? 'bg-white dark:bg-zinc-900 text-red-650 dark:text-red-400 shadow-xs'
                   : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300'
@@ -566,7 +571,7 @@ export const ReportGenerator: React.FC = () => {
             </button>
             <button
               onClick={() => setReportMode('excel')}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-extrabold uppercase tracking-wider transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-sm font-extrabold transition-all cursor-pointer ${
                 reportMode === 'excel'
                   ? 'bg-white dark:bg-zinc-900 text-red-650 dark:text-red-400 shadow-xs'
                   : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300'
@@ -581,14 +586,14 @@ export const ReportGenerator: React.FC = () => {
         {/* Filters Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-2xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-2" htmlFor="report_period">
-              Pilih Periode Bwi-Bulanan Laporan
+            <label className="block text-sm font-bold text-zinc-500 dark:text-zinc-400 mb-2" htmlFor="report_period">
+              Periode laporan (dua bulan)
             </label>
             <select
               id="report_period"
               value={selectedPeriodKey}
               onChange={(e) => setSelectedPeriodKey(e.target.value)}
-              className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2.5 text-xs text-zinc-800 dark:text-white focus:outline-hidden font-bold cursor-pointer"
+              className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2.5 text-sm text-zinc-800 dark:text-white focus:outline-hidden font-bold cursor-pointer"
             >
               {availablePeriods.map(p => (
                 <option key={p.key} value={p.key} className="dark:bg-zinc-900 dark:text-white">{p.label}</option>
@@ -597,18 +602,18 @@ export const ReportGenerator: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-2xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-2" htmlFor="report_schedule_filter">
-              Segmentasi Sesi Berdasarkan Kelas (Khusus WA)
+            <label className="block text-sm font-bold text-zinc-500 dark:text-zinc-400 mb-2" htmlFor="report_schedule_filter">
+              Kelompok kelas (khusus laporan WhatsApp)
             </label>
             <select
               id="report_schedule_filter"
               disabled={reportMode === 'excel'}
               value={reportScheduleFilter}
               onChange={(e) => setReportScheduleFilter(e.target.value)}
-              className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2.5 text-xs text-zinc-800 dark:text-white focus:outline-hidden font-bold cursor-pointer disabled:opacity-40"
+              className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2.5 text-sm text-zinc-800 dark:text-white focus:outline-hidden font-bold cursor-pointer disabled:opacity-40"
             >
-              <option value="all" className="dark:bg-zinc-900 dark:text-white">-- Semua Sesi Kelas --</option>
-              <option value="unlinked" className="dark:bg-zinc-900 dark:text-white">Hanya Kelas Kustom (Tanpa Jadwal)</option>
+              <option value="all" className="dark:bg-zinc-900 dark:text-white">Semua kelas</option>
+              <option value="unlinked" className="dark:bg-zinc-900 dark:text-white">Hanya sesi tanpa jadwal</option>
               {schedules.map(s => (
                 <option key={s.id} value={s.id} className="dark:bg-zinc-900 dark:text-white">{s.title} ({s.hari})</option>
               ))}
@@ -616,28 +621,28 @@ export const ReportGenerator: React.FC = () => {
           </div>
         </div>
 
-        <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-3 flex items-center gap-1.5 font-medium">
+        <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-3 flex items-center gap-1.5 font-medium">
           <Info className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
           <span>
             {reportMode === 'whatsapp' 
-              ? 'Sistem akan mengompilasi data ke format chat WhatsApp berisi sub-bab list peserta sesuai format Koordinator.'
-              : 'Sistem menyajikan formulir tabel interaktif sesuai format Laporan Petugas Ngaglik yang siap diekspor ke Excel.'}
+              ? 'Laporan disusun dalam format teks siap kirim ke koordinator.'
+              : 'Isi lembar laporan resmi, lalu unduh sebagai Excel.'}
           </span>
         </p>
       </div>
 
       {records.length === 0 ? (
         <div className="p-8 text-center bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-xs">
-          <h3 className="text-sm font-extrabold text-zinc-900 dark:text-zinc-250">Tidak ada riwayat untuk dibuatkan laporan.</h3>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-2">
-            Harap isi presensi terlebih dahulu atau muat data simulasi Mei-Juni 2026.
+          <h3 className="text-sm font-extrabold text-zinc-900 dark:text-zinc-250">Belum ada presensi untuk dilaporkan.</h3>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-2">
+            Catat presensi terlebih dahulu, atau muat data contoh untuk mencoba.
           </p>
           <button
             onClick={handleLoadSampleData}
-            className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 bg-red-650 hover:bg-red-750 text-white text-[11px] font-black rounded-lg cursor-pointer"
+            className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 bg-red-650 hover:bg-red-750 text-white text-sm font-black rounded-lg cursor-pointer"
           >
             <Play className="w-3" />
-            <span>Muat Data Contoh Simulasi (Periode Mei-Juni 2026)</span>
+            <span>Muat data contoh</span>
           </button>
         </div>
       ) : (
@@ -657,16 +662,16 @@ export const ReportGenerator: React.FC = () => {
               <div className="lg:col-span-7 space-y-4">
                 <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-xs">
                   <div className="flex items-center justify-between mb-3.5 border-b border-zinc-150 dark:border-zinc-805 pb-2.5">
-                    <h3 className="text-xs font-black text-zinc-800 dark:text-zinc-200 uppercase tracking-wider">
-                      List Sesi Hadir Periode ({filteredRecordsForReport.length})
+                    <h3 className="text-sm font-black text-zinc-800 dark:text-zinc-200">
+                      Sesi pada periode ini ({filteredRecordsForReport.length})
                     </h3>
-                    <span className="text-[10px] bg-red-500/10 text-red-650 dark:text-red-400 px-2 py-0.5 rounded-md font-bold uppercase">
+                    <span className="text-sm bg-red-500/10 text-red-650 dark:text-red-400 px-2 py-0.5 rounded-md font-bold">
                       {currentPeriod ? currentPeriod.label : '-'}
                     </span>
                   </div>
 
                   {filteredRecordsForReport.length === 0 ? (
-                    <div className="py-6 text-center text-xs italic text-zinc-400">
+                    <div className="py-6 text-center text-sm italic text-zinc-400">
                       Tidak ada catatan presensi yang terdaftar di filter periode &amp; kelas ini pada DB.
                     </div>
                   ) : (
@@ -674,37 +679,33 @@ export const ReportGenerator: React.FC = () => {
                       {filteredRecordsForReport.map((rec) => {
                         const isSelected = reportSelectedRecordIds.includes(rec.id!);
                         return (
-                          <div 
+                          /* A real checkbox: this was a div with an onClick,
+                             so it could not be reached or operated by keyboard
+                             and announced as nothing at all. */
+                          <label
                             key={rec.id}
-                            onClick={() => {
-                              if (rec.id) {
-                                setReportSelectedRecordIds(prev =>
-                                  prev.includes(rec.id!) ? prev.filter(x => x !== rec.id) : [...prev, rec.id!]
-                                );
-                              }
-                            }}
-                            className={`p-3.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
-                              isSelected 
-                                ? 'bg-red-500/[0.02] border-red-500/20 dark:border-red-600/30' 
-                                : 'bg-zinc-50 dark:bg-zinc-950 border-zinc-200/60 dark:border-zinc-805 opacity-60 hover:opacity-100'
-                            }`}
+                            className={`cs-session${isSelected ? ' is-selected' : ''}`}
                           >
-                            <div className="space-y-1 min-w-0">
-                              <p className="text-xs font-black text-zinc-900 dark:text-zinc-150 flex items-center gap-1.5">
-                                <Calendar className="w-3.5 h-3.5 text-zinc-400" />
-                                <span>{formatIndonesianDate(rec.tanggal)}</span>
-                              </p>
-                              <p className="text-[10px] text-zinc-500 dark:text-zinc-400 truncate max-w-sm">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => {
+                                if (rec.id) {
+                                  setReportSelectedRecordIds(prev =>
+                                    prev.includes(rec.id!) ? prev.filter(x => x !== rec.id) : [...prev, rec.id!]
+                                  );
+                                }
+                              }}
+                            />
+                            <span className="cs-session__text">
+                              <span className="cs-session__date">
+                                {formatIndonesianDate(rec.tanggal)}
+                              </span>
+                              <span className="cs-session__names">
                                 Hadir ({rec.peserta.length}): {rec.peserta.join(', ')}
-                              </p>
-                            </div>
-
-                            {isSelected ? (
-                              <CheckSquare className="w-5 h-5 text-red-650" />
-                            ) : (
-                              <Square className="w-5 h-5 text-zinc-350 dark:text-zinc-750" />
-                            )}
-                          </div>
+                              </span>
+                            </span>
+                          </label>
                         );
                       })}
                     </div>
@@ -715,10 +716,10 @@ export const ReportGenerator: React.FC = () => {
                     <button
                       type="button"
                       onClick={handleGenerateReport}
-                      className="px-5 py-2.5 bg-red-650 hover:bg-red-755 text-white text-xs font-black rounded-xl transition-colors shrink-0 cursor-pointer shadow-xs inline-flex items-center gap-1.5"
+                      className="px-5 py-2.5 bg-red-650 hover:bg-red-755 text-white text-sm font-black rounded-xl transition-colors shrink-0 cursor-pointer shadow-xs inline-flex items-center gap-1.5"
                     >
                       <RefreshCw className="w-3.5 h-3.5" />
-                      <span>Kompilasikan Laporan</span>
+                      <span>Susun laporan</span>
                     </button>
                   </div>
                 </div>
@@ -728,41 +729,38 @@ export const ReportGenerator: React.FC = () => {
               <div className="lg:col-span-5">
                 <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-xs space-y-4 sticky top-24">
                   <div className="border-b border-zinc-150 dark:border-zinc-805 pb-3 flex items-center justify-between">
-                    <h3 className="text-xs font-black text-zinc-800 dark:text-zinc-200 uppercase tracking-wider">Hasil WhatsApp Lapor</h3>
-                    <span className="text-[10px] bg-zinc-100 dark:bg-zinc-800 text-zinc-650 dark:text-zinc-3 font-bold px-2 py-0.5 rounded-md uppercase font-mono">Template WA</span>
+                    <h3 className="text-sm font-black text-zinc-800 dark:text-zinc-200">Hasil laporan WhatsApp</h3>
+                    <span className="text-sm bg-zinc-100 dark:bg-zinc-800 text-zinc-650 dark:text-zinc-3 font-bold px-2 py-0.5 rounded-md font-mono">Template WA</span>
                   </div>
 
                   {reportGenerated ? (
                     <div className="space-y-4">
                       <textarea
                         ref={reportTextareaRef}
-                        className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 text-[11px] font-mono text-zinc-800 dark:text-zinc-200 leading-normal focus:outline-hidden"
+                        className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 text-sm font-mono text-zinc-800 dark:text-zinc-200 leading-normal focus:outline-hidden"
                         rows={12}
                         readOnly
                         value={reportText}
                       />
 
-                      <div className="flex gap-2.5">
-                        <button
-                          type="button"
-                          onClick={handleCopyReport}
-                          className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-black rounded-xl cursor-pointer transition-all border border-transparent"
+                      <div className="cs-row">
+                        <Button
+                          variant="primary"
+                          icon={<Send className="cs-icon" />}
+                          onClick={handleShareReport}
                         >
-                          {copied ? (
-                            <>
-                              <Check className="w-4 h-4 text-emerald-400" />
-                              <span>Berhasil Disalin!</span>
-                            </>
-                          ) : (
-                            <>
-                              <Copy className="w-4 h-4" />
-                              <span>Salin Ke Clipboard</span>
-                            </>
-                          )}
-                        </button>
+                          Bagikan ke WhatsApp
+                        </Button>
+                        <Button
+                          icon={copied ? <Check className="cs-icon" /> : <Copy className="cs-icon" />}
+                          onClick={handleCopyReport}
+                        >
+                          {copied ? 'Tersalin' : 'Salin teks'}
+                        </Button>
                       </div>
-                      <p className="text-[10px] text-zinc-500 dark:text-zinc-400 text-center">
-                        💡 Rekatkan langsung teks hasil salinan tadi pada chat WhatsApp Koordinator Kursus.
+                      <p className="cs-muted">
+                        WhatsApp akan terbuka dengan teks ini sudah terisi. Anda yang
+                        menekan kirim.
                       </p>
                     </div>
                   ) : (
@@ -770,9 +768,9 @@ export const ReportGenerator: React.FC = () => {
                       <div className="p-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-full text-zinc-400">
                         <FileText className="w-8 h-8" />
                       </div>
-                      <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Laporan belum dikompilasikan.</p>
-                      <p className="text-[10px] text-zinc-400 max-w-xs leading-normal">
-                        Silakan tentukan saringan periode bwi-bulanan, pilih sesi kelas belajar di samping kiri, lalu klik <b>Kompilasikan Laporan</b>.
+                      <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Laporan belum disusun.</p>
+                      <p className="text-sm text-zinc-400 max-w-xs leading-normal">
+                        Pilih periode dan sesi di samping, lalu tekan <b>Susun laporan</b>.
                       </p>
                     </div>
                   )}
@@ -794,55 +792,55 @@ export const ReportGenerator: React.FC = () => {
               <div className="bg-amber-500/10 dark:bg-amber-950/20 border border-amber-500/20 rounded-2xl p-4 flex items-start gap-3">
                 <Sliders className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
                 <div className="space-y-1">
-                  <h4 className="text-xs font-black uppercase text-amber-700 dark:text-amber-400 tracking-wider">Lembar Kerja Interaktif Resmi</h4>
-                  <p className="text-xs text-zinc-650 dark:text-zinc-350 leading-relaxed font-semibold">
-                    Atur data presensi, lengkapi status SPP, catatan hafalan, serta pengiriman buletin. Data akan otomatis tersimpan dalam database lokal per periode ketika mengklik <b>Simpan Lembar Kerja</b>. Ekspor langsung menghasilkan format resmi Excel berwarna!
+                  <h4 className="text-sm font-black text-amber-700 dark:text-amber-400">Lembar laporan Excel</h4>
+                  <p className="text-sm text-zinc-650 dark:text-zinc-350 leading-relaxed font-semibold">
+                    Atur data presensi, lengkapi status SPP, catatan hafalan, serta pengiriman buletin. Data akan otomatis tersimpan dalam database lokal per periode ketika mengklik <b>Simpan draf</b>. Ekspor langsung menghasilkan format resmi Excel berwarna!
                   </p>
                 </div>
               </div>
 
               {/* Metadata Inputs Section */}
               <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-xs space-y-4">
-                <h3 className="text-xs font-black text-zinc-800 dark:text-zinc-200 uppercase tracking-wider border-b border-zinc-100 dark:border-zinc-805 pb-2">
-                  Metadata Laporan Excel
+                <h3 className="text-sm font-black text-zinc-800 dark:text-zinc-200 border-b border-zinc-100 dark:border-zinc-805 pb-2">
+                  Keterangan laporan
                 </h3>
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-[11px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">
+                    <label className="block text-sm font-bold text-zinc-500 dark:text-zinc-400 mb-1.5">
                       Nama Guru
                     </label>
                     <input
                       type="text"
                       value={guruName}
                       onChange={(e) => setGuruName(e.target.value)}
-                      className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2 text-xs font-bold text-zinc-800 dark:text-zinc-150 focus:outline-hidden focus:ring-1 focus:ring-red-600"
+                      className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2 text-sm font-bold text-zinc-800 dark:text-zinc-150 focus:outline-hidden focus:ring-1 focus:ring-red-600"
                       placeholder="Contoh: Guru 1"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">
+                    <label className="block text-sm font-bold text-zinc-500 dark:text-zinc-400 mb-1.5">
                       Kitab / Materi
                     </label>
                     <input
                       type="text"
                       value={kitabName}
                       onChange={(e) => setKitabName(e.target.value)}
-                      className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2 text-xs font-bold text-zinc-800 dark:text-zinc-150 focus:outline-hidden focus:ring-1 focus:ring-red-600"
+                      className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2 text-sm font-bold text-zinc-800 dark:text-zinc-150 focus:outline-hidden focus:ring-1 focus:ring-red-600"
                       placeholder="Contoh: Nama Kitab"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">
+                    <label className="block text-sm font-bold text-zinc-500 dark:text-zinc-400 mb-1.5">
                       Tanggal Aktif Pembelajaran
                     </label>
                     <input
                       type="text"
                       value={tanggalAktif}
                       onChange={(e) => setTanggalAktif(e.target.value)}
-                      className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2 text-xs font-bold text-zinc-800 dark:text-zinc-150 focus:outline-hidden focus:ring-1 focus:ring-red-600"
+                      className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2 text-sm font-bold text-zinc-800 dark:text-zinc-150 focus:outline-hidden focus:ring-1 focus:ring-red-600"
                       placeholder="Contoh: 20 Jun - 17 Jul 2026"
                     />
                   </div>
@@ -852,20 +850,21 @@ export const ReportGenerator: React.FC = () => {
                 <div className="pt-2">
                   <div className="flex items-center gap-1.5 mb-2">
                     <Calendar className="w-3.5 h-3.5 text-zinc-400" />
-                    <span className="text-[10px] font-black uppercase text-zinc-500 dark:text-zinc-400 tracking-wider">Atur Label Tanggal/Pekan Sesi (Kolom Presensi)</span>
+                    <span className="text-sm font-black text-zinc-500 dark:text-zinc-400">Nama kolom pekan</span>
                   </div>
                   <div className="grid grid-cols-5 gap-2">
                     {weeks.map((wk, idx) => (
                       <div key={idx}>
                         <input
                           type="text"
+                          aria-label={`Nama kolom pekan ${idx + 1}`}
                           value={wk}
                           onChange={(e) => {
                             const copy = [...weeks];
                             copy[idx] = e.target.value;
                             setWeeks(copy);
                           }}
-                          className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2 py-1.5 text-[11px] font-bold text-zinc-700 dark:text-white text-center focus:outline-hidden focus:ring-1 focus:ring-red-600"
+                          className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2 py-1.5 text-sm font-bold text-zinc-700 dark:text-white text-center focus:outline-hidden focus:ring-1 focus:ring-red-600"
                           placeholder={`Pekan ${idx + 1}`}
                         />
                       </div>
@@ -878,28 +877,40 @@ export const ReportGenerator: React.FC = () => {
               <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 shadow-xs space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-100 dark:border-zinc-805 pb-3">
                   <div>
-                    <h3 className="text-xs font-black text-zinc-800 dark:text-zinc-200 uppercase tracking-wider flex items-center gap-1.5">
+                    <h3 className="text-sm font-black text-zinc-800 dark:text-zinc-200 flex items-center gap-1.5">
                       <BookOpen className="w-4 h-4 text-red-650" />
-                      <span>Daftar Nilai &amp; Presensi Santri ({studentsData.length} baris)</span>
+                      <span>Daftar santri ({studentsData.length})</span>
                     </h3>
-                    <p className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-1">
-                      Prapopulasi otomatis dilakukan berdasarkan kecocokan nama dan tanggal pada log presensi.
+                    <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
+                      Terisi otomatis dari presensi yang sudah Anda catat.
                     </p>
                   </div>
                   <button
                     onClick={handleAddStudentRow}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-zinc-100 dark:bg-zinc-950 hover:bg-zinc-200 dark:hover:bg-zinc-850 border border-zinc-200 dark:border-zinc-800 text-zinc-850 dark:text-zinc-200 text-2xs font-extrabold uppercase tracking-wider rounded-xl cursor-pointer transition-colors"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-zinc-100 dark:bg-zinc-950 hover:bg-zinc-200 dark:hover:bg-zinc-850 border border-zinc-200 dark:border-zinc-800 text-zinc-850 dark:text-zinc-200 text-sm font-extrabold rounded-xl cursor-pointer transition-colors"
                   >
                     <UserPlus className="w-3.5 h-3.5" />
-                    <span>Tambah Santri</span>
+                    <span>Tambah santri</span>
                   </button>
                 </div>
 
-                {/* Spreadsheet View Container */}
-                <div className="overflow-x-auto border border-zinc-150 dark:border-zinc-805 rounded-xl">
-                  <table className="w-full min-w-[1250px] border-collapse text-left text-xs font-medium">
+                {/* The sheet is 17 columns wide, so on a phone it has to scroll
+                    sideways. Make that scroll reachable by keyboard and say it
+                    is there, and offer the per-santri form as the way to fill
+                    it in without scrolling at all. */}
+                <p className="cs-muted">
+                  Tabel ini lebar. Geser ke samping untuk melihat semua kolom, atau
+                  tekan <b>Ubah</b> pada baris santri untuk mengisi lewat formulir.
+                </p>
+                <div
+                  className="cs-sheet"
+                  role="region"
+                  aria-label="Lembar laporan santri"
+                  tabIndex={0}
+                >
+                  <table className="w-full min-w-[1250px] border-collapse text-left text-sm font-medium">
                     <thead>
-                      <tr className="bg-zinc-50 dark:bg-zinc-950 text-2xs font-black uppercase tracking-wider text-zinc-500 dark:text-zinc-400 border-b border-zinc-150 dark:border-zinc-805">
+                      <tr className="bg-zinc-50 dark:bg-zinc-950 text-sm font-black text-zinc-500 dark:text-zinc-400 border-b border-zinc-150 dark:border-zinc-805">
                         <th className="p-2 border-r border-zinc-150 dark:border-zinc-805 text-center w-12">No</th>
                         <th className="p-2 border-r border-zinc-150 dark:border-zinc-805 w-48">Nama Santri</th>
                         <th className="p-2 border-r border-zinc-150 dark:border-zinc-805 text-center w-16">K/P</th>
@@ -913,7 +924,7 @@ export const ReportGenerator: React.FC = () => {
                         <th className="p-2 border-r border-zinc-150 dark:border-zinc-805 text-right w-28">SPP NOMINAL</th>
                         <th className="p-2 border-r border-zinc-150 dark:border-zinc-805 text-center w-16">BULETIN CETAK</th>
                         <th className="p-2 border-r border-zinc-150 dark:border-zinc-805 text-center w-16">BULETIN DGTL</th>
-                        <th className="p-2 text-center w-16">Aksi</th>
+                        <th className="p-2 text-center w-44">Aksi</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-zinc-150 dark:divide-zinc-805">
@@ -928,13 +939,7 @@ export const ReportGenerator: React.FC = () => {
                           <tr key={rIdx} className={`hover:bg-zinc-50 dark:hover:bg-zinc-950/60 transition-colors ${rowBg}`}>
                             {/* NO */}
                             <td className="p-1.5 border-r border-zinc-150 dark:border-zinc-805 text-center font-bold text-zinc-550">
-                              <button
-                                onClick={() => setEditingStudentIndex(rIdx)}
-                                className="w-7 h-7 flex items-center justify-center rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-red-500/10 hover:text-red-650 dark:hover:text-red-400 text-zinc-600 dark:text-zinc-400 font-bold transition-all cursor-pointer"
-                                title="Edit Detail Baris ini di Modal khusus Handphone"
-                              >
-                                {rIdx + 1}
-                              </button>
+                              <span>{rIdx + 1}</span>
                             </td>
 
                             {/* NAMA SANTRI */}
@@ -1083,17 +1088,22 @@ export const ReportGenerator: React.FC = () => {
                               />
                             </td>
 
-                            {/* ACTIONS */}
+                            {/* ACTIONS — labelled, because an icon with a title
+                                tooltip tells a phone user nothing. */}
                             <td className="p-1.5 text-center">
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteStudentRow(rIdx)}
-                                className="p-1.5 text-zinc-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors cursor-pointer"
-                                title="Hapus Baris Santri"
-                                disabled={studentsData.length <= 1}
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
+                              <div className="cs-sheet__actions">
+                                <Button onClick={() => setEditingStudentIndex(rIdx)}>
+                                  Ubah
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  icon={<Trash2 className="cs-icon" />}
+                                  onClick={() => handleDeleteStudentRow(rIdx)}
+                                  disabled={studentsData.length <= 1}
+                                >
+                                  Hapus
+                                </Button>
+                              </div>
                             </td>
                           </tr>
                         );
@@ -1106,32 +1116,32 @@ export const ReportGenerator: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-5 bg-white dark:bg-zinc-950 p-5 border border-zinc-200 dark:border-zinc-805 rounded-2xl shadow-xs">
                   {/* Presensi */}
                   <div className="space-y-3">
-                    <p className="font-extrabold uppercase tracking-wider text-[11px] text-zinc-500 dark:text-zinc-400 border-b border-zinc-100 dark:border-zinc-800 pb-2">
+                    <p className="font-extrabold text-sm text-zinc-500 dark:text-zinc-400 border-b border-zinc-100 dark:border-zinc-800 pb-2">
                       Keterangan Presensi
                     </p>
-                    <div className="grid grid-cols-2 gap-2 text-2xs font-bold text-zinc-700 dark:text-zinc-300">
+                    <div className="grid grid-cols-2 gap-2 text-sm font-bold text-zinc-700 dark:text-zinc-300">
                       <div className="flex items-center gap-1.5">
-                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-emerald-50 dark:bg-emerald-950/45 text-emerald-600 dark:text-emerald-400 font-mono font-black text-3xs border border-emerald-200 dark:border-emerald-900/50">V</span>
+                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-emerald-50 dark:bg-emerald-950/45 text-emerald-600 dark:text-emerald-400 font-mono font-black text-sm border border-emerald-200 dark:border-emerald-900/50">V</span>
                         <span>Hadir Tepat</span>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-amber-50 dark:bg-amber-950/45 text-amber-600 dark:text-amber-400 font-mono font-black text-3xs border border-amber-200 dark:border-amber-900/50">T</span>
+                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-amber-50 dark:bg-amber-950/45 text-amber-600 dark:text-amber-400 font-mono font-black text-sm border border-amber-200 dark:border-amber-900/50">T</span>
                         <span>Terlambat &lt;15m</span>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-sky-50 dark:bg-sky-950/45 text-sky-600 dark:text-sky-400 font-mono font-black text-3xs border border-sky-200 dark:border-sky-900/50">S</span>
+                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-sky-50 dark:bg-sky-950/45 text-sky-600 dark:text-sky-400 font-mono font-black text-sm border border-sky-200 dark:border-sky-900/50">S</span>
                         <span>Sakit</span>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-indigo-50 dark:bg-indigo-950/45 text-indigo-600 dark:text-indigo-400 font-mono font-black text-3xs border border-indigo-200 dark:border-indigo-900/50">I</span>
+                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-indigo-50 dark:bg-indigo-950/45 text-indigo-600 dark:text-indigo-400 font-mono font-black text-sm border border-indigo-200 dark:border-indigo-900/50">I</span>
                         <span>Izin</span>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-rose-50 dark:bg-rose-950/45 text-rose-600 dark:text-rose-400 font-mono font-black text-3xs border border-rose-200 dark:border-rose-900/50">A</span>
+                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-rose-50 dark:bg-rose-950/45 text-rose-600 dark:text-rose-400 font-mono font-black text-sm border border-rose-200 dark:border-rose-900/50">A</span>
                         <span>Alpa</span>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 font-mono font-black text-3xs border border-zinc-250 dark:border-zinc-700">B</span>
+                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 font-mono font-black text-sm border border-zinc-250 dark:border-zinc-700">B</span>
                         <span>Musyrif Absen</span>
                       </div>
                     </div>
@@ -1139,28 +1149,28 @@ export const ReportGenerator: React.FC = () => {
 
                   {/* SPP */}
                   <div className="space-y-3 border-t md:border-t-0 md:border-l border-zinc-100 dark:border-zinc-800 pt-3 md:pt-0 md:pl-5">
-                    <p className="font-extrabold uppercase tracking-wider text-[11px] text-zinc-500 dark:text-zinc-400 border-b border-zinc-100 dark:border-zinc-800 pb-2">
+                    <p className="font-extrabold text-sm text-zinc-500 dark:text-zinc-400 border-b border-zinc-100 dark:border-zinc-800 pb-2">
                       Keterangan SPP
                     </p>
-                    <div className="grid grid-cols-2 gap-2 text-2xs font-bold text-zinc-700 dark:text-zinc-300">
+                    <div className="grid grid-cols-2 gap-2 text-sm font-bold text-zinc-700 dark:text-zinc-300">
                       <div className="flex items-center gap-1.5">
-                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-emerald-50 dark:bg-emerald-950/45 text-emerald-600 dark:text-emerald-400 font-mono font-black text-3xs border border-emerald-200 dark:border-emerald-900/50">V</span>
+                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-emerald-50 dark:bg-emerald-950/45 text-emerald-600 dark:text-emerald-400 font-mono font-black text-sm border border-emerald-200 dark:border-emerald-900/50">V</span>
                         <span>Sblm Tgl 15</span>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-amber-50 dark:bg-amber-950/45 text-amber-600 dark:text-amber-400 font-mono font-black text-3xs border border-amber-200 dark:border-amber-900/50">T</span>
+                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-amber-50 dark:bg-amber-950/45 text-amber-600 dark:text-amber-400 font-mono font-black text-sm border border-amber-200 dark:border-amber-900/50">T</span>
                         <span>Stlh Tgl 15</span>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 font-mono font-black text-3xs border border-zinc-250 dark:border-zinc-700">S</span>
+                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 font-mono font-black text-sm border border-zinc-250 dark:border-zinc-700">S</span>
                         <span>Sulit Bayar</span>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-indigo-50 dark:bg-indigo-950/45 text-indigo-600 dark:text-indigo-400 font-mono font-black text-3xs border border-indigo-200 dark:border-indigo-900/50">I</span>
+                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-indigo-50 dark:bg-indigo-950/45 text-indigo-600 dark:text-indigo-400 font-mono font-black text-sm border border-indigo-200 dark:border-indigo-900/50">I</span>
                         <span>Dihutang</span>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-rose-50 dark:bg-rose-950/45 text-rose-600 dark:text-rose-400 font-mono font-black text-3xs border border-rose-200 dark:border-rose-900/50">A</span>
+                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-rose-50 dark:bg-rose-950/45 text-rose-600 dark:text-rose-400 font-mono font-black text-sm border border-rose-200 dark:border-rose-900/50">A</span>
                         <span>Tanpa Alasan</span>
                       </div>
                     </div>
@@ -1168,20 +1178,20 @@ export const ReportGenerator: React.FC = () => {
 
                   {/* Kategori */}
                   <div className="space-y-3 border-t md:border-t-0 md:border-l border-zinc-100 dark:border-zinc-800 pt-3 md:pt-0 md:pl-5">
-                    <p className="font-extrabold uppercase tracking-wider text-[11px] text-zinc-500 dark:text-zinc-400 border-b border-zinc-100 dark:border-zinc-800 pb-2">
+                    <p className="font-extrabold text-sm text-zinc-500 dark:text-zinc-400 border-b border-zinc-100 dark:border-zinc-800 pb-2">
                       Kategori &amp; Buletin
                     </p>
-                    <div className="space-y-2.5 text-2xs font-bold text-zinc-700 dark:text-zinc-300">
+                    <div className="space-y-2.5 text-sm font-bold text-zinc-700 dark:text-zinc-300">
                       <div className="flex items-center gap-1.5">
-                        <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-mono font-black text-3xs border border-zinc-250 dark:border-zinc-700">K / P</span>
+                        <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-mono font-black text-sm border border-zinc-250 dark:border-zinc-700">K / P</span>
                         <span>Karyawan / Pelajar</span>
                       </div>
                       <div className="flex flex-col gap-1 bg-red-500/[0.03] dark:bg-red-500/[0.02] border border-red-500/10 p-2 rounded-lg">
                         <div className="flex items-center gap-1.5">
                           <span className="w-1.5 h-1.5 rounded-full bg-red-650 animate-pulse"></span>
-                          <span className="font-extrabold uppercase tracking-wider text-3xs text-red-650 dark:text-red-400">Sebar Buletin</span>
+                          <span className="font-extrabold text-sm text-red-650 dark:text-red-400">Sebar Buletin</span>
                         </div>
-                        <span className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-normal font-semibold">
+                        <span className="text-sm text-zinc-500 dark:text-zinc-400 leading-normal font-semibold">
                           Centang kolom cetak/digital jika buletin telah diserahkan.
                         </span>
                       </div>
@@ -1191,14 +1201,14 @@ export const ReportGenerator: React.FC = () => {
 
                 {/* Catatan Area */}
                 <div>
-                  <label className="block text-2xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-2">
-                    Catatan Khusus Bulanan
+                  <label className="block text-sm font-bold text-zinc-500 dark:text-zinc-400 mb-2">
+                    Catatan
                   </label>
                   <textarea
                     rows={2}
                     value={catatan}
                     onChange={(e) => setCatatan(e.target.value)}
-                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 text-xs text-zinc-800 dark:text-zinc-200 focus:outline-hidden focus:ring-1 focus:ring-red-600"
+                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 text-sm text-zinc-800 dark:text-zinc-200 focus:outline-hidden focus:ring-1 focus:ring-red-600"
                     placeholder="Masukkan catatan evaluasi kelas bulan ini..."
                   />
                 </div>
@@ -1209,10 +1219,10 @@ export const ReportGenerator: React.FC = () => {
                     <button
                       type="button"
                       onClick={handleResetToAttendanceDB}
-                      className="px-4 py-2 bg-zinc-100 dark:bg-zinc-850 hover:bg-zinc-200 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-white text-xs font-black rounded-xl transition-colors cursor-pointer inline-flex items-center gap-1.5"
+                      className="px-4 py-2 bg-zinc-100 dark:bg-zinc-850 hover:bg-zinc-200 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-white text-sm font-black rounded-xl transition-colors cursor-pointer inline-flex items-center gap-1.5"
                     >
                       <RefreshCw className="w-3.5 h-3.5" />
-                      <span>Sinkron Kehadiran</span>
+                      <span>Ambil ulang dari presensi</span>
                     </button>
                   </div>
 
@@ -1220,18 +1230,18 @@ export const ReportGenerator: React.FC = () => {
                     <button
                       type="button"
                       onClick={handleSaveExcelReport}
-                      className="px-4.5 py-2.5 bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-black rounded-xl transition-colors cursor-pointer inline-flex items-center gap-1.5"
+                      className="px-4.5 py-2.5 bg-zinc-900 hover:bg-zinc-800 text-white text-sm font-black rounded-xl transition-colors cursor-pointer inline-flex items-center gap-1.5"
                     >
                       <Save className="w-3.5 h-3.5 text-zinc-300" />
-                      <span>Simpan Lembar Kerja</span>
+                      <span>Simpan draf</span>
                     </button>
                     <button
                       type="button"
                       onClick={handleExportStyledExcel}
-                      className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-xl shadow-xs transition-colors cursor-pointer inline-flex items-center gap-1.5"
+                      className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-black rounded-xl shadow-xs transition-colors cursor-pointer inline-flex items-center gap-1.5"
                     >
                       <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-100" />
-                      <span>Ekspor Excel Resmi (.xls)</span>
+                      <span>Unduh Excel</span>
                     </button>
                   </div>
                 </div>
@@ -1250,10 +1260,10 @@ export const ReportGenerator: React.FC = () => {
                       {/* Modal Header */}
                       <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-805 pb-3">
                         <div>
-                          <span className="text-[10px] bg-red-500/10 text-red-650 dark:text-red-400 px-2 py-0.5 rounded-md font-bold uppercase">
+                          <span className="text-sm bg-red-500/10 text-red-650 dark:text-red-400 px-2 py-0.5 rounded-md font-bold">
                             Baris #{editingStudentIndex + 1}
                           </span>
-                          <h4 className="text-sm font-black text-zinc-900 dark:text-zinc-100 uppercase mt-1">Detail Nilai &amp; SPP</h4>
+                          <h4 className="text-sm font-black text-zinc-900 dark:text-zinc-100 mt-1">Detail santri</h4>
                         </div>
                         <button
                           onClick={() => setEditingStudentIndex(null)}
@@ -1267,12 +1277,12 @@ export const ReportGenerator: React.FC = () => {
                       <div className="space-y-4 font-sans">
                         {/* Name */}
                         <div>
-                          <label className="block text-3xs font-black uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">Nama Santri</label>
+                          <label className="block text-sm font-black text-zinc-500 dark:text-zinc-400 mb-1.5">Nama Santri</label>
                           <input
                             type="text"
                             value={studentsData[editingStudentIndex].name}
                             onChange={(e) => handleUpdateStudentField(editingStudentIndex, 'name', e.target.value)}
-                            className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-xs font-bold text-zinc-800 dark:text-zinc-150 focus:outline-hidden focus:ring-1 focus:ring-red-600"
+                            className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-sm font-bold text-zinc-800 dark:text-zinc-150 focus:outline-hidden focus:ring-1 focus:ring-red-600"
                             placeholder="Nama Santri"
                           />
                         </div>
@@ -1280,22 +1290,22 @@ export const ReportGenerator: React.FC = () => {
                         {/* Category & SPP Ket */}
                         <div className="grid grid-cols-2 gap-4">
                           <div>
-                            <label className="block text-3xs font-black uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">Kategori (K/P)</label>
+                            <label className="block text-sm font-black text-zinc-500 dark:text-zinc-400 mb-1.5">Kategori (K/P)</label>
                             <select
                               value={studentsData[editingStudentIndex].category}
                               onChange={(e) => handleUpdateStudentField(editingStudentIndex, 'category', e.target.value as 'K' | 'P')}
-                              className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-xs font-bold text-zinc-800 dark:text-zinc-150 focus:outline-hidden"
+                              className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-sm font-bold text-zinc-800 dark:text-zinc-150 focus:outline-hidden"
                             >
                               <option value="K" className="dark:bg-zinc-900 dark:text-white">Karyawan (K)</option>
                               <option value="P" className="dark:bg-zinc-900 dark:text-white">Pelajar (P)</option>
                             </select>
                           </div>
                           <div>
-                            <label className="block text-3xs font-black uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">SPP Keterangan</label>
+                            <label className="block text-sm font-black text-zinc-500 dark:text-zinc-400 mb-1.5">SPP Keterangan</label>
                             <select
                               value={studentsData[editingStudentIndex].sppKeterangan}
                               onChange={(e) => handleUpdateStudentField(editingStudentIndex, 'sppKeterangan', e.target.value)}
-                              className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-xs font-bold text-zinc-800 dark:text-zinc-150 focus:outline-hidden"
+                              className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-sm font-bold text-zinc-800 dark:text-zinc-150 focus:outline-hidden"
                             >
                               <option value="" className="dark:bg-zinc-900 dark:text-white">-- Kosong --</option>
                               <option value="V" className="dark:bg-zinc-900 dark:text-white">V - Tepat waktu</option>
@@ -1310,11 +1320,11 @@ export const ReportGenerator: React.FC = () => {
                         {/* SPP Nominal & HS & JM */}
                         <div className="grid grid-cols-3 gap-3">
                           <div className="col-span-1">
-                            <label className="block text-3xs font-black uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">Hafalan (HS)</label>
+                            <label className="block text-sm font-black text-zinc-500 dark:text-zinc-400 mb-1.5">Hafalan (HS)</label>
                             <select
                               value={studentsData[editingStudentIndex].hs}
                               onChange={(e) => handleUpdateStudentField(editingStudentIndex, 'hs', e.target.value)}
-                              className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-2 py-2.5 text-xs font-bold text-zinc-800 dark:text-zinc-150 text-center focus:outline-hidden cursor-pointer"
+                              className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-2 py-2.5 text-sm font-bold text-zinc-800 dark:text-zinc-150 text-center focus:outline-hidden cursor-pointer"
                             >
                               <option value="" className="dark:bg-zinc-900 dark:text-white">-</option>
                               <option value="V" className="dark:bg-zinc-900 dark:text-white">V</option>
@@ -1326,11 +1336,11 @@ export const ReportGenerator: React.FC = () => {
                             </select>
                           </div>
                           <div className="col-span-1">
-                            <label className="block text-3xs font-black uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">Juz (JM)</label>
+                            <label className="block text-sm font-black text-zinc-500 dark:text-zinc-400 mb-1.5">Juz (JM)</label>
                             <select
                               value={studentsData[editingStudentIndex].jm}
                               onChange={(e) => handleUpdateStudentField(editingStudentIndex, 'jm', e.target.value)}
-                              className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-2 py-2.5 text-xs font-bold text-zinc-800 dark:text-zinc-150 text-center focus:outline-hidden cursor-pointer"
+                              className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-2 py-2.5 text-sm font-bold text-zinc-800 dark:text-zinc-150 text-center focus:outline-hidden cursor-pointer"
                             >
                               <option value="" className="dark:bg-zinc-900 dark:text-white">-</option>
                               <option value="V" className="dark:bg-zinc-900 dark:text-white">V</option>
@@ -1342,12 +1352,12 @@ export const ReportGenerator: React.FC = () => {
                             </select>
                           </div>
                           <div className="col-span-1">
-                            <label className="block text-3xs font-black uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">SPP (Rp)</label>
+                            <label className="block text-sm font-black text-zinc-500 dark:text-zinc-400 mb-1.5">SPP (Rp)</label>
                             <input
                               type="number"
                               value={studentsData[editingStudentIndex].sppNominal || ''}
                               onChange={(e) => handleUpdateStudentField(editingStudentIndex, 'sppNominal', Number(e.target.value))}
-                              className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-2 py-2.5 font-mono text-xs font-bold text-zinc-800 dark:text-zinc-150 text-right focus:outline-hidden"
+                              className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-2 py-2.5 font-mono text-sm font-bold text-zinc-800 dark:text-zinc-150 text-right focus:outline-hidden"
                               placeholder="0"
                             />
                           </div>
@@ -1355,25 +1365,25 @@ export const ReportGenerator: React.FC = () => {
 
                         {/* Pendampingan */}
                         <div>
-                          <label className="block text-3xs font-black uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">Pendampingan</label>
+                          <label className="block text-sm font-black text-zinc-500 dark:text-zinc-400 mb-1.5">Pendampingan</label>
                           <input
                             type="text"
                             value={studentsData[editingStudentIndex].pendampingan}
                             onChange={(e) => handleUpdateStudentField(editingStudentIndex, 'pendampingan', e.target.value)}
-                            className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-xs font-bold text-zinc-800 dark:text-zinc-150 focus:outline-hidden"
+                            className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-sm font-bold text-zinc-800 dark:text-zinc-150 focus:outline-hidden"
                             placeholder="Keterangan pendampingan"
                           />
                         </div>
 
                         {/* Attendance weeks */}
                         <div>
-                          <label className="block text-3xs font-black uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-2">Presensi Kehadiran Sesi</label>
+                          <label className="block text-sm font-black text-zinc-500 dark:text-zinc-400 mb-2">Presensi Kehadiran Sesi</label>
                           <div className="space-y-2">
                             {weeks.map((wk, wIdx) => {
                               const cellValue = studentsData[editingStudentIndex!].attendance[wIdx] || '';
                               return (
                                 <div key={wIdx} className="flex items-center justify-between bg-zinc-50 dark:bg-zinc-950 p-2 border border-zinc-200/60 dark:border-zinc-805 rounded-xl">
-                                  <span className="text-[11px] font-extrabold text-zinc-500">{wk || `Pekan ${wIdx + 1}`}</span>
+                                  <span className="text-sm font-extrabold text-zinc-500">{wk || `Pekan ${wIdx + 1}`}</span>
                                   
                                   {/* Code select buttons */}
                                   <div className="flex gap-1">
@@ -1394,7 +1404,7 @@ export const ReportGenerator: React.FC = () => {
                                           key={code}
                                           type="button"
                                           onClick={() => handleUpdateAttendanceCell(editingStudentIndex!, wIdx, isAct ? '' : code)}
-                                          className={`w-7 h-7 text-3xs font-black rounded-lg transition-all cursor-pointer ${actStyle}`}
+                                          className={`w-7 h-7 text-sm font-black rounded-lg transition-all cursor-pointer ${actStyle}`}
                                         >
                                           {code}
                                         </button>
@@ -1416,7 +1426,7 @@ export const ReportGenerator: React.FC = () => {
                               onChange={(e) => handleUpdateStudentField(editingStudentIndex, 'buletinCetak', e.target.checked)}
                               className="w-4 h-4 rounded-md border-zinc-300 text-red-600 focus:ring-red-500"
                             />
-                            <div className="text-2xs font-bold text-zinc-650 dark:text-zinc-350">Buletin Cetak</div>
+                            <div className="text-sm font-bold text-zinc-650 dark:text-zinc-350">Buletin Cetak</div>
                           </label>
                           <label className="flex items-center gap-2.5 bg-zinc-50 dark:bg-zinc-950 p-3 rounded-xl border border-zinc-200/60 dark:border-zinc-805 cursor-pointer">
                             <input
@@ -1425,7 +1435,7 @@ export const ReportGenerator: React.FC = () => {
                               onChange={(e) => handleUpdateStudentField(editingStudentIndex, 'buletinDigital', e.target.checked)}
                               className="w-4 h-4 rounded-md border-zinc-300 text-red-600 focus:ring-red-500"
                             />
-                            <div className="text-2xs font-bold text-zinc-650 dark:text-zinc-350">Buletin Digital</div>
+                            <div className="text-sm font-bold text-zinc-650 dark:text-zinc-350">Buletin Digital</div>
                           </label>
                         </div>
                       </div>
@@ -1435,7 +1445,7 @@ export const ReportGenerator: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => setEditingStudentIndex(null)}
-                          className="px-5 py-2.5 bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-black rounded-xl transition-colors cursor-pointer"
+                          className="px-5 py-2.5 bg-zinc-900 hover:bg-zinc-800 text-white text-sm font-black rounded-xl transition-colors cursor-pointer"
                         >
                           Tutup
                         </button>
