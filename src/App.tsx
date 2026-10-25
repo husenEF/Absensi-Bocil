@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AppProvider, useApp } from './context/AppContext';
+import { ConfirmDialog } from './ui/ConfirmDialog';
 import { AttendanceInput } from './pages/AttendanceInput';
 import { AttendanceHistory } from './pages/AttendanceHistory';
 import { ReportGenerator } from './pages/ReportGenerator';
@@ -38,6 +39,10 @@ const MainAppContent: React.FC = () => {
     darkMode,
     setDarkMode,
     toast,
+    dismissToast,
+    pendingImport,
+    confirmPendingImport,
+    cancelPendingImport,
     onlineStatus,
     deferredPrompt,
     executePWAPrompt,
@@ -68,28 +73,63 @@ const MainAppContent: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#fbefef] dark:bg-zinc-950 text-zinc-850 dark:text-zinc-100 flex flex-col antialiased transition-colors duration-200">
       
-      {/* Toast Alert floating - standard positioning inside viewport */}
-      <AnimatePresence>
-        {toast && (
-          <div className="fixed top-8 left-1/2 -translate-x-1/2 z-50">
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9, y: -20 }}
+      {/* Incoming data waits for an answer here rather than on the Sinkron
+          page: a sync link opens the app on whatever tab was last used, and
+          the link is stripped from the URL straight away, so a dialog that
+          only existed on one page meant the data was silently dropped. */}
+      <ConfirmDialog
+        open={pendingImport !== null}
+        title="Gabungkan data ini?"
+        body={
+          <>
+            <p>
+              Data yang masuk berisi {pendingImport?.sessions ?? 0} sesi presensi dan{' '}
+              {pendingImport?.schedules ?? 0} jadwal.
+            </p>
+            <p>
+              Data ini akan digabungkan dengan yang sudah ada di HP ini. Presensi pada
+              tanggal yang sama akan disatukan, bukan ditimpa.
+            </p>
+          </>
+        }
+        confirmLabel="Gabungkan data"
+        cancelLabel="Jangan gabungkan"
+        onCancel={cancelPendingImport}
+        onConfirm={() => void confirmPendingImport()}
+      />
+
+      {/* Messages, with an optional single action such as Urungkan. */}
+      {/* The live region is always in the DOM. A region created together with
+          its text is not announced by most screen readers, so every toast —
+          including the undo — was silent to assistive technology. */}
+      <div className="cs-toast__wrap" role="status" aria-live="polite">
+        <AnimatePresence>
+          {toast && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: -16 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: -20 }}
-              className={`flex items-center gap-2.5 px-5 py-3.5 rounded-2xl shadow-xl border text-xs font-bold font-sans ${
-                toast.type === 'success' ? 'bg-zinc-900 border-zinc-800 text-white' : 
-                toast.type === 'error' ? 'bg-brick-ember/10 border-brick-ember/20 text-brick-ember' : 
-                'bg-smoky-rose/10 border-smoky-rose/20 text-smoky-rose'
-              }`}
+              exit={{ opacity: 0, scale: 0.96, y: -16 }}
+              className={`cs-toast cs-toast--${toast.type}`}
             >
-              {toast.type === 'success' && <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />}
-              {toast.type === 'error' && <AlertCircle className="w-4 h-4 text-brick-ember" />}
-              {toast.type === 'info' && <Info className="w-4 h-4 text-cool-steel" />}
-              <span>{toast.message}</span>
+              {toast.type === 'error' && <AlertCircle className="cs-icon" aria-hidden="true" />}
+              {toast.type === 'info' && <Info className="cs-icon" aria-hidden="true" />}
+              <span className="cs-toast__msg">{toast.message}</span>
+              {toast.action && (
+                <button
+                  type="button"
+                  className="cs-toast__action"
+                  onClick={() => {
+                    toast.action?.onAction();
+                    dismissToast();
+                  }}
+                >
+                  {toast.action.label}
+                </button>
+              )}
             </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>
+      </div>
 
       {/* Modernist Header */}
       <header className="bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border-b border-zinc-150 dark:border-zinc-805/80 sticky top-0 z-40">
@@ -107,28 +147,29 @@ const MainAppContent: React.FC = () => {
             </div>
 
             <div>
-              <h1 className="text-sm sm:text-base font-black tracking-tight text-brick-ember leading-tight uppercase font-sans">
-                ClassSync<span className="text-zinc-700 dark:text-zinc-200 font-semibold tracking-normal text-xs ml-0.5 font-sans lowercase">.app</span>
+              <h1 className="text-sm sm:text-base font-black tracking-tight text-brick-ember leading-tight font-sans">
+                ClassSync<span className="text-zinc-700 dark:text-zinc-200 font-semibold tracking-normal text-sm ml-0.5 font-sans lowercase">.app</span>
               </h1>
-              <p className="text-[10px] text-zinc-500 dark:text-zinc-400 font-black tracking-widest uppercase mt-0.5">Presensi Offline &amp; WA Lapor</p>
+              <p className="text-sm text-zinc-500 dark:text-zinc-400 font-black mt-0.5">Presensi kelas, tanpa internet</p>
             </div>
           </div>
 
           {/* Config & Dark toggle buttons */}
           <div className="flex items-center gap-1.5">
-            <div className={`px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider border ${
+            <div className={`px-2.5 py-1 rounded-md text-sm font-black border ${
               onlineStatus
                 ? 'bg-zinc-50 dark:bg-zinc-950 text-zinc-600 dark:text-zinc-400 border-zinc-200/85 dark:border-zinc-850'
                 : 'bg-brick-ember/10 text-brick-ember border-brick-ember/20'
             }`}>
-              {onlineStatus ? 'Lokal Aktif' : 'Offline'}
+              {onlineStatus ? 'Siap dipakai' : 'Offline'}
             </div>
 
             <button
               type="button"
               onClick={() => setDarkMode(prev => !prev)}
               className="p-1.5 rounded-lg bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-850 text-zinc-650 hover:bg-zinc-100 dark:hover:bg-zinc-900 cursor-pointer transition-colors"
-              title="Beralih Mode"
+              title="Ganti tema terang atau gelap"
+              aria-label="Ganti tema terang atau gelap"
             >
               {darkMode ? <Sun className="w-4 h-4 text-orange-400" /> : <Moon className="w-4 h-4 text-zinc-500" />}
             </button>
@@ -139,10 +180,10 @@ const MainAppContent: React.FC = () => {
       {/* PWA Promotion notification */}
       {deferredPrompt && (
         <div className="bg-brick-ember text-white">
-          <div className="max-w-4xl mx-auto px-4 py-2.5 flex items-center justify-between gap-2.5 text-2xs font-extrabold uppercase tracking-wider">
+          <div className="max-w-4xl mx-auto px-4 py-2.5 flex items-center justify-between gap-2.5 text-sm font-extrabold">
             <div className="flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5 animate-pulse" />
-              <span>Instal ClassSync di layar HP Anda!</span>
+              <span>Pasang ClassSync di layar HP Anda</span>
             </div>
             <button
               onClick={executePWAPrompt}
@@ -168,16 +209,16 @@ const MainAppContent: React.FC = () => {
             <div className="flex items-start gap-3 pl-1.5">
               <Database className="w-5 h-5 text-brick-ember shrink-0 mt-0.5" />
               <div className="space-y-1">
-                <h4 className="text-xs font-black text-zinc-800 dark:text-zinc-100 uppercase tracking-widest">Database Terproteksi Aman</h4>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed font-semibold">
-                  Aplikasi menyimpan seluruh presensi langsung di penyimpanan internal ponsel Anda (IndexedDB) secara offline. Data aman, privat, dan tidak dikirim ke server luar guna menjaga hak privasi siswa.
+                <h4 className="text-sm font-black text-zinc-800 dark:text-zinc-100">Data tersimpan di ponsel ini</h4>
+                <p className="text-sm text-zinc-500 dark:text-zinc-400 leading-relaxed font-semibold">
+                  Presensi yang Anda catat tersimpan di ponsel ini saja dan tidak dikirim ke mana pun. Ingat untuk mengunduh cadangan sesekali.
                 </p>
               </div>
             </div>
             <button
               onClick={handleDismissDbNotice}
               className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-400 cursor-pointer transition-colors"
-              title="Sembunyikan info"
+              title="Sembunyikan keterangan ini"
             >
               <X className="w-4 h-4" />
             </button>
@@ -196,26 +237,27 @@ const MainAppContent: React.FC = () => {
       {/* Footer view */}
       <footer className="border-t border-zinc-200 dark:border-zinc-800/80 bg-white/50 dark:bg-zinc-900/40 py-6 select-none mt-12 pb-28">
         <div className="max-w-4xl mx-auto px-4 text-center space-y-1.5">
-          <p className="text-[10px] uppercase font-black tracking-widest text-zinc-450 dark:text-zinc-500">AbsenBocil 😊 Siswa Presensi &amp; WhatsApp Bulanan Lapor</p>
-          <p className="text-3xs text-zinc-400 dark:text-zinc-500 font-semibold font-mono">Tersimpan secara sandboxed penuh di Browser lokal Anda. Hak Cipta Terlindungi.</p>
+          <p className="text-sm font-black text-zinc-450 dark:text-zinc-500">ClassSync — presensi kelas dan laporan WhatsApp</p>
+          <p className="text-sm text-zinc-400 dark:text-zinc-500 font-semibold font-mono">Semua data tersimpan di ponsel ini.</p>
         </div>
       </footer>
 
       {/* Sticky Mobile bottom tabs for high-fidelity native feeling */}
-      <nav className="fixed bottom-0 inset-x-0 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border-t border-zinc-150 dark:border-zinc-805 px-2 py-3.5 flex items-center justify-around gap-1 z-40 shadow-[0_-5px_20px_rgba(0,0,0,0.05)] select-none">
+      <nav aria-label="Menu utama" className="fixed bottom-0 inset-x-0 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border-t border-zinc-150 dark:border-zinc-805 px-2 py-3.5 flex items-center justify-around gap-1 z-40 shadow-[0_-5px_20px_rgba(0,0,0,0.05)] select-none">
         <div className="max-w-xl w-full mx-auto flex items-center justify-around gap-1">
           
           {/* Tab 1: Input presensi */}
           <button
             onClick={() => setActiveTab('input')}
-            className={`flex flex-col items-center justify-center py-1 flex-1 transition-all relative cursor-pointer ${
+            aria-current={activeTab === 'input' ? 'page' : undefined}
+            className={`flex flex-col items-center justify-center min-h-[48px] py-2 flex-1 transition-all relative cursor-pointer ${
               activeTab === 'input' 
                 ? 'text-brick-ember font-black' 
                 : 'text-zinc-450 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-350 font-bold'
             }`}
           >
             <PlusCircle className={`w-5 h-5 transition-transform duration-300 ${activeTab === 'input' ? 'scale-110 text-brick-ember' : ''}`} />
-            <span className="text-[10px] sm:text-xs mt-1 tracking-tight">Presensi</span>
+            <span className="text-sm sm:text-sm mt-1 tracking-tight">Presensi</span>
             {activeTab === 'input' && (
               <motion.div layoutId="nav-dot" className="absolute -bottom-2.5 w-6 h-1 bg-brick-ember rounded-full" />
             )}
@@ -224,14 +266,15 @@ const MainAppContent: React.FC = () => {
           {/* Tab 2: Riwayat Sesi */}
           <button
             onClick={() => setActiveTab('riwayat')}
-            className={`flex flex-col items-center justify-center py-1 flex-1 transition-all relative cursor-pointer ${
+            aria-current={activeTab === 'riwayat' ? 'page' : undefined}
+            className={`flex flex-col items-center justify-center min-h-[48px] py-2 flex-1 transition-all relative cursor-pointer ${
               activeTab === 'riwayat' 
                 ? 'text-brick-ember font-black' 
                 : 'text-zinc-450 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-350 font-bold'
             }`}
           >
             <History className={`w-5 h-5 transition-transform duration-300 ${activeTab === 'riwayat' ? 'scale-110 text-brick-ember' : ''}`} />
-            <span className="text-[10px] sm:text-xs mt-1 tracking-tight">Riwayat</span>
+            <span className="text-sm sm:text-sm mt-1 tracking-tight">Riwayat</span>
             {activeTab === 'riwayat' && (
               <motion.div layoutId="nav-dot" className="absolute -bottom-2.5 w-6 h-1 bg-brick-ember rounded-full" />
             )}
@@ -240,14 +283,15 @@ const MainAppContent: React.FC = () => {
           {/* Tab 3: Buat Laporan */}
           <button
             onClick={() => setActiveTab('laporan')}
-            className={`flex flex-col items-center justify-center py-1 flex-1 transition-all relative cursor-pointer ${
+            aria-current={activeTab === 'laporan' ? 'page' : undefined}
+            className={`flex flex-col items-center justify-center min-h-[48px] py-2 flex-1 transition-all relative cursor-pointer ${
               activeTab === 'laporan' 
                 ? 'text-brick-ember font-black' 
                 : 'text-zinc-450 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-350 font-bold'
             }`}
           >
             <FileText className={`w-5 h-5 transition-transform duration-300 ${activeTab === 'laporan' ? 'scale-110 text-brick-ember' : ''}`} />
-            <span className="text-[10px] sm:text-xs mt-1 tracking-tight">Laporan</span>
+            <span className="text-sm sm:text-sm mt-1 tracking-tight">Laporan</span>
             {activeTab === 'laporan' && (
               <motion.div layoutId="nav-dot" className="absolute -bottom-2.5 w-6 h-1 bg-brick-ember rounded-full" />
             )}
@@ -256,14 +300,15 @@ const MainAppContent: React.FC = () => {
           {/* Tab 4: Jadwal Kelas */}
           <button
             onClick={() => setActiveTab('jadwal')}
-            className={`flex flex-col items-center justify-center py-1 flex-1 transition-all relative cursor-pointer ${
+            aria-current={activeTab === 'jadwal' ? 'page' : undefined}
+            className={`flex flex-col items-center justify-center min-h-[48px] py-2 flex-1 transition-all relative cursor-pointer ${
               activeTab === 'jadwal' 
                 ? 'text-brick-ember font-black' 
                 : 'text-zinc-450 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-355 font-bold'
             }`}
           >
             <Clock className={`w-5 h-5 transition-transform duration-300 ${activeTab === 'jadwal' ? 'scale-110 text-brick-ember' : ''}`} />
-            <span className="text-[10px] sm:text-xs mt-1 tracking-tight">Jadwal</span>
+            <span className="text-sm sm:text-sm mt-1 tracking-tight">Jadwal</span>
             {activeTab === 'jadwal' && (
               <motion.div layoutId="nav-dot" className="absolute -bottom-2.5 w-6 h-1 bg-brick-ember rounded-full" />
             )}
@@ -272,14 +317,15 @@ const MainAppContent: React.FC = () => {
           {/* Tab 5: Sinkronisasi */}
           <button
             onClick={() => setActiveTab('sinkronisasi')}
-            className={`flex flex-col items-center justify-center py-1 flex-1 transition-all relative cursor-pointer ${
+            aria-current={activeTab === 'sinkronisasi' ? 'page' : undefined}
+            className={`flex flex-col items-center justify-center min-h-[48px] py-2 flex-1 transition-all relative cursor-pointer ${
               activeTab === 'sinkronisasi' 
                 ? 'text-brick-ember font-black' 
                 : 'text-zinc-450 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-350 font-bold'
             }`}
           >
             <ArrowRightLeft className={`w-5 h-5 transition-transform duration-300 ${activeTab === 'sinkronisasi' ? 'scale-110 text-brick-ember' : ''}`} />
-            <span className="text-[10px] sm:text-xs mt-1 tracking-tight">Sinkron HP</span>
+            <span className="text-sm sm:text-sm mt-1 tracking-tight">Sinkron HP</span>
             {activeTab === 'sinkronisasi' && (
               <motion.div layoutId="nav-dot" className="absolute -bottom-2.5 w-6 h-1 bg-brick-ember rounded-full" />
             )}

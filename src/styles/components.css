@@ -1,0 +1,646 @@
+/*
+ * ClassSync component styles.
+ *
+ * Every interactive control here is at least --cs-tap (48px) tall, carries a
+ * visible text label, and keeps its focus ring. Sizes are in rem so Android's
+ * font-scale setting and browser zoom both work.
+ */
+
+.cs-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---------------------------------------------------------------- buttons */
+
+.cs-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--cs-space-2);
+  min-height: var(--cs-tap);
+  padding: var(--cs-space-3) var(--cs-space-5);
+  border: 1.5px solid transparent;
+  border-radius: var(--cs-radius);
+  font-size: var(--cs-text-base);
+  font-weight: 600;
+  line-height: var(--cs-leading-tight);
+  text-align: center;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.cs-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.cs-btn--lg {
+  min-height: 56px;
+  font-size: var(--cs-text-lg);
+}
+
+.cs-btn--block {
+  display: flex;
+  width: 100%;
+}
+
+.cs-btn__icon {
+  display: inline-flex;
+  flex: none;
+}
+
+.cs-btn--primary {
+  background-color: var(--cs-brand-solid);
+  color: var(--cs-brand-ink);
+}
+.cs-btn--primary:hover:not(:disabled) {
+  background-color: var(--cs-brand-solid-hover);
+}
+
+.cs-btn--secondary {
+  background-color: var(--cs-surface);
+  border-color: var(--cs-border-strong);
+  color: var(--cs-text);
+}
+.cs-btn--secondary:hover:not(:disabled) {
+  background-color: var(--cs-surface-sunken);
+}
+
+.cs-btn--ghost {
+  background-color: transparent;
+  color: var(--cs-text);
+}
+.cs-btn--ghost:hover:not(:disabled) {
+  background-color: var(--cs-surface-sunken);
+}
+
+.cs-btn--danger {
+  background-color: var(--cs-danger-solid);
+  color: var(--cs-danger-ink);
+}
+.cs-btn--danger:hover:not(:disabled) {
+  background-color: var(--cs-danger-solid-hover);
+}
+
+/*
+ * Warning: for an action that cannot be undone. Deliberately not the same
+ * shape as a normal button, because colour must not be the only signal.
+ */
+.cs-btn--warning {
+  background-color: var(--cs-danger-solid);
+  color: var(--cs-danger-ink);
+  border-color: var(--cs-text);
+  border-width: 2px;
+  box-shadow: 0 3px 0 var(--cs-text);
+}
+.cs-btn--warning:hover:not(:disabled) {
+  background-color: var(--cs-danger-solid-hover);
+}
+
+/* ----------------------------------------------------------------- fields */
+
+.cs-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cs-space-2);
+}
+
+.cs-field__label {
+  font-size: var(--cs-text-base);
+  font-weight: 600;
+  color: var(--cs-text);
+  line-height: var(--cs-leading-tight);
+}
+
+.cs-field__optional {
+  font-weight: 400;
+  color: var(--cs-text-muted);
+}
+
+.cs-field__hint {
+  font-size: var(--cs-text-sm);
+  color: var(--cs-text-muted);
+  line-height: var(--cs-leading-normal);
+}
+
+.cs-field__error {
+  font-size: var(--cs-text-sm);
+  font-weight: 600;
+  color: var(--cs-danger);
+  line-height: var(--cs-leading-normal);
+  border-left: 4px solid var(--cs-danger);
+  padding-left: var(--cs-space-3);
+}
+
+/* Inputs are 18px, which also keeps iOS Safari from zooming on focus. */
+.cs-input,
+.cs-select,
+.cs-textarea {
+  width: 100%;
+  min-height: var(--cs-tap);
+  padding: var(--cs-space-3);
+  font-size: var(--cs-text-base);
+  font-family: inherit;
+  line-height: var(--cs-leading-normal);
+  color: var(--cs-text);
+  background-color: var(--cs-surface);
+  border: 1.5px solid var(--cs-border-strong);
+  border-radius: var(--cs-radius-sm);
+}
+
+.cs-textarea {
+  min-height: 7rem;
+  resize: vertical;
+}
+
+.cs-field--error :is(.cs-input, .cs-select, .cs-textarea) {
+  border-color: var(--cs-danger);
+  border-width: 2px;
+}
+
+/* ----------------------------------------------------------- status picker */
+
+.cs-status {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--cs-tap-gap);
+}
+
+.cs-status__opt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: var(--cs-tap);
+  padding: var(--cs-space-2) var(--cs-space-1);
+  border: 1.5px solid var(--cs-border-strong);
+  border-radius: var(--cs-radius-sm);
+  background-color: var(--cs-surface);
+  color: var(--cs-text-muted);
+  cursor: pointer;
+}
+
+.cs-status__opt:has(:focus-visible) {
+  outline: 3px solid var(--cs-focus);
+  outline-offset: 2px;
+}
+
+.cs-status__code {
+  font-size: var(--cs-text-lg);
+  font-weight: 700;
+  line-height: 1;
+}
+
+.cs-status__text {
+  font-size: var(--cs-text-xs);
+  font-weight: 600;
+  line-height: 1;
+}
+
+.cs-status__opt--hadir.is-selected {
+  background-color: var(--cs-hadir-solid);
+  border-color: var(--cs-hadir-solid);
+  color: var(--cs-hadir-solid-ink);
+}
+.cs-status__opt--sakit.is-selected {
+  background-color: var(--cs-sakit-solid);
+  border-color: var(--cs-sakit-solid);
+  color: var(--cs-sakit-solid-ink);
+}
+.cs-status__opt--izin.is-selected {
+  background-color: var(--cs-izin-solid);
+  border-color: var(--cs-izin-solid);
+  color: var(--cs-izin-solid-ink);
+}
+.cs-status__opt--alpa.is-selected {
+  background-color: var(--cs-alpa-solid);
+  border-color: var(--cs-alpa-solid);
+  color: var(--cs-alpa-solid-ink);
+}
+
+/* ------------------------------------------------------------ status chips */
+
+.cs-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cs-space-1);
+  padding: var(--cs-space-1) var(--cs-space-3);
+  border-radius: var(--cs-radius-full);
+  font-size: var(--cs-text-sm);
+  font-weight: 600;
+  line-height: var(--cs-leading-normal);
+}
+
+.cs-chip--hadir {
+  background-color: var(--cs-hadir-tint);
+  color: var(--cs-hadir-ink);
+}
+.cs-chip--sakit {
+  background-color: var(--cs-sakit-tint);
+  color: var(--cs-sakit-ink);
+}
+.cs-chip--izin {
+  background-color: var(--cs-izin-tint);
+  color: var(--cs-izin-ink);
+}
+.cs-chip--alpa {
+  background-color: var(--cs-alpa-tint);
+  color: var(--cs-alpa-ink);
+}
+
+/* ------------------------------------------------------------ page layout */
+
+.cs-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cs-space-5);
+}
+
+.cs-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cs-space-4);
+  padding: var(--cs-space-5);
+  background-color: var(--cs-surface);
+  border: 1px solid var(--cs-border);
+  border-radius: var(--cs-radius-lg);
+  box-shadow: var(--cs-shadow-sm);
+}
+
+.cs-card--success {
+  border-color: var(--cs-hadir-solid);
+  border-left-width: 5px;
+}
+
+.cs-card__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--cs-space-3);
+}
+
+.cs-card__title {
+  display: flex;
+  align-items: center;
+  gap: var(--cs-space-2);
+  font-size: var(--cs-text-xl);
+  font-weight: 700;
+  line-height: var(--cs-leading-tight);
+  color: var(--cs-text);
+}
+
+.cs-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex: none;
+}
+
+.cs-muted {
+  font-size: var(--cs-text-sm);
+  color: var(--cs-text-muted);
+  line-height: var(--cs-leading-normal);
+}
+
+.cs-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cs-tap-gap);
+}
+
+.cs-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--cs-space-4);
+}
+
+@media (min-width: 48rem) {
+  .cs-grid-2 {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.cs-tally {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cs-tap-gap);
+  list-style: none;
+}
+
+/* ----------------------------------------------------------------- roster */
+
+.cs-roster {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cs-tap-gap);
+  list-style: none;
+}
+
+.cs-roster__row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cs-space-2);
+  padding: var(--cs-space-3);
+  background-color: var(--cs-surface-sunken);
+  border-radius: var(--cs-radius);
+}
+
+.cs-roster__name {
+  font-size: var(--cs-text-base);
+  font-weight: 600;
+  color: var(--cs-text);
+  line-height: var(--cs-leading-tight);
+}
+
+.cs-addrow {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--cs-tap-gap);
+}
+
+.cs-addrow .cs-field {
+  flex: 1;
+}
+
+.cs-bulk {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cs-space-3);
+  margin-top: var(--cs-space-3);
+}
+
+/* ------------------------------------------------------------ empty state */
+
+.cs-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--cs-space-2);
+  padding: var(--cs-space-6) var(--cs-space-4);
+  text-align: center;
+  background-color: var(--cs-surface-sunken);
+  border-radius: var(--cs-radius);
+}
+
+.cs-empty__icon {
+  width: 2rem;
+  height: 2rem;
+  color: var(--cs-text-muted);
+}
+
+.cs-empty__title {
+  font-size: var(--cs-text-lg);
+  font-weight: 700;
+  color: var(--cs-text);
+}
+
+.cs-empty__body {
+  font-size: var(--cs-text-sm);
+  color: var(--cs-text-muted);
+  line-height: var(--cs-leading-normal);
+  max-width: 34ch;
+}
+
+/* -------------------------------------------------------------- save area */
+
+.cs-save {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cs-space-2);
+}
+
+/* ------------------------------------------------------------- extra bits */
+
+.cs-subtitle {
+  display: flex;
+  align-items: center;
+  gap: var(--cs-space-2);
+  font-size: var(--cs-text-lg);
+  font-weight: 700;
+  color: var(--cs-text);
+  line-height: var(--cs-leading-tight);
+}
+
+.cs-card--inset {
+  background-color: var(--cs-surface-sunken);
+  box-shadow: none;
+}
+
+.cs-card--danger {
+  border-color: var(--cs-danger);
+  border-left-width: 5px;
+}
+
+.cs-names {
+  font-size: var(--cs-text-sm);
+  color: var(--cs-text);
+  line-height: var(--cs-leading-normal);
+}
+
+.cs-check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cs-space-2);
+  min-height: var(--cs-tap);
+  font-size: var(--cs-text-sm);
+  color: var(--cs-text-muted);
+  cursor: pointer;
+}
+
+.cs-check input {
+  width: 1.5rem;
+  height: 1.5rem;
+  accent-color: var(--cs-brand-solid);
+}
+
+/* ---------------------------------------------------------------- dialog */
+
+.cs-dialog__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--cs-space-4);
+  background-color: rgb(0 0 0 / 0.55);
+}
+
+.cs-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cs-space-4);
+  width: min(32rem, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: var(--cs-space-5);
+  background-color: var(--cs-surface);
+  border-radius: var(--cs-radius-lg);
+  box-shadow: var(--cs-shadow-lg);
+}
+
+.cs-dialog__title {
+  font-size: var(--cs-text-xl);
+  font-weight: 700;
+  color: var(--cs-text);
+  line-height: var(--cs-leading-tight);
+}
+
+.cs-dialog__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cs-space-2);
+  font-size: var(--cs-text-base);
+  color: var(--cs-text);
+  line-height: var(--cs-leading-normal);
+}
+
+.cs-dialog__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  /* Deliberate distance between the safe and the destructive choice. */
+  gap: var(--cs-space-5);
+}
+
+/* ----------------------------------------------------------------- toasts */
+
+.cs-toast__wrap {
+  /* Always in the DOM for the live region, so it must not block taps when
+     there is no toast in it. */
+  pointer-events: none;
+  position: fixed;
+  top: var(--cs-space-4);
+  left: 50%;
+  translate: -50% 0;
+  z-index: 90;
+  width: min(32rem, calc(100vw - 2 * var(--cs-space-4)));
+}
+
+.cs-toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--cs-space-3);
+  padding: var(--cs-space-3) var(--cs-space-4);
+  border-radius: var(--cs-radius);
+  box-shadow: var(--cs-shadow-lg);
+  font-size: var(--cs-text-sm);
+  line-height: var(--cs-leading-normal);
+  background-color: var(--cs-text);
+  color: var(--cs-surface);
+}
+
+.cs-toast--error {
+  background-color: var(--cs-danger-solid);
+  color: var(--cs-danger-ink);
+}
+
+.cs-toast__msg {
+  flex: 1;
+}
+
+/* The undo target is a full-size control, not a word to aim at. */
+.cs-toast__action {
+  flex: none;
+  min-height: var(--cs-tap);
+  padding: 0 var(--cs-space-4);
+  border: 1.5px solid currentColor;
+  border-radius: var(--cs-radius-sm);
+  background: transparent;
+  color: inherit;
+  font-size: var(--cs-text-sm);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* --------------------------------------------------------- session picker */
+
+.cs-session {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--cs-space-3);
+  min-height: var(--cs-tap);
+  padding: var(--cs-space-3);
+  background-color: var(--cs-surface-sunken);
+  border: 1.5px solid var(--cs-border);
+  border-radius: var(--cs-radius);
+  cursor: pointer;
+}
+
+.cs-session.is-selected {
+  border-color: var(--cs-brand);
+  background-color: var(--cs-brand-tint);
+}
+
+.cs-session:has(:focus-visible) {
+  outline: 3px solid var(--cs-focus);
+  outline-offset: 2px;
+}
+
+.cs-session input {
+  width: 1.5rem;
+  height: 1.5rem;
+  margin-top: 2px;
+  flex: none;
+  accent-color: var(--cs-brand-solid);
+}
+
+.cs-session__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.cs-session__date {
+  font-size: var(--cs-text-base);
+  font-weight: 600;
+  color: var(--cs-text);
+}
+
+.cs-session__names {
+  font-size: var(--cs-text-sm);
+  color: var(--cs-text-muted);
+  line-height: var(--cs-leading-normal);
+}
+
+/* ------------------------------------------------------------ wide sheet */
+
+.cs-sheet {
+  overflow-x: auto;
+  border: 1px solid var(--cs-border);
+  border-radius: var(--cs-radius);
+  /* Half-reveal the next column so it is visible that there is more to the
+     right; an arrow or dots are routinely missed. */
+  background:
+    linear-gradient(to right, var(--cs-surface) 30%, transparent),
+    linear-gradient(to left, var(--cs-surface) 30%, transparent) 100% 0,
+    radial-gradient(farthest-side at 0 50%, rgb(0 0 0 / 0.12), transparent),
+    radial-gradient(farthest-side at 100% 50%, rgb(0 0 0 / 0.12), transparent) 100% 0;
+  background-repeat: no-repeat;
+  background-size: 3rem 100%, 3rem 100%, 1rem 100%, 1rem 100%;
+  background-attachment: local, local, scroll, scroll;
+}
+
+.cs-sheet:focus-visible {
+  outline: 3px solid var(--cs-focus);
+  outline-offset: 2px;
+}
+
+.cs-sheet__actions {
+  display: flex;
+  gap: var(--cs-tap-gap);
+  justify-content: center;
+}
