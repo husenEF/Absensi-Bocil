@@ -1,16 +1,40 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { useApp } from '../context/AppContext';
-import { escapeHtml } from '../roster';
-import { isTooLongForWhatsApp, shareToWhatsApp } from '../utils/share';
-import { Button } from '../ui/Button';
-import { formatIndonesianDate } from '../utils/date';
-import { db, ExcelReportRecord } from '../db';
-import { AlertCircle, BookOpen, Calendar, Check, CheckSquare, ChevronRight, Copy, FileSpreadsheet, FileText, HelpCircle, Info, Play, Plus, RefreshCw, Save, Send, Sliders, Smartphone, Square, Trash2, UserCheck, UserPlus, X } from 'lucide-react';
+import React, { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "motion/react";
+import { useApp } from "../context/AppContext";
+import { escapeHtml } from "../roster";
+import { isTooLongForWhatsApp, shareToWhatsApp } from "../utils/share";
+import { Button } from "../ui/Button";
+import { formatIndonesianDate } from "../utils/date";
+import { db, ExcelReportRecord } from "../db";
+import {
+  AlertCircle,
+  BookOpen,
+  Calendar,
+  Check,
+  CheckSquare,
+  ChevronRight,
+  Copy,
+  FileSpreadsheet,
+  FileText,
+  HelpCircle,
+  Info,
+  Play,
+  Plus,
+  RefreshCw,
+  Save,
+  Send,
+  Sliders,
+  Smartphone,
+  Square,
+  Trash2,
+  UserCheck,
+  UserPlus,
+  X,
+} from "lucide-react";
 
 interface StudentRow {
   name: string;
-  category: 'K' | 'P';
+  category: "K" | "P";
   attendance: string[]; // parallel to 5 columns
   pendampingan: string;
   hs: string;
@@ -45,20 +69,28 @@ export const ReportGenerator: React.FC = () => {
     handleDismissWeekReminder,
     handleLoadSampleData,
     records,
-    showToast
+    showToast,
   } = useApp();
 
   // Sub-tabs state: 'whatsapp' (original) or 'excel' (new)
-  const [reportMode, setReportMode] = useState<'whatsapp' | 'excel'>('whatsapp');
+  const [reportMode, setReportMode] = useState<"whatsapp" | "excel">(
+    "whatsapp",
+  );
 
   // Excel Form States
-  const [guruName, setGuruName] = useState<string>('Guru 1');
-  const [kitabName, setKitabName] = useState<string>('Nama Kitab');
-  const [tanggalAktif, setTanggalAktif] = useState<string>('');
-  const [weeks, setWeeks] = useState<string[]>(['Pekan 1', 'Pekan 2', 'Pekan 3', 'Pekan 4', 'Pekan 5']);
+  const [guruName, setGuruName] = useState<string>("Guru 1");
+  const [kitabName, setKitabName] = useState<string>("Nama Kitab");
+  const [tanggalAktif, setTanggalAktif] = useState<string>("");
+  const [weeks, setWeeks] = useState<string[]>([
+    "Pekan 1",
+    "Pekan 2",
+    "Pekan 3",
+    "Pekan 4",
+    "Pekan 5",
+  ]);
   const [studentsData, setStudentsData] = useState<StudentRow[]>([]);
-  const [catatan, setCatatan] = useState<string>('');
-  
+  const [catatan, setCatatan] = useState<string>("");
+
   /**
    * Hand the report to WhatsApp.
    *
@@ -70,42 +102,57 @@ export const ReportGenerator: React.FC = () => {
 
     if (isTooLongForWhatsApp(reportText)) {
       showToast(
-        'Laporan terlalu panjang untuk satu pesan WhatsApp. Pilih lebih sedikit sesi.',
-        'error'
+        "Laporan terlalu panjang untuk satu pesan WhatsApp. Pilih lebih sedikit sesi.",
+        "error",
       );
       return;
     }
 
     const outcome = await shareToWhatsApp(reportText);
-    if (outcome === 'copied-and-opened') {
-      showToast('Teks laporan disalin dan WhatsApp dibuka.', 'success');
-    } else if (outcome === 'failed') {
-      showToast('Tidak dapat membuka WhatsApp. Salin teksnya secara manual.', 'error');
+    if (outcome === "copied-and-opened") {
+      showToast("Teks laporan disalin dan WhatsApp dibuka.", "success");
+    } else if (outcome === "failed") {
+      showToast(
+        "Tidak dapat membuka WhatsApp. Salin teksnya secara manual.",
+        "error",
+      );
     }
   };
 
   // Mobile responsiveness helper
-  const [editingStudentIndex, setEditingStudentIndex] = useState<number | null>(null);
+  const [editingStudentIndex, setEditingStudentIndex] = useState<number | null>(
+    null,
+  );
 
   // Helper: Format Indonesian Date to Short format (e.g. "20 Jun")
   const formatDateIDShort = (dateStr: string): string => {
-    const parts = dateStr.split('-');
-    if (parts.length !== 3) return '';
+    const parts = dateStr.split("-");
+    if (parts.length !== 3) return "";
     const day = parseInt(parts[2], 10);
     const month = parseInt(parts[1], 10);
     const monthsShort = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
-      'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "Mei",
+      "Jun",
+      "Jul",
+      "Agt",
+      "Sep",
+      "Okt",
+      "Nov",
+      "Des",
     ];
     return `${day} ${monthsShort[month - 1]}`;
   };
 
   // Helper: Get automatic range representation (e.g. "20 Jun - 17 Jul 2026")
   const getAutoDateRange = (sortedDates: string[]): string => {
-    if (sortedDates.length === 0) return '';
+    if (sortedDates.length === 0) return "";
     const startLabel = formatDateIDShort(sortedDates[0]);
     const endLabel = formatDateIDShort(sortedDates[sortedDates.length - 1]);
-    const year = sortedDates[sortedDates.length - 1].split('-')[0];
+    const year = sortedDates[sortedDates.length - 1].split("-")[0];
     return `${startLabel} - ${endLabel} ${year}`;
   };
 
@@ -114,26 +161,34 @@ export const ReportGenerator: React.FC = () => {
     if (recordsInSelectedPeriod.length === 0) {
       // Return 15 empty rows if no records
       const emptyRows: StudentRow[] = Array.from({ length: 15 }, () => ({
-        name: '',
-        category: 'P',
-        attendance: ['', '', '', '', ''],
-        pendampingan: '',
-        hs: '',
-        jm: '',
-        sppKeterangan: '',
+        name: "",
+        category: "P",
+        attendance: ["", "", "", "", ""],
+        pendampingan: "",
+        hs: "",
+        jm: "",
+        sppKeterangan: "",
         sppNominal: 0,
         buletinCetak: false,
         buletinDigital: false,
       }));
       setStudentsData(emptyRows);
-      setWeeks(['Pekan 1', 'Pekan 2', 'Pekan 3', 'Pekan 4', 'Pekan 5']);
-      setTanggalAktif('');
+      setWeeks(["Pekan 1", "Pekan 2", "Pekan 3", "Pekan 4", "Pekan 5"]);
+      setTanggalAktif("");
       return;
     }
 
     // 1. Extract unique class dates in this period (up to 5)
-    const uniqueDates = Array.from(new Set(recordsInSelectedPeriod.map(r => r.tanggal as string))).sort() as string[];
-    const defaultWeeks = ['Pekan 1', 'Pekan 2', 'Pekan 3', 'Pekan 4', 'Pekan 5'];
+    const uniqueDates = Array.from(
+      new Set(recordsInSelectedPeriod.map((r) => r.tanggal as string)),
+    ).sort() as string[];
+    const defaultWeeks = [
+      "Pekan 1",
+      "Pekan 2",
+      "Pekan 3",
+      "Pekan 4",
+      "Pekan 5",
+    ];
     const activeWeeks = defaultWeeks.map((def, idx) => {
       if (uniqueDates[idx]) {
         return formatDateIDShort(uniqueDates[idx]);
@@ -148,8 +203,10 @@ export const ReportGenerator: React.FC = () => {
 
     // 2. Extract unique student names present in this period
     const uniqueStudents = Array.from(
-      new Set(recordsInSelectedPeriod.flatMap(r => r.peserta as string[]))
-    ).sort((a, b) => (a as string).localeCompare(b as string, 'id', { sensitivity: 'base' })) as string[];
+      new Set(recordsInSelectedPeriod.flatMap((r) => r.peserta as string[])),
+    ).sort((a, b) =>
+      (a as string).localeCompare(b as string, "id", { sensitivity: "base" }),
+    ) as string[];
 
     // 3. Build student rows
     const rows: StudentRow[] = uniqueStudents.map((studentStr) => {
@@ -157,21 +214,25 @@ export const ReportGenerator: React.FC = () => {
       // For each week date, see if the student attended
       const attendance = activeWeeks.map((_, idx) => {
         const dateStr = uniqueDates[idx];
-        if (!dateStr) return '';
+        if (!dateStr) return "";
         const wasPresent = recordsInSelectedPeriod.some(
-          r => r.tanggal === dateStr && (r.peserta as string[]).some(name => name.toLowerCase() === student.toLowerCase())
+          (r) =>
+            r.tanggal === dateStr &&
+            (r.peserta as string[]).some(
+              (name) => name.toLowerCase() === student.toLowerCase(),
+            ),
         );
-        return wasPresent ? 'V' : '';
+        return wasPresent ? "V" : "";
       });
 
       return {
         name: student,
-        category: 'P', // default
+        category: "P", // default
         attendance,
-        pendampingan: '',
-        hs: '',
-        jm: '',
-        sppKeterangan: '',
+        pendampingan: "",
+        hs: "",
+        jm: "",
+        sppKeterangan: "",
         sppNominal: 0,
         buletinCetak: false,
         buletinDigital: false,
@@ -181,13 +242,13 @@ export const ReportGenerator: React.FC = () => {
     // Make sure we have at least 15 rows to match the image template
     while (rows.length < 15) {
       rows.push({
-        name: '',
-        category: 'P',
-        attendance: ['', '', '', '', ''],
-        pendampingan: '',
-        hs: '',
-        jm: '',
-        sppKeterangan: '',
+        name: "",
+        category: "P",
+        attendance: ["", "", "", "", ""],
+        pendampingan: "",
+        hs: "",
+        jm: "",
+        sppKeterangan: "",
         sppNominal: 0,
         buletinCetak: false,
         buletinDigital: false,
@@ -195,33 +256,47 @@ export const ReportGenerator: React.FC = () => {
     }
 
     setStudentsData(rows);
-    showToast('Berhasil memuat & menyinkronkan data presensi otomatis!', 'success');
+    showToast(
+      "Berhasil memuat & menyinkronkan data presensi otomatis!",
+      "success",
+    );
   };
 
   // Effect: Load saved Excel sheet report for this period from IndexedDB, or fallback to auto-scanning
   useEffect(() => {
     if (!selectedPeriodKey) return;
 
-    db.excelReports.where('periodKey').equals(selectedPeriodKey).first()
+    db.excelReports
+      .where("periodKey")
+      .equals(selectedPeriodKey)
+      .first()
       .then((savedReport) => {
         if (savedReport) {
-          setGuruName(savedReport.guruName || 'Guru 1');
-          setKitabName(savedReport.kitabName || 'Nama Kitab');
-          setTanggalAktif(savedReport.tanggalAktif || '');
-          setCatatan(savedReport.catatan || '');
-          setWeeks(savedReport.weeks || ['Pekan 1', 'Pekan 2', 'Pekan 3', 'Pekan 4', 'Pekan 5']);
-          
+          setGuruName(savedReport.guruName || "Guru 1");
+          setKitabName(savedReport.kitabName || "Nama Kitab");
+          setTanggalAktif(savedReport.tanggalAktif || "");
+          setCatatan(savedReport.catatan || "");
+          setWeeks(
+            savedReport.weeks || [
+              "Pekan 1",
+              "Pekan 2",
+              "Pekan 3",
+              "Pekan 4",
+              "Pekan 5",
+            ],
+          );
+
           // Ensure at least 15 rows
           const rows = [...savedReport.studentsData];
           while (rows.length < 15) {
             rows.push({
-              name: '',
-              category: 'P',
-              attendance: ['', '', '', '', ''],
-              pendampingan: '',
-              hs: '',
-              jm: '',
-              sppKeterangan: '',
+              name: "",
+              category: "P",
+              attendance: ["", "", "", "", ""],
+              pendampingan: "",
+              hs: "",
+              jm: "",
+              sppKeterangan: "",
               sppNominal: 0,
               buletinCetak: false,
               buletinDigital: false,
@@ -234,7 +309,7 @@ export const ReportGenerator: React.FC = () => {
         }
       })
       .catch((err) => {
-        console.error('[Load Excel report from DB error]', err);
+        console.error("[Load Excel report from DB error]", err);
         handleAutoFillFromDB();
       });
   }, [selectedPeriodKey, recordsInSelectedPeriod]);
@@ -248,27 +323,38 @@ export const ReportGenerator: React.FC = () => {
         kitabName,
         tanggalAktif,
         weeks,
-        studentsData: studentsData.filter(row => row.name.trim() !== '' || row.attendance.some(a => a !== '')),
+        studentsData: studentsData.filter(
+          (row) =>
+            row.name.trim() !== "" || row.attendance.some((a) => a !== ""),
+        ),
         catatan,
-        createdAt: Date.now()
+        createdAt: Date.now(),
       };
 
-      const existing = await db.excelReports.where('periodKey').equals(selectedPeriodKey).first();
+      const existing = await db.excelReports
+        .where("periodKey")
+        .equals(selectedPeriodKey)
+        .first();
       if (existing && existing.id) {
         await db.excelReports.put({ ...payload, id: existing.id });
       } else {
         await db.excelReports.add(payload);
       }
-      showToast('Berhasil menyimpan draf lembar kerja Excel ke database lokal!', 'success');
+      showToast(
+        "Berhasil menyimpan draf lembar kerja Excel ke database lokal!",
+        "success",
+      );
     } catch (err) {
-      console.error('[Save Excel report error]', err);
-      showToast('Gagal menyimpan draf lembar kerja.', 'error');
+      console.error("[Save Excel report error]", err);
+      showToast("Gagal menyimpan draf lembar kerja.", "error");
     }
   };
 
   // Function: Reset sheet to match attendance log defaults
   const handleResetToAttendanceDB = () => {
-    const conf = window.confirm('Apakah Anda yakin ingin memuat ulang lembar kerja? Perubahan SPP, K/P, Hafalan, dan Buletin yang belum disimpan mungkin akan hilang.');
+    const conf = window.confirm(
+      "Apakah Anda yakin ingin memuat ulang lembar kerja? Perubahan SPP, K/P, Hafalan, dan Buletin yang belum disimpan mungkin akan hilang.",
+    );
     if (conf) {
       handleAutoFillFromDB();
     }
@@ -276,51 +362,59 @@ export const ReportGenerator: React.FC = () => {
 
   // Function: Add custom student row at the bottom
   const handleAddStudentRow = () => {
-    setStudentsData(prev => [
+    setStudentsData((prev) => [
       ...prev,
       {
-        name: '',
-        category: 'P',
-        attendance: ['', '', '', '', ''],
-        pendampingan: '',
-        hs: '',
-        jm: '',
-        sppKeterangan: '',
+        name: "",
+        category: "P",
+        attendance: ["", "", "", "", ""],
+        pendampingan: "",
+        hs: "",
+        jm: "",
+        sppKeterangan: "",
         sppNominal: 0,
         buletinCetak: false,
         buletinDigital: false,
-      }
+      },
     ]);
-    showToast('Baris santri kosong ditambahkan di baris paling bawah.', 'info');
+    showToast("Baris santri kosong ditambahkan di baris paling bawah.", "info");
   };
 
   // Function: Delete custom student row
   const handleDeleteStudentRow = (index: number) => {
     if (studentsData.length <= 1) return;
-    setStudentsData(prev => prev.filter((_, idx) => idx !== index));
+    setStudentsData((prev) => prev.filter((_, idx) => idx !== index));
   };
 
   // Function: Edit student row properties
-  const handleUpdateStudentField = (index: number, field: keyof StudentRow, value: any) => {
-    setStudentsData(prev => {
+  const handleUpdateStudentField = (
+    index: number,
+    field: keyof StudentRow,
+    value: any,
+  ) => {
+    setStudentsData((prev) => {
       const copy = [...prev];
       copy[index] = {
         ...copy[index],
-        [field]: value
+        [field]: value,
       };
       return copy;
     });
   };
 
   // Function: Edit attendance cell code inside row
-  const handleUpdateAttendanceCell = (rowIndex: number, weekIndex: number, value: string) => {
-    setStudentsData(prev => {
+  const handleUpdateAttendanceCell = (
+    rowIndex: number,
+    weekIndex: number,
+    value: string,
+  ) => {
+    setStudentsData((prev) => {
       const copy = [...prev];
       const attCopy = [...copy[rowIndex].attendance];
       attCopy[weekIndex] = value;
       copy[rowIndex] = {
         ...copy[rowIndex],
-        attendance: attCopy
+        attendance: attCopy,
       };
       return copy;
     });
@@ -329,7 +423,7 @@ export const ReportGenerator: React.FC = () => {
   // Function: Generate & Download Official Styled Excel spreadsheet (.xls) matching the image exactly
   const handleExportStyledExcel = () => {
     const periodLabel = currentPeriod ? currentPeriod.label : selectedPeriodKey;
-    
+
     // Build HTML/XML document with precise CSS styles
     let html = `
     <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
@@ -375,7 +469,7 @@ export const ReportGenerator: React.FC = () => {
         <td colspan="17" class="title-sub">LAPORAN BULAN : ${escapeHtml(periodLabel.toUpperCase())}</td>
       </tr>
       <tr>
-        <td colspan="17" class="title-tanggal">TANGGAL AKTIF PEMBELAJARAN : ${escapeHtml(tanggalAktif.toUpperCase()) || '-'}</td>
+        <td colspan="17" class="title-tanggal">TANGGAL AKTIF PEMBELAJARAN : ${escapeHtml(tanggalAktif.toUpperCase()) || "-"}</td>
       </tr>
       
       <!-- Blank Separator Row -->
@@ -398,11 +492,11 @@ export const ReportGenerator: React.FC = () => {
       
       <!-- Double Table Headers (Row 2) -->
       <tr class="hdr" style="height: 25px;">
-        <th style="width: 85px; border: 1px solid #7f7f7f;">${escapeHtml(weeks[0]) || 'Pekan 1'}</th>
-        <th style="width: 85px; border: 1px solid #7f7f7f;">${escapeHtml(weeks[1]) || 'Pekan 2'}</th>
-        <th style="width: 85px; border: 1px solid #7f7f7f;">${escapeHtml(weeks[2]) || 'Pekan 3'}</th>
-        <th style="width: 85px; border: 1px solid #7f7f7f;">${escapeHtml(weeks[3]) || 'Pekan 4'}</th>
-        <th style="width: 85px; border: 1px solid #7f7f7f;">${escapeHtml(weeks[4]) || 'Pekan 5'}</th>
+        <th style="width: 85px; border: 1px solid #7f7f7f;">${escapeHtml(weeks[0]) || "Pekan 1"}</th>
+        <th style="width: 85px; border: 1px solid #7f7f7f;">${escapeHtml(weeks[1]) || "Pekan 2"}</th>
+        <th style="width: 85px; border: 1px solid #7f7f7f;">${escapeHtml(weeks[2]) || "Pekan 3"}</th>
+        <th style="width: 85px; border: 1px solid #7f7f7f;">${escapeHtml(weeks[3]) || "Pekan 4"}</th>
+        <th style="width: 85px; border: 1px solid #7f7f7f;">${escapeHtml(weeks[4]) || "Pekan 5"}</th>
         <th style="width: 110px; border: 1px solid #7f7f7f;">KETERANGAN</th>
         <th style="width: 100px; border: 1px solid #7f7f7f;">NOMINAL (Rp)</th>
         <th style="width: 60px; border: 1px solid #7f7f7f;">Cetak</th>
@@ -413,36 +507,36 @@ export const ReportGenerator: React.FC = () => {
     // Process rows
     studentsData.forEach((row, idx) => {
       // Determine background color based on section (to match layout)
-      let nameBg = '';
+      let nameBg = "";
       if (idx < 5) nameBg = 'class="bg-green-row text-left"';
       else if (idx < 10) nameBg = 'class="bg-blue-row text-left"';
       else nameBg = 'class="text-left"';
 
       html += `<tr style="height: 22px;">`;
       html += `<td>${idx + 1}</td>`;
-      
+
       // Merge "Nama Guru" and "Kitab" vertically for the entire list!
       if (idx === 0) {
         html += `<td rowspan="${studentsData.length}" class="bg-guru" style="border: 1px solid #7f7f7f;">${escapeHtml(guruName)}</td>`;
         html += `<td rowspan="${studentsData.length}" class="bg-guru" style="border: 1px solid #7f7f7f;">${escapeHtml(kitabName)}</td>`;
       }
-      
+
       html += `<td ${nameBg} style="border: 1px solid #7f7f7f;">${escapeHtml(row.name)}</td>`;
       html += `<td style="border: 1px solid #7f7f7f;">${escapeHtml(row.category)}</td>`;
-      
+
       // Attendance status (5 columns)
       for (let w = 0; w < 5; w++) {
-        const val = row.attendance[w] || '';
+        const val = row.attendance[w] || "";
         html += `<td style="border: 1px solid #7f7f7f; font-weight: bold;">${escapeHtml(val)}</td>`;
       }
-      
+
       html += `<td class="text-left" style="border: 1px solid #7f7f7f;">${escapeHtml(row.pendampingan)}</td>`;
       html += `<td style="border: 1px solid #7f7f7f;">${escapeHtml(row.hs)}</td>`;
       html += `<td style="border: 1px solid #7f7f7f;">${escapeHtml(row.jm)}</td>`;
       html += `<td style="border: 1px solid #7f7f7f; font-weight: bold;">${escapeHtml(row.sppKeterangan)}</td>`;
-      html += `<td style="border: 1px solid #7f7f7f;">${row.sppNominal > 0 ? row.sppNominal : ''}</td>`;
-      html += `<td style="border: 1px solid #7f7f7f; font-weight: bold;">${row.buletinCetak ? 'V' : ''}</td>`;
-      html += `<td style="border: 1px solid #7f7f7f; font-weight: bold;">${row.buletinDigital ? 'V' : ''}</td>`;
+      html += `<td style="border: 1px solid #7f7f7f;">${row.sppNominal > 0 ? row.sppNominal : ""}</td>`;
+      html += `<td style="border: 1px solid #7f7f7f; font-weight: bold;">${row.buletinCetak ? "V" : ""}</td>`;
+      html += `<td style="border: 1px solid #7f7f7f; font-weight: bold;">${row.buletinDigital ? "V" : ""}</td>`;
       html += `</tr>`;
     });
 
@@ -450,7 +544,7 @@ export const ReportGenerator: React.FC = () => {
     html += `
       <tr style="height: 25px;">
         <td colspan="4" class="catatan-lbl" style="border: 1px solid #7f7f7f;">Catatan :</td>
-        <td colspan="13" class="text-left" style="border: 1px solid #7f7f7f;">${catatan || ''}</td>
+        <td colspan="13" class="text-left" style="border: 1px solid #7f7f7f;">${catatan || ""}</td>
       </tr>
     `;
 
@@ -501,17 +595,19 @@ export const ReportGenerator: React.FC = () => {
     `;
 
     // Trigger download
-    const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8' });
+    const blob = new Blob([html], {
+      type: "application/vnd.ms-excel;charset=utf-8",
+    });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    const safeFilename = `Laporan_Petugas_Ngaglik_${periodLabel.replace(/\s+/g, '_')}.xls`;
+    const a = document.createElement("a");
+    const safeFilename = `Laporan_Petugas_Ngaglik_${periodLabel.replace(/\s+/g, "_")}.xls`;
     a.href = url;
     a.download = safeFilename;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    showToast('Berhasil mengunduh dokumen Excel berformat resmi!', 'success');
+    showToast("Berhasil mengunduh dokumen Excel berformat resmi!", "success");
   };
 
   return (
@@ -539,7 +635,8 @@ export const ReportGenerator: React.FC = () => {
             </button>
           </div>
           <p className="cs-muted">
-            Sudah tanggal 15-21. Waktunya menyusun laporan dua bulanan dan mengirimkannya ke koordinator.
+            Sudah tanggal 15-21. Waktunya menyusun laporan dua bulanan dan
+            mengirimkannya ke koordinator.
           </p>
         </motion.section>
       )}
@@ -556,8 +653,8 @@ export const ReportGenerator: React.FC = () => {
               <button
                 type="button"
                 className="cs-group__btn"
-                aria-pressed={reportMode === 'whatsapp'}
-                onClick={() => setReportMode('whatsapp')}
+                aria-pressed={reportMode === "whatsapp"}
+                onClick={() => setReportMode("whatsapp")}
               >
                 Laporan WA
                 <span className="cs-group__when">Teks siap kirim</span>
@@ -567,8 +664,8 @@ export const ReportGenerator: React.FC = () => {
               <button
                 type="button"
                 className="cs-group__btn"
-                aria-pressed={reportMode === 'excel'}
-                onClick={() => setReportMode('excel')}
+                aria-pressed={reportMode === "excel"}
+                onClick={() => setReportMode("excel")}
               >
                 Format Excel
                 <span className="cs-group__when">Lembar resmi</span>
@@ -588,8 +685,10 @@ export const ReportGenerator: React.FC = () => {
               onChange={(e) => setSelectedPeriodKey(e.target.value)}
               className="cs-select"
             >
-              {availablePeriods.map(p => (
-                <option key={p.key} value={p.key}>{p.label}</option>
+              {availablePeriods.map((p) => (
+                <option key={p.key} value={p.key}>
+                  {p.label}
+                </option>
               ))}
             </select>
           </div>
@@ -600,42 +699,50 @@ export const ReportGenerator: React.FC = () => {
             </label>
             <select
               id="report_schedule_filter"
-              disabled={reportMode === 'excel'}
+              disabled={reportMode === "excel"}
               value={reportScheduleFilter}
               onChange={(e) => setReportScheduleFilter(e.target.value)}
               className="cs-select"
             >
               <option value="all">Semua kelas</option>
               <option value="unlinked">Hanya sesi tanpa jadwal</option>
-              {schedules.map(s => (
-                <option key={s.id} value={s.id}>{s.title} ({s.hari})</option>
+              {schedules.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.title} ({s.hari})
+                </option>
               ))}
             </select>
           </div>
         </div>
 
         <p className="cs-muted">
-          {reportMode === 'whatsapp'
-            ? 'Laporan disusun dalam format teks siap kirim ke koordinator.'
-            : 'Isi lembar laporan resmi, lalu unduh sebagai Excel.'}
+          {reportMode === "whatsapp"
+            ? "Laporan disusun dalam format teks siap kirim ke koordinator."
+            : "Isi lembar laporan resmi, lalu unduh sebagai Excel."}
         </p>
       </section>
 
       {records.length === 0 ? (
         <section className="cs-card">
           <div className="cs-empty">
-            <h3 className="cs-empty__title">Belum ada presensi untuk dilaporkan</h3>
+            <h3 className="cs-empty__title">
+              Belum ada presensi untuk dilaporkan
+            </h3>
             <p className="cs-empty__body">
-              Catat presensi terlebih dahulu, atau muat data contoh untuk mencoba.
+              Catat presensi terlebih dahulu, atau muat data contoh untuk
+              mencoba.
             </p>
-            <Button icon={<Play className="cs-icon" />} onClick={handleLoadSampleData}>
+            <Button
+              icon={<Play className="cs-icon" />}
+              onClick={handleLoadSampleData}
+            >
               Muat data contoh
             </Button>
           </div>
         </section>
       ) : (
         <AnimatePresence mode="wait">
-          {reportMode === 'whatsapp' ? (
+          {reportMode === "whatsapp" ? (
             /* =======================================
                TAB 1: WHATSAPP COMPILER (ORIGINAL)
                ======================================= */
@@ -652,37 +759,44 @@ export const ReportGenerator: React.FC = () => {
                   <p className="cs-label">
                     Sesi pada periode ini ({filteredRecordsForReport.length})
                     <span className="cs-label__count">
-                      {currentPeriod ? currentPeriod.label : '-'}
+                      {currentPeriod ? currentPeriod.label : "-"}
                     </span>
                   </p>
 
                   {filteredRecordsForReport.length === 0 ? (
                     <div className="cs-empty">
-                      <h3 className="cs-empty__title">Tidak ada sesi di periode ini</h3>
+                      <h3 className="cs-empty__title">
+                        Tidak ada sesi di periode ini
+                      </h3>
                       <p className="cs-empty__body">
-                        Belum ada presensi tersimpan yang cocok dengan periode dan kelas
-                        yang dipilih. Coba periode lain, atau ubah kelompok kelasnya.
+                        Belum ada presensi tersimpan yang cocok dengan periode
+                        dan kelas yang dipilih. Coba periode lain, atau ubah
+                        kelompok kelasnya.
                       </p>
                     </div>
                   ) : (
                     <div className="cs-scroll">
                       {filteredRecordsForReport.map((rec) => {
-                        const isSelected = reportSelectedRecordIds.includes(rec.id!);
+                        const isSelected = reportSelectedRecordIds.includes(
+                          rec.id!,
+                        );
                         return (
                           /* A real checkbox: this was a div with an onClick,
                              so it could not be reached or operated by keyboard
                              and announced as nothing at all. */
                           <label
                             key={rec.id}
-                            className={`cs-session${isSelected ? ' is-selected' : ''}`}
+                            className={`cs-session${isSelected ? " is-selected" : ""}`}
                           >
                             <input
                               type="checkbox"
                               checked={isSelected}
                               onChange={() => {
                                 if (rec.id) {
-                                  setReportSelectedRecordIds(prev =>
-                                    prev.includes(rec.id!) ? prev.filter(x => x !== rec.id) : [...prev, rec.id!]
+                                  setReportSelectedRecordIds((prev) =>
+                                    prev.includes(rec.id!)
+                                      ? prev.filter((x) => x !== rec.id)
+                                      : [...prev, rec.id!],
                                   );
                                 }
                               }}
@@ -692,7 +806,8 @@ export const ReportGenerator: React.FC = () => {
                                 {formatIndonesianDate(rec.tanggal)}
                               </span>
                               <span className="cs-session__names">
-                                Hadir ({rec.peserta.length}): {rec.peserta.join(', ')}
+                                Hadir ({rec.peserta.length}):{" "}
+                                {rec.peserta.join(", ")}
                               </span>
                             </span>
                           </label>
@@ -742,22 +857,29 @@ export const ReportGenerator: React.FC = () => {
                           Bagikan ke WhatsApp
                         </Button>
                         <Button
-                          icon={copied ? <Check className="cs-icon" /> : <Copy className="cs-icon" />}
+                          icon={
+                            copied ? (
+                              <Check className="cs-icon" />
+                            ) : (
+                              <Copy className="cs-icon" />
+                            )
+                          }
                           onClick={handleCopyReport}
                         >
-                          {copied ? 'Tersalin' : 'Salin teks'}
+                          {copied ? "Tersalin" : "Salin teks"}
                         </Button>
                       </div>
                       <p className="cs-muted">
-                        WhatsApp akan terbuka dengan teks ini sudah terisi. Anda yang
-                        menekan kirim.
+                        WhatsApp akan terbuka dengan teks ini sudah terisi. Anda
+                        yang menekan kirim.
                       </p>
                     </>
                   ) : (
                     <div className="cs-empty">
                       <h3 className="cs-empty__title">Laporan belum disusun</h3>
                       <p className="cs-empty__body">
-                        Pilih periode dan sesi di samping, lalu tekan <b>Susun laporan</b>.
+                        Pilih periode dan sesi di samping, lalu tekan{" "}
+                        <b>Susun laporan</b>.
                       </p>
                     </div>
                   )}
@@ -780,7 +902,11 @@ export const ReportGenerator: React.FC = () => {
                 <p className="cs-label">Lembar laporan Excel</p>
                 <div>
                   <p className="cs-muted">
-                    Atur data presensi, lengkapi status SPP, catatan hafalan, serta pengiriman buletin. Data akan otomatis tersimpan dalam database lokal per periode ketika mengklik <b>Simpan draf</b>. Ekspor langsung menghasilkan format resmi Excel berwarna!
+                    Atur data presensi, lengkapi status SPP, catatan hafalan,
+                    serta pengiriman buletin. Data akan otomatis tersimpan dalam
+                    database lokal per periode ketika mengklik{" "}
+                    <b>Simpan draf</b>. Ekspor langsung menghasilkan format
+                    resmi Excel berwarna!
                   </p>
                 </div>
               </section>
@@ -788,7 +914,7 @@ export const ReportGenerator: React.FC = () => {
               {/* Metadata Inputs Section */}
               <section className="cs-card">
                 <p className="cs-label">Keterangan laporan</p>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-bold text-zinc-500 dark:text-zinc-400 mb-1.5">
@@ -834,7 +960,9 @@ export const ReportGenerator: React.FC = () => {
                 <div className="pt-2">
                   <div className="flex items-center gap-1.5 mb-2">
                     <Calendar className="w-3.5 h-3.5 text-zinc-400" />
-                    <span className="text-sm font-black text-zinc-500 dark:text-zinc-400">Nama kolom pekan</span>
+                    <span className="text-sm font-black text-zinc-500 dark:text-zinc-400">
+                      Nama kolom pekan
+                    </span>
                   </div>
                   <div className="grid grid-cols-5 gap-2">
                     {weeks.map((wk, idx) => (
@@ -861,7 +989,9 @@ export const ReportGenerator: React.FC = () => {
               <section className="cs-card">
                 <p className="cs-label">
                   Daftar santri ({studentsData.length})
-                  <span className="cs-label__count">Terisi dari presensi tercatat</span>
+                  <span className="cs-label__count">
+                    Terisi dari presensi tercatat
+                  </span>
                 </p>
 
                 <div className="cs-row cs-row--end">
@@ -878,8 +1008,9 @@ export const ReportGenerator: React.FC = () => {
                     is there, and offer the per-santri form as the way to fill
                     it in without scrolling at all. */}
                 <p className="cs-muted">
-                  Tabel ini lebar. Geser ke samping untuk melihat semua kolom, atau
-                  tekan <b>Ubah</b> pada baris santri untuk mengisi lewat formulir.
+                  Tabel ini lebar. Geser ke samping untuk melihat semua kolom,
+                  atau tekan <b>Ubah</b> pada baris santri untuk mengisi lewat
+                  formulir.
                 </p>
                 <div
                   className="cs-sheet"
@@ -894,15 +1025,28 @@ export const ReportGenerator: React.FC = () => {
                         <th className="p-2 border-r w-48">Nama Santri</th>
                         <th className="p-2 border-r text-center w-16">K/P</th>
                         {weeks.map((wk, idx) => (
-                          <th key={idx} className="p-2 border-r text-center w-20">{wk || `Pekan ${idx+1}`}</th>
+                          <th
+                            key={idx}
+                            className="p-2 border-r text-center w-20"
+                          >
+                            {wk || `Pekan ${idx + 1}`}
+                          </th>
                         ))}
                         <th className="p-2 border-r w-40">Pendampingan</th>
                         <th className="p-2 border-r text-center w-14">HS</th>
                         <th className="p-2 border-r text-center w-14">JM</th>
-                        <th className="p-2 border-r text-center w-24">SPP KET</th>
-                        <th className="p-2 border-r text-right w-28">SPP NOMINAL</th>
-                        <th className="p-2 border-r text-center w-16">BULETIN CETAK</th>
-                        <th className="p-2 border-r text-center w-16">BULETIN DGTL</th>
+                        <th className="p-2 border-r text-center w-24">
+                          SPP KET
+                        </th>
+                        <th className="p-2 border-r text-right w-28">
+                          SPP NOMINAL
+                        </th>
+                        <th className="p-2 border-r text-center w-16">
+                          BULETIN CETAK
+                        </th>
+                        <th className="p-2 border-r text-center w-16">
+                          BULETIN DGTL
+                        </th>
                         <th className="p-2 text-center w-44">Aksi</th>
                       </tr>
                     </thead>
@@ -910,12 +1054,15 @@ export const ReportGenerator: React.FC = () => {
                       {studentsData.map((row, rIdx) => {
                         // Visual helper background groups (alternating to mimic the look of custom spreadsheets)
                         const isEvenGroup = Math.floor(rIdx / 5) % 2 === 0;
-                        const rowBg = isEvenGroup 
-                          ? 'bg-emerald-500/[0.01] dark:bg-emerald-500/[0.015]'
-                          : 'bg-indigo-500/[0.01] dark:bg-indigo-500/[0.015]';
+                        const rowBg = isEvenGroup
+                          ? "bg-emerald-500/[0.01] dark:bg-emerald-500/[0.015]"
+                          : "bg-indigo-500/[0.01] dark:bg-indigo-500/[0.015]";
 
                         return (
-                          <tr key={rIdx} className={`hover:bg-zinc-50 dark:hover:bg-zinc-950/60 transition-colors ${rowBg}`}>
+                          <tr
+                            key={rIdx}
+                            className={`hover:bg-zinc-50 dark:hover:bg-zinc-950/60 transition-colors ${rowBg}`}
+                          >
                             {/* NO */}
                             <td className="p-1.5 border-r text-center font-bold text-zinc-550">
                               <span>{rIdx + 1}</span>
@@ -926,7 +1073,13 @@ export const ReportGenerator: React.FC = () => {
                               <input
                                 type="text"
                                 value={row.name}
-                                onChange={(e) => handleUpdateStudentField(rIdx, 'name', e.target.value)}
+                                onChange={(e) =>
+                                  handleUpdateStudentField(
+                                    rIdx,
+                                    "name",
+                                    e.target.value,
+                                  )
+                                }
                                 className="w-full bg-transparent border-0 font-bold text-zinc-800 dark:text-zinc-100 focus:ring-0 focus:outline-hidden p-1 focus: dark:focus:bg-zinc-800"
                                 placeholder="-- Kosong --"
                               />
@@ -936,7 +1089,13 @@ export const ReportGenerator: React.FC = () => {
                             <td className="p-1.5 border-r text-center">
                               <select
                                 value={row.category}
-                                onChange={(e) => handleUpdateStudentField(rIdx, 'category', e.target.value)}
+                                onChange={(e) =>
+                                  handleUpdateStudentField(
+                                    rIdx,
+                                    "category",
+                                    e.target.value,
+                                  )
+                                }
                                 className="bg-transparent border-0 text-center font-bold text-zinc-700 dark:text-white focus:ring-0 focus:outline-hidden cursor-pointer"
                               >
                                 <option value="K">K</option>
@@ -946,21 +1105,40 @@ export const ReportGenerator: React.FC = () => {
 
                             {/* ATTENDANCE (5 Columns) */}
                             {weeks.map((_, wIdx) => {
-                              const cellValue = row.attendance[wIdx] || '';
-                              
+                              const cellValue = row.attendance[wIdx] || "";
+
                               // Color codes: V=green, T=yellow, S/I=blue, A=red, B=gray
-                              let badgeStyle = 'bg-transparent text-zinc-400';
-                              if (cellValue === 'V') badgeStyle = 'bg-emerald-100/70 dark:bg-emerald-950/40 text-emerald-750 dark:text-emerald-400';
-                              else if (cellValue === 'T') badgeStyle = 'bg-amber-100/70 dark:bg-amber-950/40 text-amber-750 dark:text-amber-400';
-                              else if (cellValue === 'S' || cellValue === 'I') badgeStyle = 'bg-sky-100/70 dark:bg-sky-950/40 text-sky-750 dark:text-sky-400';
-                              else if (cellValue === 'A') badgeStyle = 'bg-rose-100/70 dark:bg-rose-950/40 text-rose-750 dark:text-rose-400';
-                              else if (cellValue === 'B') badgeStyle = 'bg-zinc-100 dark:bg-zinc-800 text-zinc-650 dark:text-zinc-400';
+                              let badgeStyle = "bg-transparent text-zinc-400";
+                              if (cellValue === "V")
+                                badgeStyle =
+                                  "bg-emerald-100/70 dark:bg-emerald-950/40 text-emerald-750 dark:text-emerald-400";
+                              else if (cellValue === "T")
+                                badgeStyle =
+                                  "bg-amber-100/70 dark:bg-amber-950/40 text-amber-750 dark:text-amber-400";
+                              else if (cellValue === "S" || cellValue === "I")
+                                badgeStyle =
+                                  "bg-sky-100/70 dark:bg-sky-950/40 text-sky-750 dark:text-sky-400";
+                              else if (cellValue === "A")
+                                badgeStyle =
+                                  "bg-rose-100/70 dark:bg-rose-950/40 text-rose-750 dark:text-rose-400";
+                              else if (cellValue === "B")
+                                badgeStyle =
+                                  "bg-zinc-100 dark:bg-zinc-800 text-zinc-650 dark:text-zinc-400";
 
                               return (
-                                <td key={wIdx} className="p-1 border-r text-center">
+                                <td
+                                  key={wIdx}
+                                  className="p-1 border-r text-center"
+                                >
                                   <select
                                     value={cellValue}
-                                    onChange={(e) => handleUpdateAttendanceCell(rIdx, wIdx, e.target.value)}
+                                    onChange={(e) =>
+                                      handleUpdateAttendanceCell(
+                                        rIdx,
+                                        wIdx,
+                                        e.target.value,
+                                      )
+                                    }
                                     className={`w-11 h-8 rounded-lg text-center font-extrabold focus:ring-0 focus:outline-hidden cursor-pointer transition-all ${badgeStyle}`}
                                   >
                                     <option value="">-</option>
@@ -980,7 +1158,13 @@ export const ReportGenerator: React.FC = () => {
                               <input
                                 type="text"
                                 value={row.pendampingan}
-                                onChange={(e) => handleUpdateStudentField(rIdx, 'pendampingan', e.target.value)}
+                                onChange={(e) =>
+                                  handleUpdateStudentField(
+                                    rIdx,
+                                    "pendampingan",
+                                    e.target.value,
+                                  )
+                                }
                                 className="w-full bg-transparent border-0 text-zinc-700 dark:text-white font-semibold focus:ring-0 focus:outline-hidden p-1 focus: dark:focus:bg-zinc-800"
                                 placeholder="..."
                               />
@@ -990,16 +1174,36 @@ export const ReportGenerator: React.FC = () => {
                             <td className="p-1.5 border-r text-center">
                               <select
                                 value={row.hs}
-                                onChange={(e) => handleUpdateStudentField(rIdx, 'hs', e.target.value)}
+                                onChange={(e) =>
+                                  handleUpdateStudentField(
+                                    rIdx,
+                                    "hs",
+                                    e.target.value,
+                                  )
+                                }
                                 className="w-14 bg-transparent border-0 text-center font-bold text-zinc-700 dark:text-white focus:ring-0 focus:outline-hidden cursor-pointer"
                               >
-                                <option value="" className="dark:text-white">-</option>
-                                <option value="V" className="dark:text-white">V</option>
-                                <option value="S" className="dark:text-white">S</option>
-                                <option value="I" className="dark:text-white">I</option>
-                                <option value="A" className="dark:text-white">A</option>
-                                <option value="T" className="dark:text-white">T</option>
-                                <option value="B" className="dark:text-white">B</option>
+                                <option value="" className="dark:text-white">
+                                  -
+                                </option>
+                                <option value="V" className="dark:text-white">
+                                  V
+                                </option>
+                                <option value="S" className="dark:text-white">
+                                  S
+                                </option>
+                                <option value="I" className="dark:text-white">
+                                  I
+                                </option>
+                                <option value="A" className="dark:text-white">
+                                  A
+                                </option>
+                                <option value="T" className="dark:text-white">
+                                  T
+                                </option>
+                                <option value="B" className="dark:text-white">
+                                  B
+                                </option>
                               </select>
                             </td>
 
@@ -1007,16 +1211,36 @@ export const ReportGenerator: React.FC = () => {
                             <td className="p-1.5 border-r text-center">
                               <select
                                 value={row.jm}
-                                onChange={(e) => handleUpdateStudentField(rIdx, 'jm', e.target.value)}
+                                onChange={(e) =>
+                                  handleUpdateStudentField(
+                                    rIdx,
+                                    "jm",
+                                    e.target.value,
+                                  )
+                                }
                                 className="w-14 bg-transparent border-0 text-center font-bold text-zinc-700 dark:text-white focus:ring-0 focus:outline-hidden cursor-pointer"
                               >
-                                <option value="" className="dark:text-white">-</option>
-                                <option value="V" className="dark:text-white">V</option>
-                                <option value="S" className="dark:text-white">S</option>
-                                <option value="I" className="dark:text-white">I</option>
-                                <option value="A" className="dark:text-white">A</option>
-                                <option value="T" className="dark:text-white">T</option>
-                                <option value="B" className="dark:text-white">B</option>
+                                <option value="" className="dark:text-white">
+                                  -
+                                </option>
+                                <option value="V" className="dark:text-white">
+                                  V
+                                </option>
+                                <option value="S" className="dark:text-white">
+                                  S
+                                </option>
+                                <option value="I" className="dark:text-white">
+                                  I
+                                </option>
+                                <option value="A" className="dark:text-white">
+                                  A
+                                </option>
+                                <option value="T" className="dark:text-white">
+                                  T
+                                </option>
+                                <option value="B" className="dark:text-white">
+                                  B
+                                </option>
                               </select>
                             </td>
 
@@ -1024,15 +1248,33 @@ export const ReportGenerator: React.FC = () => {
                             <td className="p-1 border-r text-center">
                               <select
                                 value={row.sppKeterangan}
-                                onChange={(e) => handleUpdateStudentField(rIdx, 'sppKeterangan', e.target.value)}
+                                onChange={(e) =>
+                                  handleUpdateStudentField(
+                                    rIdx,
+                                    "sppKeterangan",
+                                    e.target.value,
+                                  )
+                                }
                                 className="w-14 bg-transparent border-0 text-center font-bold text-zinc-700 dark:text-white focus:ring-0 focus:outline-hidden cursor-pointer"
                               >
-                                <option value="" className="dark:text-white">-</option>
-                                <option value="V" className="dark:text-white">V</option>
-                                <option value="T" className="dark:text-white">T</option>
-                                <option value="S" className="dark:text-white">S</option>
-                                <option value="I" className="dark:text-white">I</option>
-                                <option value="A" className="dark:text-white">A</option>
+                                <option value="" className="dark:text-white">
+                                  -
+                                </option>
+                                <option value="V" className="dark:text-white">
+                                  V
+                                </option>
+                                <option value="T" className="dark:text-white">
+                                  T
+                                </option>
+                                <option value="S" className="dark:text-white">
+                                  S
+                                </option>
+                                <option value="I" className="dark:text-white">
+                                  I
+                                </option>
+                                <option value="A" className="dark:text-white">
+                                  A
+                                </option>
                               </select>
                             </td>
 
@@ -1040,8 +1282,14 @@ export const ReportGenerator: React.FC = () => {
                             <td className="p-1.5 border-r">
                               <input
                                 type="number"
-                                value={row.sppNominal || ''}
-                                onChange={(e) => handleUpdateStudentField(rIdx, 'sppNominal', Number(e.target.value))}
+                                value={row.sppNominal || ""}
+                                onChange={(e) =>
+                                  handleUpdateStudentField(
+                                    rIdx,
+                                    "sppNominal",
+                                    Number(e.target.value),
+                                  )
+                                }
                                 className="w-full bg-transparent border-0 text-right font-mono text-zinc-700 dark:text-white focus:ring-0 focus:outline-hidden p-1"
                                 placeholder="0"
                               />
@@ -1052,7 +1300,13 @@ export const ReportGenerator: React.FC = () => {
                               <input
                                 type="checkbox"
                                 checked={row.buletinCetak}
-                                onChange={(e) => handleUpdateStudentField(rIdx, 'buletinCetak', e.target.checked)}
+                                onChange={(e) =>
+                                  handleUpdateStudentField(
+                                    rIdx,
+                                    "buletinCetak",
+                                    e.target.checked,
+                                  )
+                                }
                                 className="w-4 h-4 text-red-600 focus:ring-red-500 cursor-pointer"
                               />
                             </td>
@@ -1062,7 +1316,13 @@ export const ReportGenerator: React.FC = () => {
                               <input
                                 type="checkbox"
                                 checked={row.buletinDigital}
-                                onChange={(e) => handleUpdateStudentField(rIdx, 'buletinDigital', e.target.checked)}
+                                onChange={(e) =>
+                                  handleUpdateStudentField(
+                                    rIdx,
+                                    "buletinDigital",
+                                    e.target.checked,
+                                  )
+                                }
                                 className="w-4 h-4 text-red-600 focus:ring-red-500 cursor-pointer"
                               />
                             </td>
@@ -1071,7 +1331,9 @@ export const ReportGenerator: React.FC = () => {
                                 tooltip tells a phone user nothing. */}
                             <td className="p-1.5 text-center">
                               <div className="cs-sheet__actions">
-                                <Button onClick={() => setEditingStudentIndex(rIdx)}>
+                                <Button
+                                  onClick={() => setEditingStudentIndex(rIdx)}
+                                >
                                   Ubah
                                 </Button>
                                 <Button
@@ -1100,27 +1362,39 @@ export const ReportGenerator: React.FC = () => {
                     </p>
                     <div className="grid grid-cols-2 gap-2 text-sm font-bold text-zinc-700 dark:text-zinc-300">
                       <div className="flex items-center gap-1.5">
-                        <span className="inline-flex items-center justify-center w-5 h-5 bg-emerald-50 dark:bg-emerald-950/45 text-emerald-600 dark:text-emerald-400 font-mono font-black text-sm border-emerald-200 dark:border-emerald-900/50">V</span>
+                        <span className="inline-flex items-center justify-center w-5 h-5 bg-emerald-50 dark:bg-emerald-950/45 text-emerald-600 dark:text-emerald-400 font-mono font-black text-sm border-emerald-200 dark:border-emerald-900/50">
+                          V
+                        </span>
                         <span>Hadir Tepat</span>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <span className="inline-flex items-center justify-center w-5 h-5 bg-amber-50 dark:bg-amber-950/45 text-amber-600 dark:text-amber-400 font-mono font-black text-sm border-amber-200 dark:border-amber-900/50">T</span>
+                        <span className="inline-flex items-center justify-center w-5 h-5 bg-amber-50 dark:bg-amber-950/45 text-amber-600 dark:text-amber-400 font-mono font-black text-sm border-amber-200 dark:border-amber-900/50">
+                          T
+                        </span>
                         <span>Terlambat &lt;15m</span>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <span className="inline-flex items-center justify-center w-5 h-5 bg-sky-50 dark:bg-sky-950/45 text-sky-600 dark:text-sky-400 font-mono font-black text-sm border-sky-200 dark:border-sky-900/50">S</span>
+                        <span className="inline-flex items-center justify-center w-5 h-5 bg-sky-50 dark:bg-sky-950/45 text-sky-600 dark:text-sky-400 font-mono font-black text-sm border-sky-200 dark:border-sky-900/50">
+                          S
+                        </span>
                         <span>Sakit</span>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <span className="inline-flex items-center justify-center w-5 h-5 bg-indigo-50 dark:bg-indigo-950/45 text-indigo-600 dark:text-indigo-400 font-mono font-black text-sm border-indigo-200 dark:border-indigo-900/50">I</span>
+                        <span className="inline-flex items-center justify-center w-5 h-5 bg-indigo-50 dark:bg-indigo-950/45 text-indigo-600 dark:text-indigo-400 font-mono font-black text-sm border-indigo-200 dark:border-indigo-900/50">
+                          I
+                        </span>
                         <span>Izin</span>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <span className="inline-flex items-center justify-center w-5 h-5 bg-rose-50 dark:bg-rose-950/45 text-rose-600 dark:text-rose-400 font-mono font-black text-sm border-rose-200 dark:border-rose-900/50">A</span>
+                        <span className="inline-flex items-center justify-center w-5 h-5 bg-rose-50 dark:bg-rose-950/45 text-rose-600 dark:text-rose-400 font-mono font-black text-sm border-rose-200 dark:border-rose-900/50">
+                          A
+                        </span>
                         <span>Alpa</span>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <span className="inline-flex items-center justify-center w-5 h-5 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 font-mono font-black text-sm">B</span>
+                        <span className="inline-flex items-center justify-center w-5 h-5 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 font-mono font-black text-sm">
+                          B
+                        </span>
                         <span>Musyrif Absen</span>
                       </div>
                     </div>
@@ -1133,23 +1407,33 @@ export const ReportGenerator: React.FC = () => {
                     </p>
                     <div className="grid grid-cols-2 gap-2 text-sm font-bold text-zinc-700 dark:text-zinc-300">
                       <div className="flex items-center gap-1.5">
-                        <span className="inline-flex items-center justify-center w-5 h-5 bg-emerald-50 dark:bg-emerald-950/45 text-emerald-600 dark:text-emerald-400 font-mono font-black text-sm border-emerald-200 dark:border-emerald-900/50">V</span>
+                        <span className="inline-flex items-center justify-center w-5 h-5 bg-emerald-50 dark:bg-emerald-950/45 text-emerald-600 dark:text-emerald-400 font-mono font-black text-sm border-emerald-200 dark:border-emerald-900/50">
+                          V
+                        </span>
                         <span>Sblm Tgl 15</span>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <span className="inline-flex items-center justify-center w-5 h-5 bg-amber-50 dark:bg-amber-950/45 text-amber-600 dark:text-amber-400 font-mono font-black text-sm border-amber-200 dark:border-amber-900/50">T</span>
+                        <span className="inline-flex items-center justify-center w-5 h-5 bg-amber-50 dark:bg-amber-950/45 text-amber-600 dark:text-amber-400 font-mono font-black text-sm border-amber-200 dark:border-amber-900/50">
+                          T
+                        </span>
                         <span>Stlh Tgl 15</span>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <span className="inline-flex items-center justify-center w-5 h-5 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 font-mono font-black text-sm">S</span>
+                        <span className="inline-flex items-center justify-center w-5 h-5 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 font-mono font-black text-sm">
+                          S
+                        </span>
                         <span>Sulit Bayar</span>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <span className="inline-flex items-center justify-center w-5 h-5 bg-indigo-50 dark:bg-indigo-950/45 text-indigo-600 dark:text-indigo-400 font-mono font-black text-sm border-indigo-200 dark:border-indigo-900/50">I</span>
+                        <span className="inline-flex items-center justify-center w-5 h-5 bg-indigo-50 dark:bg-indigo-950/45 text-indigo-600 dark:text-indigo-400 font-mono font-black text-sm border-indigo-200 dark:border-indigo-900/50">
+                          I
+                        </span>
                         <span>Dihutang</span>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <span className="inline-flex items-center justify-center w-5 h-5 bg-rose-50 dark:bg-rose-950/45 text-rose-600 dark:text-rose-400 font-mono font-black text-sm border-rose-200 dark:border-rose-900/50">A</span>
+                        <span className="inline-flex items-center justify-center w-5 h-5 bg-rose-50 dark:bg-rose-950/45 text-rose-600 dark:text-rose-400 font-mono font-black text-sm border-rose-200 dark:border-rose-900/50">
+                          A
+                        </span>
                         <span>Tanpa Alasan</span>
                       </div>
                     </div>
@@ -1162,16 +1446,21 @@ export const ReportGenerator: React.FC = () => {
                     </p>
                     <div className="space-y-2.5 text-sm font-bold text-zinc-700 dark:text-zinc-300">
                       <div className="flex items-center gap-1.5">
-                        <span className="inline-flex items-center justify-center px-2 py-0.5 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-mono font-black text-sm">K / P</span>
+                        <span className="inline-flex items-center justify-center px-2 py-0.5 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-mono font-black text-sm">
+                          K / P
+                        </span>
                         <span>Karyawan / Pelajar</span>
                       </div>
                       <div className="flex flex-col gap-1 bg-red-500/[0.03] dark:bg-red-500/[0.02] border-red-500/10 p-2">
                         <div className="flex items-center gap-1.5">
                           <span className="w-1.5 h-1.5 bg-red-650 animate-pulse"></span>
-                          <span className="font-extrabold text-sm text-red-650 dark:text-red-400">Sebar Buletin</span>
+                          <span className="font-extrabold text-sm text-red-650 dark:text-red-400">
+                            Sebar Buletin
+                          </span>
                         </div>
                         <span className="text-sm text-zinc-500 dark:text-zinc-400 leading-normal font-semibold">
-                          Centang kolom cetak/digital jika buletin telah diserahkan.
+                          Centang kolom cetak/digital jika buletin telah
+                          diserahkan.
                         </span>
                       </div>
                     </div>
@@ -1242,7 +1531,9 @@ export const ReportGenerator: React.FC = () => {
                           <span className="cs-muted">
                             Baris {editingStudentIndex + 1}
                           </span>
-                          <h4 className="text-sm font-black text-zinc-900 dark:text-zinc-100 mt-1">Detail santri</h4>
+                          <h4 className="text-sm font-black text-zinc-900 dark:text-zinc-100 mt-1">
+                            Detail santri
+                          </h4>
                         </div>
                         <button
                           onClick={() => setEditingStudentIndex(null)}
@@ -1256,11 +1547,19 @@ export const ReportGenerator: React.FC = () => {
                       <div className="space-y-4 font-sans">
                         {/* Name */}
                         <div>
-                          <label className="block text-sm font-black text-zinc-500 dark:text-zinc-400 mb-1.5">Nama Santri</label>
+                          <label className="block text-sm font-black text-zinc-500 dark:text-zinc-400 mb-1.5">
+                            Nama Santri
+                          </label>
                           <input
                             type="text"
                             value={studentsData[editingStudentIndex].name}
-                            onChange={(e) => handleUpdateStudentField(editingStudentIndex, 'name', e.target.value)}
+                            onChange={(e) =>
+                              handleUpdateStudentField(
+                                editingStudentIndex,
+                                "name",
+                                e.target.value,
+                              )
+                            }
                             className="w-full px-3.5 py-2.5 text-sm font-bold text-zinc-800 dark:text-zinc-150 focus:outline-hidden focus:ring-1 focus:ring-red-600"
                             placeholder="Nama Santri"
                           />
@@ -1269,29 +1568,63 @@ export const ReportGenerator: React.FC = () => {
                         {/* Category & SPP Ket */}
                         <div className="grid grid-cols-2 gap-4">
                           <div>
-                            <label className="block text-sm font-black text-zinc-500 dark:text-zinc-400 mb-1.5">Kategori (K/P)</label>
+                            <label className="block text-sm font-black text-zinc-500 dark:text-zinc-400 mb-1.5">
+                              Kategori (K/P)
+                            </label>
                             <select
                               value={studentsData[editingStudentIndex].category}
-                              onChange={(e) => handleUpdateStudentField(editingStudentIndex, 'category', e.target.value as 'K' | 'P')}
+                              onChange={(e) =>
+                                handleUpdateStudentField(
+                                  editingStudentIndex,
+                                  "category",
+                                  e.target.value as "K" | "P",
+                                )
+                              }
                               className="w-full px-3.5 py-2.5 text-sm font-bold text-zinc-800 dark:text-zinc-150 focus:outline-hidden"
                             >
-                              <option value="K" className="dark:text-white">Karyawan (K)</option>
-                              <option value="P" className="dark:text-white">Pelajar (P)</option>
+                              <option value="K" className="dark:text-white">
+                                Karyawan (K)
+                              </option>
+                              <option value="P" className="dark:text-white">
+                                Pelajar (P)
+                              </option>
                             </select>
                           </div>
                           <div>
-                            <label className="block text-sm font-black text-zinc-500 dark:text-zinc-400 mb-1.5">SPP Keterangan</label>
+                            <label className="block text-sm font-black text-zinc-500 dark:text-zinc-400 mb-1.5">
+                              SPP Keterangan
+                            </label>
                             <select
-                              value={studentsData[editingStudentIndex].sppKeterangan}
-                              onChange={(e) => handleUpdateStudentField(editingStudentIndex, 'sppKeterangan', e.target.value)}
+                              value={
+                                studentsData[editingStudentIndex].sppKeterangan
+                              }
+                              onChange={(e) =>
+                                handleUpdateStudentField(
+                                  editingStudentIndex,
+                                  "sppKeterangan",
+                                  e.target.value,
+                                )
+                              }
                               className="w-full px-3.5 py-2.5 text-sm font-bold text-zinc-800 dark:text-zinc-150 focus:outline-hidden"
                             >
-                              <option value="" className="dark:text-white">-- Kosong --</option>
-                              <option value="V" className="dark:text-white">V - Tepat waktu</option>
-                              <option value="T" className="dark:text-white">T - Terlambat</option>
-                              <option value="S" className="dark:text-white">S - Kesulitan</option>
-                              <option value="I" className="dark:text-white">I - Dihutang</option>
-                              <option value="A" className="dark:text-white">A - Tanpa Alasan</option>
+                              <option value="" className="dark:text-white">
+                                -- Kosong --
+                              </option>
+                              <option value="V" className="dark:text-white">
+                                V - Tepat waktu
+                              </option>
+                              <option value="T" className="dark:text-white">
+                                T - Terlambat
+                              </option>
+                              <option value="S" className="dark:text-white">
+                                S - Kesulitan
+                              </option>
+                              <option value="I" className="dark:text-white">
+                                I - Dihutang
+                              </option>
+                              <option value="A" className="dark:text-white">
+                                A - Tanpa Alasan
+                              </option>
                             </select>
                           </div>
                         </div>
@@ -1299,43 +1632,98 @@ export const ReportGenerator: React.FC = () => {
                         {/* SPP Nominal & HS & JM */}
                         <div className="grid grid-cols-3 gap-3">
                           <div className="col-span-1">
-                            <label className="block text-sm font-black text-zinc-500 dark:text-zinc-400 mb-1.5">Hafalan (HS)</label>
+                            <label className="block text-sm font-black text-zinc-500 dark:text-zinc-400 mb-1.5">
+                              Hafalan (HS)
+                            </label>
                             <select
                               value={studentsData[editingStudentIndex].hs}
-                              onChange={(e) => handleUpdateStudentField(editingStudentIndex, 'hs', e.target.value)}
+                              onChange={(e) =>
+                                handleUpdateStudentField(
+                                  editingStudentIndex,
+                                  "hs",
+                                  e.target.value,
+                                )
+                              }
                               className="w-full px-2 py-2.5 text-sm font-bold text-zinc-800 dark:text-zinc-150 text-center focus:outline-hidden cursor-pointer"
                             >
-                              <option value="" className="dark:text-white">-</option>
-                              <option value="V" className="dark:text-white">V</option>
-                              <option value="S" className="dark:text-white">S</option>
-                              <option value="I" className="dark:text-white">I</option>
-                              <option value="A" className="dark:text-white">A</option>
-                              <option value="T" className="dark:text-white">T</option>
-                              <option value="B" className="dark:text-white">B</option>
+                              <option value="" className="dark:text-white">
+                                -
+                              </option>
+                              <option value="V" className="dark:text-white">
+                                V
+                              </option>
+                              <option value="S" className="dark:text-white">
+                                S
+                              </option>
+                              <option value="I" className="dark:text-white">
+                                I
+                              </option>
+                              <option value="A" className="dark:text-white">
+                                A
+                              </option>
+                              <option value="T" className="dark:text-white">
+                                T
+                              </option>
+                              <option value="B" className="dark:text-white">
+                                B
+                              </option>
                             </select>
                           </div>
                           <div className="col-span-1">
-                            <label className="block text-sm font-black text-zinc-500 dark:text-zinc-400 mb-1.5">Juz (JM)</label>
+                            <label className="block text-sm font-black text-zinc-500 dark:text-zinc-400 mb-1.5">
+                              Juz (JM)
+                            </label>
                             <select
                               value={studentsData[editingStudentIndex].jm}
-                              onChange={(e) => handleUpdateStudentField(editingStudentIndex, 'jm', e.target.value)}
+                              onChange={(e) =>
+                                handleUpdateStudentField(
+                                  editingStudentIndex,
+                                  "jm",
+                                  e.target.value,
+                                )
+                              }
                               className="w-full px-2 py-2.5 text-sm font-bold text-zinc-800 dark:text-zinc-150 text-center focus:outline-hidden cursor-pointer"
                             >
-                              <option value="" className="dark:text-white">-</option>
-                              <option value="V" className="dark:text-white">V</option>
-                              <option value="S" className="dark:text-white">S</option>
-                              <option value="I" className="dark:text-white">I</option>
-                              <option value="A" className="dark:text-white">A</option>
-                              <option value="T" className="dark:text-white">T</option>
-                              <option value="B" className="dark:text-white">B</option>
+                              <option value="" className="dark:text-white">
+                                -
+                              </option>
+                              <option value="V" className="dark:text-white">
+                                V
+                              </option>
+                              <option value="S" className="dark:text-white">
+                                S
+                              </option>
+                              <option value="I" className="dark:text-white">
+                                I
+                              </option>
+                              <option value="A" className="dark:text-white">
+                                A
+                              </option>
+                              <option value="T" className="dark:text-white">
+                                T
+                              </option>
+                              <option value="B" className="dark:text-white">
+                                B
+                              </option>
                             </select>
                           </div>
                           <div className="col-span-1">
-                            <label className="block text-sm font-black text-zinc-500 dark:text-zinc-400 mb-1.5">SPP (Rp)</label>
+                            <label className="block text-sm font-black text-zinc-500 dark:text-zinc-400 mb-1.5">
+                              SPP (Rp)
+                            </label>
                             <input
                               type="number"
-                              value={studentsData[editingStudentIndex].sppNominal || ''}
-                              onChange={(e) => handleUpdateStudentField(editingStudentIndex, 'sppNominal', Number(e.target.value))}
+                              value={
+                                studentsData[editingStudentIndex].sppNominal ||
+                                ""
+                              }
+                              onChange={(e) =>
+                                handleUpdateStudentField(
+                                  editingStudentIndex,
+                                  "sppNominal",
+                                  Number(e.target.value),
+                                )
+                              }
                               className="w-full px-2 py-2.5 font-mono text-sm font-bold text-zinc-800 dark:text-zinc-150 text-right focus:outline-hidden"
                               placeholder="0"
                             />
@@ -1344,11 +1732,21 @@ export const ReportGenerator: React.FC = () => {
 
                         {/* Pendampingan */}
                         <div>
-                          <label className="block text-sm font-black text-zinc-500 dark:text-zinc-400 mb-1.5">Pendampingan</label>
+                          <label className="block text-sm font-black text-zinc-500 dark:text-zinc-400 mb-1.5">
+                            Pendampingan
+                          </label>
                           <input
                             type="text"
-                            value={studentsData[editingStudentIndex].pendampingan}
-                            onChange={(e) => handleUpdateStudentField(editingStudentIndex, 'pendampingan', e.target.value)}
+                            value={
+                              studentsData[editingStudentIndex].pendampingan
+                            }
+                            onChange={(e) =>
+                              handleUpdateStudentField(
+                                editingStudentIndex,
+                                "pendampingan",
+                                e.target.value,
+                              )
+                            }
                             className="w-full px-3.5 py-2.5 text-sm font-bold text-zinc-800 dark:text-zinc-150 focus:outline-hidden"
                             placeholder="Keterangan pendampingan"
                           />
@@ -1356,39 +1754,68 @@ export const ReportGenerator: React.FC = () => {
 
                         {/* Attendance weeks */}
                         <div>
-                          <label className="block text-sm font-black text-zinc-500 dark:text-zinc-400 mb-2">Presensi Kehadiran Sesi</label>
+                          <label className="block text-sm font-black text-zinc-500 dark:text-zinc-400 mb-2">
+                            Presensi Kehadiran Sesi
+                          </label>
                           <div className="space-y-2">
                             {weeks.map((wk, wIdx) => {
-                              const cellValue = studentsData[editingStudentIndex!].attendance[wIdx] || '';
+                              const cellValue =
+                                studentsData[editingStudentIndex!].attendance[
+                                  wIdx
+                                ] || "";
                               return (
-                                <div key={wIdx} className="flex items-center justify-between p-2">
-                                  <span className="text-sm font-extrabold text-zinc-500">{wk || `Pekan ${wIdx + 1}`}</span>
-                                  
+                                <div
+                                  key={wIdx}
+                                  className="flex items-center justify-between p-2"
+                                >
+                                  <span className="text-sm font-extrabold text-zinc-500">
+                                    {wk || `Pekan ${wIdx + 1}`}
+                                  </span>
+
                                   {/* Code select buttons */}
                                   <div className="flex gap-1">
-                                    {['V', 'T', 'S', 'I', 'A', 'B'].map((code) => {
-                                      const isAct = cellValue === code;
-                                      
-                                      let actStyle = 'bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-650 dark:text-white';
-                                      if (isAct) {
-                                        if (code === 'V') actStyle = 'bg-emerald-600 text-white shadow-xs';
-                                        else if (code === 'T') actStyle = 'bg-amber-500 text-white shadow-xs';
-                                        else if (code === 'S' || code === 'I') actStyle = 'bg-sky-500 text-white shadow-xs';
-                                        else if (code === 'A') actStyle = 'bg-rose-600 text-white shadow-xs';
-                                        else if (code === 'B') actStyle = 'bg-zinc-500 text-white shadow-xs';
-                                      }
+                                    {["V", "T", "S", "I", "A", "B"].map(
+                                      (code) => {
+                                        const isAct = cellValue === code;
 
-                                      return (
-                                        <button
-                                          key={code}
-                                          type="button"
-                                          onClick={() => handleUpdateAttendanceCell(editingStudentIndex!, wIdx, isAct ? '' : code)}
-                                          className={`w-7 h-7 text-sm font-black rounded-lg transition-all cursor-pointer ${actStyle}`}
-                                        >
-                                          {code}
-                                        </button>
-                                      );
-                                    })}
+                                        let actStyle =
+                                          "bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-650 dark:text-white";
+                                        if (isAct) {
+                                          if (code === "V")
+                                            actStyle =
+                                              "bg-emerald-600 text-white shadow-xs";
+                                          else if (code === "T")
+                                            actStyle =
+                                              "bg-amber-500 text-white shadow-xs";
+                                          else if (code === "S" || code === "I")
+                                            actStyle =
+                                              "bg-sky-500 text-white shadow-xs";
+                                          else if (code === "A")
+                                            actStyle =
+                                              "bg-rose-600 text-white shadow-xs";
+                                          else if (code === "B")
+                                            actStyle =
+                                              "bg-zinc-500 text-white shadow-xs";
+                                        }
+
+                                        return (
+                                          <button
+                                            key={code}
+                                            type="button"
+                                            onClick={() =>
+                                              handleUpdateAttendanceCell(
+                                                editingStudentIndex!,
+                                                wIdx,
+                                                isAct ? "" : code,
+                                              )
+                                            }
+                                            className={`w-7 h-7 text-sm font-black rounded-lg transition-all cursor-pointer ${actStyle}`}
+                                          >
+                                            {code}
+                                          </button>
+                                        );
+                                      },
+                                    )}
                                   </div>
                                 </div>
                               );
@@ -1401,20 +1828,40 @@ export const ReportGenerator: React.FC = () => {
                           <label className="flex items-center gap-2.5 p-3 cursor-pointer">
                             <input
                               type="checkbox"
-                              checked={studentsData[editingStudentIndex].buletinCetak}
-                              onChange={(e) => handleUpdateStudentField(editingStudentIndex, 'buletinCetak', e.target.checked)}
+                              checked={
+                                studentsData[editingStudentIndex].buletinCetak
+                              }
+                              onChange={(e) =>
+                                handleUpdateStudentField(
+                                  editingStudentIndex,
+                                  "buletinCetak",
+                                  e.target.checked,
+                                )
+                              }
                               className="w-4 h-4 text-red-600 focus:ring-red-500"
                             />
-                            <div className="text-sm font-bold text-zinc-650 dark:text-zinc-350">Buletin Cetak</div>
+                            <div className="text-sm font-bold text-zinc-650 dark:text-zinc-350">
+                              Buletin Cetak
+                            </div>
                           </label>
                           <label className="flex items-center gap-2.5 p-3 cursor-pointer">
                             <input
                               type="checkbox"
-                              checked={studentsData[editingStudentIndex].buletinDigital}
-                              onChange={(e) => handleUpdateStudentField(editingStudentIndex, 'buletinDigital', e.target.checked)}
+                              checked={
+                                studentsData[editingStudentIndex].buletinDigital
+                              }
+                              onChange={(e) =>
+                                handleUpdateStudentField(
+                                  editingStudentIndex,
+                                  "buletinDigital",
+                                  e.target.checked,
+                                )
+                              }
                               className="w-4 h-4 text-red-600 focus:ring-red-500"
                             />
-                            <div className="text-sm font-bold text-zinc-650 dark:text-zinc-350">Buletin Digital</div>
+                            <div className="text-sm font-bold text-zinc-650 dark:text-zinc-350">
+                              Buletin Digital
+                            </div>
                           </label>
                         </div>
                       </div>

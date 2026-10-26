@@ -1,26 +1,38 @@
-import React, {useMemo, useState} from 'react';
-import {motion} from 'motion/react';
-import {Check, Eraser, Plus, Save, Search, UserPlus, X} from 'lucide-react';
-import {useApp} from '../context/AppContext';
-import {formatIndonesianDate} from '../utils/date';
-import {STATUS_CODE, STATUS_LABEL, STATUS_ORDER} from '../styles/palette';
-import {nameKey} from '../roster';
-import {Button} from '../ui/Button';
-import {Field} from '../ui/Field';
-import {StatusPicker} from '../ui/StatusPicker';
-import {ConfirmDialog} from '../ui/ConfirmDialog';
+import React, { useMemo, useState } from "react";
+import { motion } from "motion/react";
+import { Check, Eraser, Plus, Save, Search, UserPlus, X } from "lucide-react";
+import { useApp } from "../context/AppContext";
+import { formatIndonesianDate } from "../utils/date";
+import { STATUS_CODE, STATUS_LABEL, STATUS_ORDER } from "../styles/palette";
+import { nameKey } from "../roster";
+import { Button } from "../ui/Button";
+import { Field } from "../ui/Field";
+import { StatusPicker } from "../ui/StatusPicker";
+import { ConfirmDialog } from "../ui/ConfirmDialog";
 
-const INDO_DAYS = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+const INDO_DAYS = [
+  "Minggu",
+  "Senin",
+  "Selasa",
+  "Rabu",
+  "Kamis",
+  "Jumat",
+  "Sabtu",
+];
 
 const formatYMD = (d: Date) => {
   const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
   return `${yyyy}-${mm}-${dd}`;
 };
 
 /** Past and upcoming occurrences of a schedule's weekday, for catching up. */
-const getWeekdayOccurrences = (hariName: string, countPast = 8, countFuture = 1) => {
+const getWeekdayOccurrences = (
+  hariName: string,
+  countPast = 8,
+  countFuture = 1,
+) => {
   const dayIndex = INDO_DAYS.indexOf(hariName);
   if (dayIndex === -1) return [];
 
@@ -28,23 +40,26 @@ const getWeekdayOccurrences = (hariName: string, countPast = 8, countFuture = 1)
   const thisWeek = new Date();
   thisWeek.setDate(now.getDate() + (dayIndex - now.getDay()));
 
-  const list: Array<{dateStr: string; label: string}> = [];
+  const list: Array<{ dateStr: string; label: string }> = [];
 
   for (let i = countFuture; i >= 1; i--) {
     const d = new Date(thisWeek);
     d.setDate(thisWeek.getDate() + i * 7);
-    list.push({dateStr: formatYMD(d), label: `Pekan depan — ${formatIndonesianDate(formatYMD(d))}`});
+    list.push({
+      dateStr: formatYMD(d),
+      label: `Pekan depan — ${formatIndonesianDate(formatYMD(d))}`,
+    });
   }
 
   const tw = formatYMD(thisWeek);
-  list.push({dateStr: tw, label: `Pekan ini — ${formatIndonesianDate(tw)}`});
+  list.push({ dateStr: tw, label: `Pekan ini — ${formatIndonesianDate(tw)}` });
 
   for (let i = 1; i <= countPast; i++) {
     const d = new Date(thisWeek);
     d.setDate(thisWeek.getDate() - i * 7);
     const dateStr = formatYMD(d);
-    const rel = i === 1 ? 'Pekan lalu' : `${i} pekan lalu`;
-    list.push({dateStr, label: `${rel} — ${formatIndonesianDate(dateStr)}`});
+    const rel = i === 1 ? "Pekan lalu" : `${i} pekan lalu`;
+    list.push({ dateStr, label: `${rel} — ${formatIndonesianDate(dateStr)}` });
   }
 
   return list;
@@ -74,14 +89,16 @@ export const AttendanceInput: React.FC = () => {
     setActiveTab,
   } = useApp();
 
-  const [newName, setNewName] = useState('');
+  const [newName, setNewName] = useState("");
   const [newNameError, setNewNameError] = useState<string | undefined>();
   const [showBulk, setShowBulk] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState("");
 
   const linkedSchedule = schedules.find((s) => s.id === selectedScheduleId);
-  const occurrences = linkedSchedule?.hari ? getWeekdayOccurrences(linkedSchedule.hari) : [];
+  const occurrences = linkedSchedule?.hari
+    ? getWeekdayOccurrences(linkedSchedule.hari)
+    : [];
   const hasRoster = allRegisteredStudents.length > 0;
 
   /*
@@ -103,7 +120,7 @@ export const AttendanceInput: React.FC = () => {
   /* Counts cover every santri, not just the ones the search left on screen:
      filtering is a way of looking, not a change to what gets saved. */
   const tally = useMemo(() => {
-    const counts = {hadir: 0, sakit: 0, izin: 0, alpa: 0};
+    const counts = { hadir: 0, sakit: 0, izin: 0, alpa: 0 };
     let marked = 0;
     for (const name of allRegisteredStudents) {
       const status = sessionStatusFor(name);
@@ -112,7 +129,7 @@ export const AttendanceInput: React.FC = () => {
         marked += 1;
       }
     }
-    return {counts, marked, total: allRegisteredStudents.length};
+    return { counts, marked, total: allRegisteredStudents.length };
   }, [allRegisteredStudents, sessionStatusFor]);
 
   const remaining = tally.total - tally.marked;
@@ -120,21 +137,21 @@ export const AttendanceInput: React.FC = () => {
 
   const submitNewName = async () => {
     if (!newName.trim()) {
-      setNewNameError('Masukkan nama santri.');
+      setNewNameError("Masukkan nama santri.");
       return;
     }
     const ok = await handleAddStudent(newName);
     if (ok) {
-      setNewName('');
+      setNewName("");
       setNewNameError(undefined);
     }
   };
 
   return (
     <motion.div
-      initial={{opacity: 0, y: 8}}
-      animate={{opacity: 1, y: 0}}
-      exit={{opacity: 0}}
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0 }}
       className="cs-page cs-page--split"
     >
       <div className="cs-col cs-col--aside">
@@ -147,17 +164,24 @@ export const AttendanceInput: React.FC = () => {
               <Check className="cs-icon" aria-hidden="true" />
             </p>
             <div className="cs-today">
-              <span className="cs-today__date">{formatIndonesianDate(lastSaved.tanggal)}</span>
+              <span className="cs-today__date">
+                {formatIndonesianDate(lastSaved.tanggal)}
+              </span>
             </div>
             <ul className="cs-tally" aria-label="Ringkasan kehadiran">
-              {STATUS_ORDER.filter((key) => lastSaved.tally[key] > 0).map((key) => (
-                <li key={key} className={`cs-chip cs-chip--${key}`}>
-                  {STATUS_LABEL[key]} {lastSaved.tally[key]}
-                </li>
-              ))}
+              {STATUS_ORDER.filter((key) => lastSaved.tally[key] > 0).map(
+                (key) => (
+                  <li key={key} className={`cs-chip cs-chip--${key}`}>
+                    {STATUS_LABEL[key]} {lastSaved.tally[key]}
+                  </li>
+                ),
+              )}
             </ul>
             <div className="cs-row">
-              <Button variant="secondary" onClick={() => setActiveTab('riwayat')}>
+              <Button
+                variant="secondary"
+                onClick={() => setActiveTab("riwayat")}
+              >
                 Lihat riwayat
               </Button>
               <Button variant="ghost" onClick={dismissLastSaved}>
@@ -174,12 +198,14 @@ export const AttendanceInput: React.FC = () => {
 
           <div className="cs-today">
             <span className="cs-today__date">
-              {tanggalInput ? formatIndonesianDate(tanggalInput) : 'Pilih tanggal'}
+              {tanggalInput
+                ? formatIndonesianDate(tanggalInput)
+                : "Pilih tanggal"}
             </span>
             <span className="cs-today__meta">
               {linkedSchedule
                 ? `${linkedSchedule.title} · setiap ${linkedSchedule.hari}, ${linkedSchedule.waktu}`
-                : 'Tidak terhubung jadwal rutin'}
+                : "Tidak terhubung jadwal rutin"}
             </span>
           </div>
 
@@ -189,8 +215,8 @@ export const AttendanceInput: React.FC = () => {
                 Kelas
               </p>
               <p className="cs-field__hint">
-                Memilih kelas mengisi tanggalnya dan mengelompokkan sesi ini di laporan.
-                Daftar santri tetap lengkap.
+                Memilih kelas mengisi tanggalnya dan mengelompokkan sesi ini di
+                laporan. Daftar santri tetap lengkap.
               </p>
               <ul className="cs-groups" aria-labelledby="kelas_label">
                 <li className="cs-group">
@@ -246,11 +272,19 @@ export const AttendanceInput: React.FC = () => {
                 <select
                   {...p}
                   className="cs-select"
-                  value={occurrences.some((o) => o.dateStr === tanggalInput) ? tanggalInput : ''}
-                  onChange={(e) => e.target.value && setTanggalInput(e.target.value)}
+                  value={
+                    occurrences.some((o) => o.dateStr === tanggalInput)
+                      ? tanggalInput
+                      : ""
+                  }
+                  onChange={(e) =>
+                    e.target.value && setTanggalInput(e.target.value)
+                  }
                 >
                   {!occurrences.some((o) => o.dateStr === tanggalInput) ? (
-                    <option value="">Tanggal lain — {formatIndonesianDate(tanggalInput)}</option>
+                    <option value="">
+                      Tanggal lain — {formatIndonesianDate(tanggalInput)}
+                    </option>
                   ) : null}
                   {occurrences.map((o) => (
                     <option key={o.dateStr} value={o.dateStr}>
@@ -279,7 +313,7 @@ export const AttendanceInput: React.FC = () => {
                 <div className="cs-progress__head">
                   <span>
                     {remaining === 0
-                      ? 'Semua santri sudah ditandai'
+                      ? "Semua santri sudah ditandai"
                       : `${remaining} santri menunggu ditandai`}
                   </span>
                 </div>
@@ -306,7 +340,10 @@ export const AttendanceInput: React.FC = () => {
               {/* Worth its space once a roster outgrows one screen. */}
               {allRegisteredStudents.length > 8 ? (
                 <div className="cs-search">
-                  <Search className="cs-icon cs-search__icon" aria-hidden="true" />
+                  <Search
+                    className="cs-icon cs-search__icon"
+                    aria-hidden="true"
+                  />
                   <input
                     type="search"
                     className="cs-input cs-search__input"
@@ -319,7 +356,7 @@ export const AttendanceInput: React.FC = () => {
                     <button
                       type="button"
                       className="cs-iconbtn cs-search__clear"
-                      onClick={() => setQuery('')}
+                      onClick={() => setQuery("")}
                       aria-label="Hapus pencarian"
                     >
                       <X className="cs-icon" />
@@ -330,8 +367,8 @@ export const AttendanceInput: React.FC = () => {
 
               {isFiltered ? (
                 <p className="cs-muted" aria-live="polite">
-                  Menampilkan {visible.length} dari {tally.total} santri. Tanda yang sudah
-                  Anda beri tetap tersimpan.
+                  Menampilkan {visible.length} dari {tally.total} santri. Tanda
+                  yang sudah Anda beri tetap tersimpan.
                 </p>
               ) : null}
 
@@ -352,7 +389,7 @@ export const AttendanceInput: React.FC = () => {
                     <li
                       key={name}
                       className={`cs-roster__row${
-                        sessionStatusFor(name) ? '' : ' is-unmarked'
+                        sessionStatusFor(name) ? "" : " is-unmarked"
                       }`}
                     >
                       <span className="cs-roster__name">{name}</span>
@@ -369,15 +406,21 @@ export const AttendanceInput: React.FC = () => {
                 <div className="cs-empty">
                   <h3 className="cs-empty__title">Tidak ada nama yang cocok</h3>
                   <p className="cs-empty__body">
-                    Tidak ada santri bernama “{query.trim()}”. Coba kata lain, atau
-                    tambahkan namanya ke daftar.
+                    Tidak ada santri bernama “{query.trim()}”. Coba kata lain,
+                    atau tambahkan namanya ke daftar.
                   </p>
-                  <Button onClick={() => setQuery('')}>Tampilkan semua santri</Button>
+                  <Button onClick={() => setQuery("")}>
+                    Tampilkan semua santri
+                  </Button>
                 </div>
               )}
 
               {tally.marked > 0 ? (
-                <ul className="cs-tally" aria-live="polite" aria-label="Ringkasan kehadiran">
+                <ul
+                  className="cs-tally"
+                  aria-live="polite"
+                  aria-label="Ringkasan kehadiran"
+                >
                   {STATUS_ORDER.filter((k) => tally.counts[k] > 0).map((k) => (
                     <li key={k} className={`cs-chip cs-chip--${k}`}>
                       {STATUS_LABEL[k]} {tally.counts[k]}
@@ -411,10 +454,13 @@ export const AttendanceInput: React.FC = () => {
             <div className="cs-empty">
               <h3 className="cs-empty__title">Belum ada santri</h3>
               <p className="cs-empty__body">
-                Tambahkan nama santri di bawah. Daftar ini tersimpan, jadi Anda cukup
-                mengetiknya sekali.
+                Tambahkan nama santri di bawah. Daftar ini tersimpan, jadi Anda
+                cukup mengetiknya sekali.
               </p>
-              <Button icon={<UserPlus className="cs-icon" />} onClick={() => setShowAdd(true)}>
+              <Button
+                icon={<UserPlus className="cs-icon" />}
+                onClick={() => setShowAdd(true)}
+              >
                 Tambah santri pertama
               </Button>
             </div>
@@ -424,20 +470,26 @@ export const AttendanceInput: React.FC = () => {
         {/* Folded away by default: a roster is typed once and marked every
             week, so the form sat above the Save button taking room from the
             thing teachers actually come back for. */}
-        <section className={`cs-card${showAdd ? '' : ' cs-card--action'}`}>
+        <section
+          className={`my-3 md:my-0 cs-card${showAdd ? "" : " cs-card--action"}`}
+        >
           <Button
             variant="ghost"
             icon={<Plus className="cs-icon" />}
             aria-expanded={showAdd}
             onClick={() => setShowAdd((v) => !v)}
           >
-            {showAdd ? 'Tutup tambah santri' : 'Tambah santri'}
+            {showAdd ? "Tutup tambah santri" : "Tambah santri"}
           </Button>
 
           {showAdd ? (
             <>
               <div className="cs-addrow">
-                <Field id="quick_add_name" label="Nama santri" error={newNameError}>
+                <Field
+                  id="quick_add_name"
+                  label="Nama santri"
+                  error={newNameError}
+                >
                   {(p) => (
                     <input
                       {...p}
@@ -449,7 +501,7 @@ export const AttendanceInput: React.FC = () => {
                         if (newNameError) setNewNameError(undefined);
                       }}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
+                        if (e.key === "Enter") {
                           e.preventDefault();
                           void submitNewName();
                         }
@@ -457,7 +509,10 @@ export const AttendanceInput: React.FC = () => {
                     />
                   )}
                 </Field>
-                <Button icon={<UserPlus className="cs-icon" />} onClick={submitNewName}>
+                <Button
+                  icon={<UserPlus className="cs-icon" />}
+                  onClick={submitNewName}
+                >
                   Tambah
                 </Button>
               </div>
@@ -491,7 +546,7 @@ export const AttendanceInput: React.FC = () => {
                     <Button
                       onClick={async () => {
                         const ok = await handleAddStudent(namesInput);
-                        if (ok) setNamesInput('');
+                        if (ok) setNamesInput("");
                       }}
                     >
                       Tambahkan ke daftar
@@ -519,7 +574,7 @@ export const AttendanceInput: React.FC = () => {
 
           <p className="cs-muted" aria-live="polite">
             {tally.marked === 0
-              ? 'Tandai kehadiran santri untuk menyimpan.'
+              ? "Tandai kehadiran santri untuk menyimpan."
               : remaining > 0
                 ? `${tally.marked} ditandai · ${remaining} belum ikut tersimpan`
                 : `Semua ${tally.total} santri sudah ditandai`}
@@ -535,13 +590,15 @@ export const AttendanceInput: React.FC = () => {
         body={
           <>
             <p>
-              Sudah ada presensi tersimpan untuk{' '}
-              {pendingOverwrite ? formatIndonesianDate(pendingOverwrite.tanggal) : ''} berisi{' '}
-              {pendingOverwrite?.existingCount ?? 0} santri hadir.
+              Sudah ada presensi tersimpan untuk{" "}
+              {pendingOverwrite
+                ? formatIndonesianDate(pendingOverwrite.tanggal)
+                : ""}{" "}
+              berisi {pendingOverwrite?.existingCount ?? 0} santri hadir.
             </p>
             <p>
-              Catatan itu akan diganti dengan yang baru ({pendingOverwrite?.peserta.length ?? 0}{' '}
-              hadir).
+              Catatan itu akan diganti dengan yang baru (
+              {pendingOverwrite?.peserta.length ?? 0} hadir).
             </p>
           </>
         }
