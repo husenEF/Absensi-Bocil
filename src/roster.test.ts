@@ -1,6 +1,8 @@
 import {describe, expect, it} from 'vitest';
 import {
   buildStatusMap,
+  participantLine,
+  unmarkedNames,
   capitalizeWords,
   escapeHtml,
   nameKey,
@@ -55,16 +57,14 @@ describe('parseNameList', () => {
 });
 
 describe('buildStatusMap', () => {
-  it('defaults every santri to Hadir', () => {
-    expect(buildStatusMap(['Budi', 'Siti'])).toEqual({budi: 'hadir', siti: 'hadir'});
+  it('marks nobody on its own', () => {
+    // Starting everyone at Hadir files a class the teacher never looked at.
+    expect(buildStatusMap(['Budi', 'Siti'])).toEqual({});
   });
 
-  it('keeps statuses the teacher already set', () => {
+  it('keeps statuses the teacher already set, and only those', () => {
     const existing = {budi: 'sakit' as const};
-    expect(buildStatusMap(['Budi', 'Siti'], existing)).toEqual({
-      budi: 'sakit',
-      siti: 'hadir',
-    });
+    expect(buildStatusMap(['Budi', 'Siti'], existing)).toEqual({budi: 'sakit'});
   });
 
   it('keeps a recorded status for someone not on the current roster', () => {
@@ -75,14 +75,30 @@ describe('buildStatusMap', () => {
   });
 });
 
+describe('unmarkedNames', () => {
+  it('lists the santri still waiting for a mark, in roster order', () => {
+    const statuses = {siti: 'izin' as const};
+    expect(unmarkedNames(['Budi', 'Siti', 'Umar'], statuses)).toEqual(['Budi', 'Umar']);
+  });
+
+  it('lists everyone when the session has not been touched', () => {
+    expect(unmarkedNames(['Budi', 'Siti'], {})).toEqual(['Budi', 'Siti']);
+  });
+
+  it('lists nobody once every santri carries a mark', () => {
+    const statuses = {budi: 'hadir' as const, siti: 'alpa' as const};
+    expect(unmarkedNames(['Budi', 'Siti'], statuses)).toEqual([]);
+  });
+});
+
 describe('presentNames', () => {
   it('returns only those marked Hadir, in roster order', () => {
     const statuses = {budi: 'hadir' as const, siti: 'sakit' as const, umar: 'hadir' as const};
     expect(presentNames(['Budi', 'Siti', 'Umar'], statuses)).toEqual(['Budi', 'Umar']);
   });
 
-  it('treats a santri with no status as present, matching the default', () => {
-    expect(presentNames(['Budi'], {})).toEqual(['Budi']);
+  it('leaves an unmarked santri out rather than guessing they were present', () => {
+    expect(presentNames(['Budi'], {})).toEqual([]);
   });
 
   it('excludes every kind of absence', () => {
@@ -166,5 +182,53 @@ describe('escapeHtml', () => {
   it('leaves ordinary Indonesian names alone', () => {
     expect(escapeHtml("Siti Nur'aini")).toBe('Siti Nur&#39;aini');
     expect(escapeHtml('Ahmad')).toBe('Ahmad');
+  });
+});
+
+
+describe('participantLine', () => {
+  it('names every marked santri with their status letter', () => {
+    const line = participantLine({
+      peserta: ['Ubin'],
+      statuses: {ubin: 'hadir', aan: 'izin'},
+    });
+    expect(line).toBe('Ubin (H), Aan (I)');
+  });
+
+  it('puts those who came first, then the absences, by mark', () => {
+    const line = participantLine({
+      peserta: ['Ubin'],
+      statuses: {
+        ubin: 'hadir',
+        aan: 'izin',
+        'budi santoso': 'sakit',
+        'dewi lestari': 'alpa',
+      },
+    });
+    expect(line).toBe('Ubin (H), Budi Santoso (S), Aan (I), Dewi Lestari (A)');
+  });
+
+  it('sorts by name inside a single mark', () => {
+    const line = participantLine({
+      peserta: ['Umar', 'Budi', 'Ahmad'],
+      statuses: {umar: 'hadir', budi: 'hadir', ahmad: 'hadir'},
+    });
+    expect(line).toBe('Ahmad (H), Budi (H), Umar (H)');
+  });
+
+  it('keeps the spelling the teacher typed rather than the matching key', () => {
+    const line = participantLine({
+      peserta: ['Siti Aminah'],
+      statuses: {'siti aminah': 'hadir'},
+    });
+    expect(line).toBe('Siti Aminah (H)');
+  });
+
+  it('reads an old record that only ever listed who was present', () => {
+    expect(participantLine({peserta: ['Budi', 'Siti']})).toBe('Budi (H), Siti (H)');
+  });
+
+  it('says so plainly when a session recorded nobody', () => {
+    expect(participantLine({peserta: [], statuses: {}})).toBe('-');
   });
 });

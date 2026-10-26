@@ -1,13 +1,19 @@
 /*
- * ClassSync design tokens — ink on paper.
+ * ClassSync design tokens — a register drawn in heavy keylines.
  *
  * Colour values mirror src/styles/palette.ts, which is covered by contrast
  * tests; change a colour there and here together or the tests will say so.
  *
- * Two families do all the work. Literata carries the names and dates: it was
- * drawn for long reading, and a register is something you read down. Public
- * Sans handles controls and counts and stays out of the way. Both have true
- * tabular lining figures, which a page full of dates and tallies needs.
+ * Two families do all the work. Archivo carries names, dates and counts: a
+ * wide grotesque that stays solid at 700 and reads from arm's length, which is
+ * how a teacher holds a phone in front of a class. Archivo's own small caps
+ * handle the boxed section labels. Both weights have tabular lining figures,
+ * which a page full of dates and tallies needs.
+ *
+ * Structure is drawn rather than shaded. Every raised surface is a 2px ink
+ * keyline plus a hard offset in the same ink — no blur, no gradient, no soft
+ * grey shadow. That survives direct sunlight on a cheap screen, which a 10%
+ * black blur does not.
  *
  * Sizes keep the floor set in the previous pass: body and form controls at
  * 18px (under ~16px iOS zooms the page on focus), nothing below 14px, and
@@ -16,68 +22,71 @@
 
 :root {
   /* paper and ink */
-  --cs-bg: #ffffff;
+  --cs-bg: #faf9f5;
   --cs-surface: #ffffff;
-  --cs-surface-sunken: #f6f5f2;
-  --cs-text: #000000;
-  --cs-text-muted: #5b5b5b;
+  --cs-surface-sunken: #f1efe6;
+  --cs-text: #121212;
+  --cs-text-muted: #56534c;
 
-  /* a hairline separates; it does not enclose */
-  --cs-border: #e2dfd8;
-  --cs-border-strong: #8c8880;
+  /* a hairline separates rows; a keyline encloses a surface */
+  --cs-border: #ded9cc;
+  --cs-border-strong: #121212;
 
-  /* actions are ink */
-  --cs-brand: #000000;
-  --cs-brand-solid: #000000;
-  --cs-brand-solid-hover: #2b2b2b;
-  --cs-brand-ink: #ffffff;
-  --cs-brand-tint: #f6f5f2;
+  /* the one signal colour, always inside a keyline */
+  --cs-brand: #121212;
+  --cs-brand-solid: #ffe14d;
+  --cs-brand-solid-hover: #ffd60a;
+  --cs-brand-ink: #121212;
+  --cs-brand-tint: #fff8d6;
+  --cs-brand-edge: #121212;
 
-  --cs-danger: #000000;
-  --cs-danger-solid: #000000;
-  --cs-danger-solid-hover: #2b2b2b;
+  /* destructive actions are ink: a red here would read as an Alpa mark */
+  --cs-danger: #121212;
+  --cs-danger-solid: #121212;
+  --cs-danger-solid-hover: #2f2f2f;
   --cs-danger-ink: #ffffff;
-  --cs-danger-tint: #fff1ea;
+  --cs-danger-tint: #fdeee9;
 
-  --cs-focus: #000000;
+  --cs-focus: #121212;
 
-  /* the only colour in the product */
+  /* the only other colour in the product */
   --cs-hadir-tint: #e3f9f1;
   --cs-hadir-ink: #055c45;
   --cs-hadir-solid: #06d6a0;
-  --cs-hadir-solid-ink: #000000;
+  --cs-hadir-solid-ink: #121212;
 
   --cs-sakit-tint: #fff4de;
   --cs-sakit-ink: #6b4a00;
   --cs-sakit-solid: #ffd166;
-  --cs-sakit-solid-ink: #000000;
+  --cs-sakit-solid-ink: #121212;
 
   --cs-izin-tint: #e2f1f7;
   --cs-izin-ink: #0d5e7a;
   --cs-izin-solid: #118ab2;
-  --cs-izin-solid-ink: #000000;
+  --cs-izin-solid-ink: #121212;
 
   --cs-alpa-tint: #ffeee7;
   --cs-alpa-ink: #8c3410;
   --cs-alpa-solid: #ff7f50;
-  --cs-alpa-solid-ink: #000000;
+  --cs-alpa-solid-ink: #121212;
 
   /* type */
-  --cs-font-display: 'Literata', Georgia, 'Times New Roman', serif;
-  --cs-font-sans: 'Public Sans', system-ui, -apple-system, sans-serif;
+  --cs-font-display: 'Archivo', system-ui, -apple-system, sans-serif;
+  --cs-font-sans: 'Archivo', system-ui, -apple-system, sans-serif;
 
-  --cs-text-xs: 0.875rem; /* 14px — the floor */
-  --cs-text-sm: 0.9375rem; /* 15px — meta, counts */
+  --cs-text-xs: 0.875rem; /* 14px — the floor; boxed labels and counts */
+  --cs-text-sm: 0.9375rem; /* 15px — meta */
   --cs-text-base: 1.125rem; /* 18px — body and every control */
-  --cs-text-lg: 1.1875rem; /* 19px — santri names, in Literata */
+  --cs-text-lg: 1.1875rem; /* 19px — santri names */
   --cs-text-xl: 1.375rem; /* 22px — section headings */
   --cs-text-2xl: 1.75rem; /* 28px — page title on a phone */
-  --cs-text-3xl: 2rem; /* 32px — page title */
+  --cs-text-3xl: 2.25rem; /* 36px — the session date */
 
-  --cs-leading-tight: 1.2;
-  --cs-leading-normal: 1.55;
+  --cs-leading-tight: 1.12;
+  --cs-leading-normal: 1.5;
+  --cs-track-label: 0.08em;
 
-  /* space — a scale with room to breathe, since space does the separating */
+  /* space */
   --cs-space-1: 0.25rem;
   --cs-space-2: 0.5rem;
   --cs-space-3: 0.75rem;
@@ -89,77 +98,108 @@
   /* controls */
   --cs-tap: 48px;
   --cs-tap-gap: 8px;
-  --cs-radius-sm: 2px;
-  --cs-radius: 3px;
-  --cs-radius-lg: 4px;
+
+  /*
+   * Radius carries hierarchy rather than being one value everywhere: a panel
+   * is the roundest thing on screen, a control less so, a mark least of all.
+   */
+  --cs-radius-sm: 6px;
+  --cs-radius: 10px;
+  --cs-radius-lg: 14px;
   --cs-radius-full: 999px;
+
+  /* the structure: a drawn edge and a hard offset in the same ink */
+  --cs-keyline: 2px;
+  --cs-edge: #121212;
+  --cs-lift: 4px 4px 0 var(--cs-edge);
+  --cs-lift-sm: 2px 2px 0 var(--cs-edge);
+  --cs-lift-lg: 6px 6px 0 var(--cs-edge);
 
   /* measure: a register is read down a column, not across a screen */
   --cs-measure: 34rem;
+  /*
+   * The outer shell every page sits in: masthead, notices, content, footer.
+   * 1280px, which is the usable width of a 13–14" laptop once the browser
+   * chrome is off, so the two-column register fills a screen without the
+   * register itself growing past a readable column.
+   */
+  --cs-shell: 80rem;
+  /* A dialog is read, not scanned, so it keeps the reading measure. */
+  --cs-dialog-width: 32rem;
 }
 
 html.dark {
-  --cs-bg: #111010;
-  --cs-surface: #111010;
-  --cs-surface-sunken: #1b1a18;
-  --cs-text: #fafaf8;
-  --cs-text-muted: #adaaa4;
+  --cs-bg: #0b0b0a;
+  --cs-surface: #171714;
+  --cs-surface-sunken: #211f1b;
+  --cs-text: #f7f6f1;
+  --cs-text-muted: #a9a69c;
 
-  --cs-border: #302e2b;
-  --cs-border-strong: #8c8880;
+  --cs-border: #36342d;
+  --cs-border-strong: #8b887f;
 
-  --cs-brand: #fafaf8;
-  --cs-brand-solid: #fafaf8;
-  --cs-brand-solid-hover: #e4e2dd;
-  --cs-brand-ink: #111010;
-  --cs-brand-tint: #1b1a18;
+  --cs-brand: #f7f6f1;
+  --cs-brand-solid: #ffe14d;
+  --cs-brand-solid-hover: #ffd60a;
+  --cs-brand-ink: #121212;
+  --cs-brand-tint: #2b2614;
+  --cs-brand-edge: #f7f6f1;
 
-  --cs-danger: #fafaf8;
-  --cs-danger-solid: #fafaf8;
-  --cs-danger-solid-hover: #e4e2dd;
-  --cs-danger-ink: #111010;
-  --cs-danger-tint: #2a1a14;
+  --cs-danger: #f7f6f1;
+  --cs-danger-solid: #f7f6f1;
+  --cs-danger-solid-hover: #e2e0d9;
+  --cs-danger-ink: #121212;
+  --cs-danger-tint: #2d1a14;
 
-  --cs-focus: #fafaf8;
+  --cs-focus: #ffe14d;
 
   /* The marks do not change between themes: Hadir is one colour, learned once. */
   --cs-hadir-tint: #0c2a22;
   --cs-hadir-ink: #5fe3bd;
   --cs-hadir-solid: #06d6a0;
-  --cs-hadir-solid-ink: #111010;
+  --cs-hadir-solid-ink: #121212;
 
   --cs-sakit-tint: #2b2310;
   --cs-sakit-ink: #ffd98a;
   --cs-sakit-solid: #ffd166;
-  --cs-sakit-solid-ink: #111010;
+  --cs-sakit-solid-ink: #121212;
 
   --cs-izin-tint: #0d2630;
   --cs-izin-ink: #6cc2dd;
   --cs-izin-solid: #118ab2;
-  --cs-izin-solid-ink: #111010;
+  --cs-izin-solid-ink: #121212;
 
-  --cs-alpa-tint: #2e1a12;
+  --cs-alpa-tint: #3a211a;
   --cs-alpa-ink: #ff9f7d;
   --cs-alpa-solid: #ff7f50;
-  --cs-alpa-solid-ink: #111010;
+  --cs-alpa-solid-ink: #121212;
+
+  /* At night the keyline inverts: a black edge on a black page draws nothing. */
+  --cs-edge: #4a473f;
 }
 
 /*
- * One focus style. Ink would vanish on an ink button, so the ring is drawn
- * with a paper-coloured gap between the control and the outline.
+ * One focus style, and it has to survive landing on signal yellow, on ink and
+ * on paper. The offset leaves a gap of whatever is behind the control, so the
+ * ring never merges into the thing it is marking.
  */
 :where(a, button, input, select, textarea, [tabindex]):focus-visible {
-  outline: 2px solid var(--cs-focus);
+  outline: 3px solid var(--cs-focus);
   outline-offset: 3px;
   border-radius: var(--cs-radius-sm);
 }
 
 /* Keep a focused control clear of the fixed tab bar (WCAG 2.4.11). */
 html {
-  scroll-padding-bottom: calc(var(--cs-tap) + var(--cs-space-6));
+  scroll-padding-bottom: calc(var(--cs-tap) + var(--cs-space-7));
   scroll-padding-top: var(--cs-space-6);
 }
 
+/*
+ * The interface has one piece of motion — a surface pressing down into its own
+ * shadow when it is tapped. Turn that off and nothing is lost: the pressed
+ * state is still carried by the fill and the keyline.
+ */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

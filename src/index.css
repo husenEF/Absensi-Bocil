@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,400;0,500;0,600;1,7..72,400&family=Public+Sans:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
 @import "./styles/tokens.css";
 @import "./styles/components.css";
@@ -16,29 +16,29 @@
 
 :root {
   --paper: #ffffff;
-  --paper-sunken: #f6f5f2;
-  --rule: #e2dfd8;
+  --paper-sunken: #f1efe6;
+  --rule: #ded9cc;
   --rule-strong: #8c8880;
-  --ink: #000000;
-  --ink-muted: #5b5b5b;
-  --ink-soft: #767676;
+  --ink: #121212;
+  --ink-muted: #56534c;
+  --ink-soft: #6b685f;
 }
 
 html.dark {
-  --paper: #111010;
-  --paper-sunken: #1b1a18;
-  --rule: #302e2b;
-  --rule-strong: #8c8880;
-  --ink: #fafaf8;
-  --ink-muted: #adaaa4;
-  --ink-soft: #8d8a85;
+  --paper: #171714;
+  --paper-sunken: #211f1b;
+  --rule: #36342d;
+  --rule-strong: #8b887f;
+  --ink: #f7f6f1;
+  --ink-muted: #a9a69c;
+  --ink-soft: #8b887f;
 }
 
 @theme {
-  --font-sans: 'Public Sans', system-ui, -apple-system, sans-serif;
-  --font-serif: 'Literata', Georgia, serif;
-  /* The monospace face is gone; nothing in the interface is code. */
-  --font-mono: 'Public Sans', system-ui, sans-serif;
+  --font-sans: 'Archivo', system-ui, -apple-system, sans-serif;
+  --font-serif: 'Archivo', system-ui, sans-serif;
+  /* Neither a serif nor a monospace is used; nothing here is prose or code. */
+  --font-mono: 'Archivo', system-ui, sans-serif;
 
   /* Greys, lightest to darkest, so existing utilities keep their intent. */
   --color-zinc-50: var(--paper);
@@ -103,14 +103,14 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-/* Dates, names and headings are set in the serif; everything else is not. */
+/* Headings are set tight and heavy; the weight is what separates them. */
 h1,
 h2,
 h3,
 h4 {
   font-family: var(--cs-font-display);
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  font-weight: 700;
+  letter-spacing: -0.02em;
   line-height: var(--cs-leading-tight);
 }
 
@@ -129,5 +129,6 @@ output,
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--rule-strong);
+  background: var(--cs-border-strong);
+  border-radius: var(--cs-radius-full);
 }
