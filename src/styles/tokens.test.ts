@@ -50,6 +50,10 @@ const PAIRS: Array<[string, keyof typeof light]> = [
   ['cs-danger-ink', 'dangerInk'],
   ['cs-danger-tint', 'dangerTint'],
   ['cs-focus', 'focus'],
+  // The keyline every panel, control and offset shadow is drawn in. It flips
+  // from ink to light grey between themes, so it has to be asserted per theme
+  // like any other colour.
+  ['cs-edge', 'edge'],
 ];
 
 describe('tokens.css mirrors the tested palette', () => {
