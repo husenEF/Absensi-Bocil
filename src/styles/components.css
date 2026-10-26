@@ -529,6 +529,49 @@
   opacity: 0.75;
 }
 
+/* ----------------------------------------------------------------- search */
+
+/*
+ * Narrowing the register by name. It is the only thing that filters the list
+ * — picking a class fills in the date and nothing more — so it is a plain
+ * box with its own clear button rather than a mode the teacher has to leave.
+ */
+.cs-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.cs-search__icon {
+  position: absolute;
+  left: var(--cs-space-3);
+  color: var(--cs-text-muted);
+  pointer-events: none;
+}
+
+.cs-search__input {
+  padding-left: calc(var(--cs-space-3) * 2 + 1.125rem);
+  padding-right: calc(var(--cs-tap) + var(--cs-space-2));
+}
+
+.cs-search__input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.cs-search__clear {
+  position: absolute;
+  right: var(--cs-space-1);
+  width: 40px;
+  height: 40px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.cs-search__clear:active {
+  translate: 0 0;
+}
+
 /* --------------------------------------------------------------- progress */
 
 /*

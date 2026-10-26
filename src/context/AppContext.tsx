@@ -6,19 +6,6 @@ import { buildStatusMap, nameKey, parseNameList, presentNames, rosterFromRecords
 import { formatIndonesianDate, formatDateShort } from '../utils/date';
 import { biMonthlyWeeks, getBiMonthlyLabel, getRecordBiMonth, todayYMD } from '../utils/period';
 
-/**
- * A weekly class and the santri who attend it, derived from what has been
- * recorded rather than stored. `id` is undefined for santri who do not belong
- * to any class yet.
- */
-export interface ScheduleGroup {
-  id: number | undefined;
-  title: string;
-  hari?: string;
-  waktu?: string;
-  names: string[];
-}
-
 interface BiMonthlyPeriod {
   year: number;
   blockIndex: number;
@@ -72,8 +59,6 @@ interface AppContextType {
   /** Roster santri nobody has marked yet. */
   untouchedCount: number;
   markedCount: number;
-  /** Roster grouped by the schedule its santri attend. */
-  scheduleGroups: ScheduleGroup[];
   handleAddStudent: (rawName: string) => Promise<boolean>;
   lastSaved: { tanggal: string; tally: StatusTally } | null;
   dismissLastSaved: () => void;
@@ -982,53 +967,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const markedCount = allRegisteredStudents.length - untouchedCount;
 
-  /**
-   * Which santri belong to which weekly class.
-   *
-   * Nothing links a santri to a schedule in the database, and asking teachers
-   * to maintain that by hand would be a second register to keep. The link is
-   * read out of what they have already recorded instead: a santri belongs to a
-   * class once they have been marked in one of its sessions. Santri who have
-   * only appeared in unlinked sessions fall into "Lainnya".
-   */
-  const scheduleGroups = useMemo<ScheduleGroup[]>(() => {
-    const membership = new Map<number, Set<string>>();
-    const grouped = new Set<string>();
-
-    for (const record of records) {
-      const id = record.scheduleId;
-      if (id === undefined || id === null) continue;
-      const names = membership.get(id) ?? new Set<string>();
-      const fromRecord = [
-        ...(record.peserta ?? []).map(nameKey),
-        ...Object.keys(record.statuses ?? {})
-      ];
-      for (const key of fromRecord) {
-        if (!key) continue;
-        names.add(key);
-        grouped.add(key);
-      }
-      membership.set(id, names);
-    }
-
-    const groups: ScheduleGroup[] = schedules
-      .filter(s => s.id !== undefined)
-      .map(s => ({
-        id: s.id!,
-        title: s.title,
-        hari: s.hari,
-        waktu: s.waktu,
-        names: allRegisteredStudents.filter(n => membership.get(s.id!)?.has(nameKey(n)))
-      }));
-
-    const ungrouped = allRegisteredStudents.filter(n => !grouped.has(nameKey(n)));
-    if (ungrouped.length > 0) {
-      groups.push({ id: undefined, title: 'Belum masuk kelompok', names: ungrouped });
-    }
-
-    return groups;
-  }, [records, schedules, allRegisteredStudents]);
-
   const dismissLastSaved = () => setLastSaved(null);
 
   const handleAddStudent = async (rawName: string): Promise<boolean> => {
@@ -1855,7 +1793,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       sessionTally,
       untouchedCount,
       markedCount,
-      scheduleGroups,
       handleAddStudent,
       lastSaved,
       dismissLastSaved,
