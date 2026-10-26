@@ -3,7 +3,7 @@
 // name is not this one, so the name changing is what retires the previous
 // shell; while it stayed the same across a release, an installed app went on
 // serving the old build forever with nothing to report.
-const CACHE_NAME = 'classsync-shell-v2.3.0';
+const CACHE_NAME = 'classsync-shell-v2.4.0';
 const ASSETS_TO_CACHE = [
   './',
   'index.html',

@@ -17,6 +17,8 @@ release will refuse to run on an empty one.
 
 ## Unreleased
 
+## 2.4.0 — 2026-10-26
+
 ### Added
 
 - **Santri can be placed in a class.** One class per santri; placing them

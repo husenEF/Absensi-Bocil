@@ -1,7 +1,7 @@
 {
   "name": "classsync",
   "private": true,
-  "version": "2.3.0",
+  "version": "2.4.0",
   "homepage": "https://husenef.github.io/classsync/",
   "type": "module",
   "scripts": {
