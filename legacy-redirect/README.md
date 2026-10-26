@@ -26,6 +26,9 @@ berubah lagi tanpa satu pun pesan galat.
   menghapus pendaftaran dirinya sendiri.
 - [`index.html`](index.html) — halaman untuk orang yang membuka penanda buku
   lama. Ia melepas worker lama lalu mengalihkan.
+- `.nojekyll` — GitHub Pages menjalankan Jekyll untuk situs yang disajikan
+  dari branch; berkas kosong ini mematikannya supaya kedua berkas di atas
+  disajikan apa adanya.
 
 Keduanya sengaja **tidak** memanggil `caches.delete()` secara serampangan:
 Cache Storage dikunci per *origin*, bukan per path, dan rumah baru aplikasi ada
@@ -49,7 +52,8 @@ gh repo create husenEF/Absensi-Bocil --public \
   --description "ClassSync pindah ke github.com/husenEF/classsync"
 
 git init -b main /tmp/absensi-bocil-redirect
-cp legacy-redirect/index.html legacy-redirect/sw.js /tmp/absensi-bocil-redirect/
+cp legacy-redirect/index.html legacy-redirect/sw.js legacy-redirect/.nojekyll \
+   /tmp/absensi-bocil-redirect/
 cd /tmp/absensi-bocil-redirect
 git add . && git commit -m "Point the old address at ClassSync's new home"
 git remote add origin https://github.com/husenEF/Absensi-Bocil.git
