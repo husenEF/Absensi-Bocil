@@ -1,5 +1,5 @@
 import {expect, test} from '@playwright/test';
-import {mark, seed} from './helpers';
+import {mark, seed, savedConfirmation} from './helpers';
 
 /**
  * The register is only half the job: what the coordinator receives on WhatsApp
@@ -14,7 +14,7 @@ test('the WhatsApp report names every santri with their mark', async ({page}) =>
   await mark(page, 'Budi Santoso', 'Sakit');
   await mark(page, 'Dewi Lestari', 'Alpa');
   await page.getByRole('button', {name: /Simpan presensi/}).click();
-  await expect(page.getByText('Presensi tersimpan')).toBeVisible();
+  await expect(savedConfirmation(page)).toBeVisible();
 
   await page.getByRole('button', {name: /Laporan/}).click();
 
@@ -40,7 +40,7 @@ test('an empty week says so rather than being left out', async ({page}) => {
 
   await mark(page, 'Ubin', 'Hadir');
   await page.getByRole('button', {name: /Simpan presensi/}).click();
-  await expect(page.getByText('Presensi tersimpan')).toBeVisible();
+  await expect(savedConfirmation(page)).toBeVisible();
 
   await page.getByRole('button', {name: /Laporan/}).click();
   for (const box of await page.getByRole('checkbox').all()) {

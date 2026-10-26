@@ -208,6 +208,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [students, setStudents] = useState<StudentRecord[]>([]);
   const [sessionStatuses, setSessionStatuses] = useState<StatusMap>({});
   const [touchedStudents, setTouchedStudents] = useState<Set<string>>(new Set());
+
+  /**
+   * Which session the marks on screen belong to, and whether they hold work
+   * that is not in the database yet.
+   *
+   * Refs rather than state: the loader below reads them across an await, and
+   * a re-render in between would hand it a stale value — which is the whole
+   * failure it is there to prevent.
+   */
+  const sessionKeyRef = useRef<string | null>(null);
+  const sessionDirtyRef = useRef(false);
   const [lastSaved, setLastSaved] = useState<{ tanggal: string; tally: StatusTally } | null>(null);
   const [schedules, setSchedules] = useState<ScheduleRecord[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -874,28 +885,48 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   /**
-   * Status for one santri in the session being edited.
-   *
-   * Everyone starts at Hadir, so the teacher only touches the exceptions —
-   * the pattern every established register app uses.
-   */
-  /**
    * Load the statuses already saved for this date and class.
    *
    * Without this, reopening a session saved earlier starts every santri back
    * at Hadir, so saving again quietly erased the absences already recorded —
    * the record's own `statuses` were never read back in.
+   *
+   * It must not run over the teacher's own work. `records` is in the
+   * dependencies so an import or a delete elsewhere is reflected here, but
+   * that also fires while a register is being filled in: the first load after
+   * mount lands a moment later, finds no saved session for today, and calls
+   * `setSessionStatuses({})` — wiping every mark made in the meantime. On a
+   * quick laptop the load wins the race and nothing is noticed; on a slow
+   * phone, or on CI, the teacher watches their marks disappear.
+   *
+   * So a reload only happens when it is moving to a *different* session, or
+   * when the current one has nothing unsaved in it.
    */
   useEffect(() => {
     let cancelled = false;
+    const sessionKey = `${tanggalInput}|${selectedScheduleId ?? ''}`;
+
+    // Claim the session up front. Doing this only after a successful read left
+    // the key null for the whole of the first load, so the check below had
+    // nothing to compare against and cleared the form anyway.
+    if (sessionKeyRef.current !== sessionKey) {
+      sessionKeyRef.current = sessionKey;
+      sessionDirtyRef.current = false;
+    }
 
     const load = async () => {
       if (!tanggalInput) return;
+      if (sessionDirtyRef.current) return;
+
       try {
         const sameDate = await db.absensi.where('tanggal').equals(tanggalInput).toArray();
         const linkedId = selectedScheduleId ? Number(selectedScheduleId) : undefined;
         const existing = sameDate.find(r => (r.scheduleId ?? undefined) === linkedId);
         if (cancelled) return;
+
+        // Checked again after the await: a mark made while the read was in
+        // flight is exactly the case this guard exists for.
+        if (sessionKeyRef.current !== sessionKey || sessionDirtyRef.current) return;
 
         if (existing?.statuses && Object.keys(existing.statuses).length > 0) {
           setSessionStatuses(existing.statuses);
@@ -925,6 +956,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   /** Tapping the mark a santri already carries takes it off again. */
   const setSessionStatus = (studentName: string, status: StatusKey) => {
     const key = nameKey(studentName);
+    sessionDirtyRef.current = true;
     setSessionStatuses(prev => {
       const next = { ...prev };
       if (next[key] === status) delete next[key];
@@ -935,6 +967,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const handleMarkAllPresent = () => {
+    sessionDirtyRef.current = true;
     const next: StatusMap = { ...sessionStatuses };
     // Only the santri still waiting for a mark. Marks the teacher has already
     // set — the two who are ill today — are not swept away by this shortcut.
@@ -951,6 +984,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const handleClearSession = () => {
+    sessionDirtyRef.current = true;
     setSessionStatuses({});
     setTouchedStudents(new Set());
     showToast('Semua tanda dikosongkan.', 'info');
@@ -1054,6 +1088,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       setNamesInput('');
       setSelectedScheduleId(undefined);
+      sessionDirtyRef.current = false;
+      sessionKeyRef.current = null;
       setSessionStatuses({});
       setTouchedStudents(new Set());
       setLastSaved({ tanggal: tanggalInput, tally: tally(statuses) });
@@ -1096,6 +1132,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       setNamesInput('');
       setSelectedScheduleId(undefined);
+      sessionDirtyRef.current = false;
+      sessionKeyRef.current = null;
       setSessionStatuses({});
       setTouchedStudents(new Set());
       setLastSaved({ tanggal: staged.tanggal, tally: tally(staged.statuses) });
