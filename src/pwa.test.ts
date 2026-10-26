@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import {describe, expect, it} from 'vitest';
+import {githubPagesBase} from '../vite.base';
 import {dark, light} from './styles/palette';
 
 /**
@@ -250,5 +251,104 @@ describe('the version', () => {
     // The heading the release script promotes. Without it `npm run release`
     // has nothing to turn into a version.
     expect(changelog).toMatch(/^## Unreleased$/m);
+  });
+});
+
+describe('the address the app is served from', () => {
+  const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+  const owner = 'husenEF';
+
+  it('is relative anywhere but GitHub Pages', () => {
+    // Vercel, a plain static host and `vite preview` all serve the app at the
+    // root of whatever they are, where a /<repo>/ prefix would break it.
+    expect(githubPagesBase({})).toBeUndefined();
+    expect(githubPagesBase({GITHUB_REPOSITORY: `${owner}/classsync`})).toBeUndefined();
+  });
+
+  it('is the repository name on Pages, so a rename needs no code change', () => {
+    const onPages = (repo: string) =>
+      githubPagesBase({GITHUB_ACTIONS: 'true', GITHUB_REPOSITORY: `${owner}/${repo}`});
+
+    expect(onPages('classsync')).toBe('/classsync/');
+    expect(onPages('whatever-it-is-called-next')).toBe('/whatever-it-is-called-next/');
+  });
+
+  it('is the root for a user site, which has no subpath to live under', () => {
+    expect(
+      githubPagesBase({
+        GITHUB_ACTIONS: 'true',
+        GITHUB_REPOSITORY: `${owner}/${owner}.github.io`,
+      }),
+    ).toBe('/');
+  });
+
+  it('agrees with the homepage written in package.json', () => {
+    // The same address is written down twice for two different readers: the
+    // build needs a path, and a person needs a URL. This is what stops the
+    // two from describing different places.
+    const homepage = new URL(pkg.homepage);
+    const repo = homepage.pathname.replaceAll('/', '');
+
+    expect(
+      githubPagesBase({GITHUB_ACTIONS: 'true', GITHUB_REPOSITORY: `${owner}/${repo}`}),
+    ).toBe(homepage.pathname);
+  });
+});
+
+describe('the address the app used to be served from', () => {
+  /**
+   * `legacy-redirect/` is not part of the app and is never built into dist —
+   * it is served from a separate repository holding the old name. It is tested
+   * here because the thing it has to stay in step with is here: the moment its
+   * target drifts from the real homepage, an old bookmark leads nowhere and
+   * an installed phone has no way to be told.
+   */
+  const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+  const legacy = path.join(root, 'legacy-redirect');
+  const page = fs.readFileSync(path.join(legacy, 'index.html'), 'utf8');
+  const worker = fs.readFileSync(path.join(legacy, 'sw.js'), 'utf8');
+
+  const OLD_SCOPE = '/Absensi-Bocil/';
+
+  /**
+   * The file with its comments taken out. These assertions are about what the
+   * code does, and the comments in there deliberately name the one call it
+   * must not make — which is worth saying in prose and worth failing on in
+   * code, but not the same statement twice.
+   */
+  const codeOnly = (source: string) =>
+    source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+
+  it('sends both an old bookmark and an old install to the current homepage', () => {
+    expect(page).toContain(pkg.homepage);
+    expect(worker).toContain(pkg.homepage);
+  });
+
+  it('replaces the worker still cached at the old path', () => {
+    // The old worker answers navigations from its own cache first, so the 404
+    // the old address now returns would never be seen: the app would simply
+    // stop updating. Replacing the script is the only lever left, and the
+    // browser only takes it if this one claims the page and then stands down.
+    expect(worker).toContain('skipWaiting');
+    expect(worker).toContain('clients.claim');
+    expect(worker).toContain('registration.unregister');
+    // A fetch handler here would go on serving the stale shell.
+    expect(codeOnly(worker)).not.toContain("addEventListener('fetch'");
+  });
+
+  it('leaves the cache it shares with the new install alone', () => {
+    // Cache Storage is keyed by origin, not by path, and the new home is on
+    // the same github.io origin under the same `classsync-shell-v<version>`
+    // name. A blanket delete from here would strip the offline shell off the
+    // very install this is sending people to.
+    expect(codeOnly(worker)).not.toContain('caches.delete');
+    expect(codeOnly(page)).not.toContain('caches.delete');
+  });
+
+  it('only unregisters workers scoped to the old path', () => {
+    // `getRegistrations()` lists them per origin, so the new app's worker is
+    // in that list too.
+    expect(page).toContain(OLD_SCOPE);
+    expect(page).toContain('reg.scope');
   });
 });

@@ -2,6 +2,7 @@
   "name": "classsync",
   "private": true,
   "version": "2.3.0",
+  "homepage": "https://husenef.github.io/classsync/",
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",

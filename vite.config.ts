@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react';
 import {readFileSync} from 'node:fs';
 import path from 'path';
 import {defineConfig} from 'vite';
+import {githubPagesBase} from './vite.base';
 
 /*
  * The app's version, read from the one place it is written down. Inlined at
@@ -15,7 +16,7 @@ const {version} = JSON.parse(
 
 export default defineConfig(() => {
   return {
-    base: process.env.GITHUB_ACTIONS === 'true' ? '/Absensi-Bocil/' : './',
+    base: githubPagesBase() ?? './',
     define: {
       __APP_VERSION__: JSON.stringify(version),
     },

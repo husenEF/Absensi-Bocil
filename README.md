@@ -1,4 +1,4 @@
-# ClassSync (AbsenBocil)
+# ClassSync
 
 Presensi kelas yang jalan tanpa internet. Dibuat untuk guru, ustadz/ustadzah, dan
 koordinator kursus yang mencatat kehadiran sambil berdiri di depan kelas, lalu
@@ -8,7 +8,12 @@ Semua data tersimpan di dalam browser perangkat itu sendiri. Tidak ada server,
 tidak ada akun, tidak ada data santri yang dikirim ke mana pun.
 
 - **Vercel:** https://class-sync-lilac.vercel.app
-- **GitHub Pages:** https://husenef.github.io/Absensi-Bocil/
+- **GitHub Pages:** https://husenef.github.io/classsync/
+
+Repositori ini dulu bernama `Absensi-Bocil`. Alamat Pages yang lama,
+`husenef.github.io/Absensi-Bocil/`, sekarang hanya berisi halaman pengalih —
+lihat [`legacy-redirect/`](legacy-redirect/) untuk alasannya dan cara
+menyebarkannya.
 
 ---
 
@@ -263,9 +268,15 @@ versi lama setelah rilis baru.
 Sudah otomatis lewat [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml):
 setiap dorongan ke `main` akan dibangun dan disebar.
 
-Di GitHub Actions, `vite.config.ts` memakai base path `/Absensi-Bocil/`; di luar
-itu (Vercel, Netlify, atau berkas lokal) base-nya relatif. Kalau nama repositori
-Anda berbeda, sesuaikan nilainya di `vite.config.ts`.
+Di GitHub Actions, `vite.config.ts` menyusun base path dari nama repositori
+sendiri (`GITHUB_REPOSITORY`), karena situs proyek Pages disajikan di
+`/<repo>/`; di luar itu (Vercel, Netlify, atau berkas lokal) base-nya relatif.
+Jadi repositori boleh diganti nama tanpa menyentuh berkas konfigurasi apa pun.
+
+Yang **tidak** ikut berpindah sendiri adalah alamat lamanya: GitHub tidak
+mengalihkan URL Pages setelah repositori diganti nama, dan ponsel yang sudah
+memasang PWA-nya akan terus menyajikan shell lama dari cache tanpa pesan galat
+apa pun. [`legacy-redirect/`](legacy-redirect/) menangani keduanya.
 
 Aktifkan sekali di **Settings → Pages → Source: GitHub Actions**.
 

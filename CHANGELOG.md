@@ -17,6 +17,26 @@ release will refuse to run on an empty one.
 
 ## Unreleased
 
+### Changed
+
+- **The app is served from `husenef.github.io/classsync/`.** The repository is
+  named after the thing it contains rather than a nickname, and the Pages base
+  path is now derived from `GITHUB_REPOSITORY` at build time instead of being
+  written down in `vite.config.ts` — a hardcoded path survives exactly until
+  the next rename, and then serves a blank page with a 200 and nothing in the
+  build log to explain it.
+
+### Fixed
+
+- **A renamed repository would have frozen every installed phone on the old
+  build.** The worker at the old address answers navigations from its own cache
+  first, so once `/Absensi-Bocil/` began returning 404 the background
+  revalidate would fail, the failure would be swallowed, and the app would
+  simply never update again — no error to report. The old address now serves a
+  worker whose only job is to take over, move any open tab to the new address
+  and unregister itself, alongside a page that does the same for an old
+  bookmark. See `legacy-redirect/`.
+
 ## 2.3.0 — 2026-10-26
 
 ### Added
