@@ -1,5 +1,5 @@
 import {expect, test} from '@playwright/test';
-import {ROSTER, mark, markFor, markRadio, rowFor, savedSessions, seed} from './helpers';
+import {ROSTER, mark, markFor, markRadio, rowFor, savedSessions, seed, savedConfirmation} from './helpers';
 
 /**
  * Taking a register, start to finish, in a real browser against the built app.
@@ -26,7 +26,7 @@ test('a teacher marks a class and saves only what they marked', async ({page}) =
   await expect(page.getByText(`4 ditandai · 5 belum ikut tersimpan`)).toBeVisible();
 
   await page.getByRole('button', {name: /Simpan presensi/}).click();
-  await expect(page.getByText('Presensi tersimpan')).toBeVisible();
+  await expect(savedConfirmation(page)).toBeVisible();
 
   const sessions = await savedSessions(page);
   expect(sessions).toHaveLength(1);
@@ -77,7 +77,7 @@ test('choosing a class fills the date and keeps the whole register', async ({pag
 
   await mark(page, 'Nabila Syifa', 'Hadir');
   await page.getByRole('button', {name: /Simpan presensi/}).click();
-  await expect(page.getByText('Presensi tersimpan')).toBeVisible();
+  await expect(savedConfirmation(page)).toBeVisible();
 
   const sessions = await savedSessions(page);
   expect(sessions[0].scheduleId).toBeDefined();
@@ -120,7 +120,7 @@ test('a santri added mid-session appears on the register straight away', async (
 test('saving over an existing session says what it is replacing', async ({page}) => {
   await mark(page, 'Ahmad Fauzi', 'Hadir');
   await page.getByRole('button', {name: /Simpan presensi/}).click();
-  await expect(page.getByText('Presensi tersimpan')).toBeVisible();
+  await expect(savedConfirmation(page)).toBeVisible();
 
   await page.getByRole('button', {name: 'Catat sesi lain'}).click();
   await mark(page, 'Hasan Basri', 'Hadir');

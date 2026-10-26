@@ -152,6 +152,17 @@ export async function focusByKeyboard(page: Page, control: Locator) {
   await expect(control).toBeFocused();
 }
 
+/**
+ * The panel that appears in place after a save.
+ *
+ * Matched by its own container rather than by its words: "Presensi tersimpan"
+ * is also the opening of the storage notice and of the toast, and a bare text
+ * match picks up all three.
+ */
+export function savedConfirmation(page: Page): Locator {
+  return page.locator('.cs-card--success');
+}
+
 /** Every session currently in the local database. */
 export async function savedSessions(page: Page) {
   return page.evaluate(async () => {
