@@ -907,6 +907,40 @@
   text-align: center;
 }
 
+/* A panel that stays put while a long list scrolls beside it. */
+.cs-card--sticky {
+  position: sticky;
+  top: calc(var(--cs-space-6) + 4rem);
+}
+
+@media (max-width: 63.999rem) {
+  .cs-card--sticky {
+    position: static;
+  }
+}
+
+/* Push a row's contents to the end — used for a panel's single action. */
+.cs-row--end {
+  justify-content: flex-end;
+}
+
+/* A list long enough to need its own scroll, kept inside its panel. */
+.cs-scroll {
+  max-height: 24rem;
+  overflow-y: auto;
+  /* Room for the keyline and offset of the rows inside, which would
+     otherwise be clipped by the scroll container. */
+  padding: 2px 4px 2px 2px;
+  margin: -2px -4px -2px -2px;
+}
+
+/* The compiled report. Read as a block of text, so it keeps a tighter line. */
+.cs-textarea--report {
+  min-height: 18rem;
+  font-size: var(--cs-text-sm);
+  line-height: 1.45;
+}
+
 /* ---------------------------------------------------- session picker rows */
 
 .cs-session {
