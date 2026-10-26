@@ -1365,6 +1365,12 @@
   color: var(--cs-text-muted);
 }
 
+/* Said quietly, and only ever read aloud when something has gone wrong. */
+.cs-footer__version {
+  margin-top: var(--cs-space-2);
+  letter-spacing: var(--cs-track-label);
+}
+
 /* --------------------------------------------------------------- the tabs */
 
 /*

@@ -22,6 +22,13 @@ jobs:
       - name: Type check
         run: npm run lint
 
+      # The service worker is served verbatim and cannot import the version,
+      # so it is written into it by a script. If that was not run before the
+      # commit, every installed phone would go on serving the previous shell
+      # with nothing to report; this says so here instead.
+      - name: Version is in step
+        run: npm run version:check
+
       - name: Unit tests
         run: npm run test:run
 

@@ -221,3 +221,34 @@ describe('the service worker', () => {
     expect(serviceWorker).toContain('caches.delete(cache)');
   });
 });
+
+describe('the version', () => {
+  const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+
+  it('is a single x.y.z number in package.json', () => {
+    expect(pkg.version).toMatch(/^\d+\.\d+\.\d+$/);
+    expect(pkg.version).not.toBe('0.0.0');
+  });
+
+  it('names the service worker cache, so a release retires the old shell', () => {
+    // This is the whole reason the version is wired rather than typed: the
+    // cache name is the only thing standing between a release and an
+    // installed phone that silently goes on serving the previous build.
+    // `npm run version:sync` writes it; this fails if that was not run.
+    const cacheName = /const CACHE_NAME = '([^']+)'/.exec(serviceWorker)?.[1];
+    expect(cacheName).toBe(`classsync-shell-v${pkg.version}`);
+  });
+
+  it('is reachable by the app, so the footer can print it', () => {
+    // Inlined by the `define` in vite.config.ts, mirrored in vitest.config.ts.
+    expect(__APP_VERSION__).toBe(pkg.version);
+  });
+
+  it('has a changelog entry a teacher reading the footer can be matched to', () => {
+    const changelog = fs.readFileSync(path.join(root, 'CHANGELOG.md'), 'utf8');
+    expect(changelog).toMatch(new RegExp(`^## ${pkg.version.replace(/\./g, '\\.')} `, 'm'));
+    // The heading the release script promotes. Without it `npm run release`
+    // has nothing to turn into a version.
+    expect(changelog).toMatch(/^## Unreleased$/m);
+  });
+});

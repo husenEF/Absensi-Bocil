@@ -206,6 +206,13 @@ const MainAppContent: React.FC = () => {
       <footer className="cs-footer">
         <p>ClassSync — presensi kelas dan laporan WhatsApp.</p>
         <p>Semua data tersimpan di ponsel ini.</p>
+        {/* The build this phone is actually running. An installed app can sit
+            on a cached shell for weeks, so "which version are you on?" is the
+            first question any bug report needs answered — and the teacher has
+            to be able to read it off the screen to answer it. */}
+        <p className="cs-footer__version">
+          Versi <span className="tabular">{__APP_VERSION__}</span>
+        </p>
       </footer>
 
       <nav aria-label="Menu utama" className="cs-tabs">

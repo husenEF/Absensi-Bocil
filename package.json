@@ -1,10 +1,11 @@
 {
-  "name": "react-example",
+  "name": "classsync",
   "private": true,
-  "version": "0.0.0",
+  "version": "2.3.0",
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
+    "prebuild": "node scripts/sync-version.mjs",
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
@@ -15,7 +16,10 @@
     "icons": "node scripts/render-icons.mjs",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "test:all": "tsc --noEmit && vitest run && playwright test"
+    "test:all": "tsc --noEmit && vitest run && playwright test",
+    "version:sync": "node scripts/sync-version.mjs",
+    "version:check": "node scripts/sync-version.mjs --check",
+    "release": "node scripts/release.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
