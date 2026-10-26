@@ -1,10 +1,17 @@
-const CACHE_NAME = 'presensi-kelas-cache-v1';
+// Bumped whenever the shell's own files change, which is what retires the
+// previous cache in the activate handler below. The icons changed with it, so
+// an installed app that kept serving v1 would keep the old launcher artwork.
+const CACHE_NAME = 'presensi-kelas-cache-v2';
 const ASSETS_TO_CACHE = [
   './',
   'index.html',
   'manifest.json',
   'icon.svg',
-  'icon-512.png'
+  'icon-maskable.svg',
+  'icon-192.png',
+  'icon-512.png',
+  'icon-maskable-512.png',
+  'apple-touch-icon.png'
 ];
 
 // Install Event

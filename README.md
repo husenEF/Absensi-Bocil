@@ -113,6 +113,38 @@ jadi sebuah warna tidak bisa diubah menjadi tidak terbaca tanpa ada tes yang gag
 Setiap tanda juga membawa huruf, supaya maknanya tidak pernah bergantung pada
 warna saja.
 
+### Ikon dan identitas saat dipasang
+
+Ikonnya memakai bidang datar saja — tanpa gradien, tanpa bayangan kabur —
+supaya tetap terbaca pada ukuran 48px di layar HP murah. Ikon sebelumnya berupa
+papan klip bergradien dengan bayangan jatuh yang berubah jadi noda di ukuran
+launcher.
+
+| Berkas | Dipakai untuk |
+| --- | --- |
+| `public/icon.svg` | Favicon dan ikon `any` — pelat bersudut membulat |
+| `public/icon-maskable.svg` | Ikon `maskable` — pelat penuh, gambar diperkecil ke lingkaran aman 80% |
+| `public/icon-192.png`, `public/icon-512.png` | Launcher dan layar pembuka Android |
+| `public/icon-maskable-512.png` | Ikon yang dipotong mengikuti bentuk launcher |
+| `public/apple-touch-icon.png` | Layar utama iOS (mengabaikan transparansi) |
+
+Berkas PNG-nya dihasilkan dari SVG di atas, jadi jangan diedit langsung:
+
+```bash
+npm run icons
+```
+
+Warna dasarnya mengikuti halaman, bukan warna aksen: `theme_color` dan
+`background_color` memakai kertas `#f5f5f3`, dan `index.html` menambahkan versi
+gelap `#2c2c2c` lewat `prefers-color-scheme`. Kuning sinyal tetap tinggal di
+dalam aplikasi, pada satu aksi yang memang miliknya.
+
+Semuanya diperiksa di `src/pwa.test.ts` dan `e2e/pwa.spec.ts` — termasuk bahwa
+tiap ikon benar-benar berformat seperti yang dideklarasikan dan seukuran yang
+dijanjikan, dan bahwa tidak ada piksel gambar yang keluar dari lingkaran aman
+pada versi `maskable` (diuji dengan mencuplik piksel hasil render, bukan membaca
+markup-nya).
+
 ---
 
 ## Menjalankan secara lokal
@@ -185,6 +217,7 @@ Berkasnya ada di `e2e/`:
 | `report.spec.ts` | Bentuk laporan WhatsApp |
 | `accessibility.spec.ts` | Cincin fokus, operasi lewat papan ketik, huruf pada tanda, 320px tanpa geser samping, ukuran sasaran sentuh |
 | `pages.spec.ts` | Jadwal (tambah, hapus, muncul di presensi), Sinkron, dan sapuan ukuran sasaran sentuh di kelima tab |
+| `pwa.spec.ts` | Manifest tersaji, tiap ikon ada dan bertipe benar, warna chrome peramban, skema warna kontrol bawaan |
 
 Karena aplikasinya tidak punya API, data contoh ditulis langsung ke IndexedDB
 lewat `e2e/helpers.ts`.
@@ -272,6 +305,9 @@ src/
   styles/       Token desain, komponen CSS, palet beserta uji kontrasnya
   roster.ts     Logika daftar santri dan status, murni dan teruji
   db.ts         Skema Dexie dan migrasi
+  pwa.test.ts   Manifest, ikon, dan service worker aplikasi terpasang
+public/         Manifest, ikon, service worker
+scripts/        Perkakas sekali jalan (mis. render ikon PNG dari SVG)
 e2e/            Uji end-to-end Playwright
 ```
 

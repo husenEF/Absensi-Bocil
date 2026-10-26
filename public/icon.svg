@@ -1,43 +1,20 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <defs>
-    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#000000" /> <!-- Absolute pitch black -->
-      <stop offset="100%" stop-color="#16161a" /> <!-- Obsidian gray -->
-    </linearGradient>
-    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
-      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#ff5500" flood-opacity="0.3" />
-    </filter>
-  </defs>
-  <!-- Background Board -->
-  <rect width="512" height="512" rx="128" fill="url(#bgGrad)" />
-  
-  <!-- Icon Graphics Group -->
-  <g filter="url(#shadow)" transform="translate(106, 106)">
-    <!-- White Card Background -->
-    <rect x="0" y="30" width="300" height="260" rx="28" fill="#121214" stroke="#ff5500" stroke-width="2" />
-    <!-- Orange Header Bar -->
-    <rect x="0" y="30" width="300" height="64" rx="28" fill="#1c110b" />
-    <path d="M 0 54 L 0 94 L 300 94 L 300 54 Z" fill="#1c110b" />
-    
-    <!-- Binder Rings (Electric Orange) -->
-    <rect x="60" y="10" width="20" height="40" rx="10" fill="#ff5500" />
-    <rect x="140" y="10" width="20" height="40" rx="10" fill="#ff5500" />
-    <rect x="220" y="10" width="20" height="40" rx="10" fill="#ff5500" />
-    
-    <!-- Checklist items in our color scheme -->
-    <!-- Item 1 - Checked (Orange Glow) -->
-    <circle cx="70" cy="140" r="18" fill="#ff5500" />
-    <path d="M 63 140 L 68 145 L 77 135" stroke="#ffffff" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-    <rect x="110" y="131" width="130" height="18" rx="9" fill="#2c1a12" />
-    
-    <!-- Item 2 - Checked (Orange Soft) -->
-    <circle cx="70" cy="195" r="18" fill="#ff7733" />
-    <path d="M 63 195 L 68 200 L 77 190" stroke="#ffffff" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-    <rect x="110" y="186" width="110" height="18" rx="9" fill="#1f140f" />
-    
-    <!-- Item 3 - Checked (Muted Orange) -->
-    <circle cx="70" cy="250" r="18" fill="#4d1a00" />
-    <path d="M 63 250 L 68 255 L 77 245" stroke="#ff5500" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-    <rect x="110" y="241" width="140" height="18" rx="9" fill="#1a110b" />
-  </g>
+<!--
+  ClassSync app icon.
+
+  The artwork as supplied, at its own 124-unit grid, sized up to 512 so the
+  raster versions in this folder render from it cleanly.
+
+  Flat fills only — no gradient, no blur, no soft shadow — which is what keeps
+  it legible at 48px on a cheap screen. The icon it replaced was a
+  gradient-and-drop-shadow clipboard that turned to mud at launcher size.
+
+  This is the rounded-plate drawing: the favicon, and the manifest's `any`
+  purpose. icon-maskable.svg carries the same artwork on a plate that reaches
+  the edge, for launchers that crop to their own shape.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 124 124" fill="none" role="img" aria-label="ClassSync">
+  <rect width="124" height="124" rx="24" fill="#F97316"/>
+  <path d="M19.375 36.7818V100.625C19.375 102.834 21.1659 104.625 23.375 104.625H87.2181C90.7818 104.625 92.5664 100.316 90.0466 97.7966L26.2034 33.9534C23.6836 31.4336 19.375 33.2182 19.375 36.7818Z" fill="white"/>
+  <circle cx="63.2109" cy="37.5391" r="18.1641" fill="black"/>
+  <rect opacity="0.4" x="81.1328" y="80.7198" width="17.5687" height="17.3876" rx="4" transform="rotate(-45 81.1328 80.7198)" fill="#FDBA74"/>
 </svg>
