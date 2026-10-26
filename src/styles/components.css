@@ -43,8 +43,49 @@
   display: flex;
   flex-direction: column;
   gap: var(--cs-space-4);
+  /*
+   * `width` has to be stated. The page is a flex item of `.cs-main`, and
+   * `margin-inline: auto` on a flex item beats the default stretch, so without
+   * this it shrank to fit its own content and the `max-width` below never came
+   * into play — which is why `--wide` and `--split` were still being drawn in
+   * a column two thirds of the shell.
+   */
+  width: 100%;
   max-width: var(--cs-measure);
   margin-inline: auto;
+}
+
+/*
+ * A column of panels inside a page.
+ *
+ * On a wide screen two of these sit side by side; on a phone they fall back
+ * into one stack. The stacking has to carry the page's own rhythm, which it
+ * did not: the column was only made a flex container inside the wide-screen
+ * media query, so below 1024px it was a plain block and every panel inside it
+ * sat flush against the next one, separated by nothing but the 4px offset
+ * shadow of the panel above. The gap belongs here, at every width.
+ */
+.cs-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cs-space-4);
+  min-width: 0;
+}
+
+/*
+ * A wall of panels: one column on a phone, as many as fit on a laptop.
+ *
+ * Used for lists whose entries are each a whole panel — the saved sessions in
+ * Riwayat — where a single centred column leaves most of a laptop screen empty
+ * and pushes last month's sessions several scrolls down. `auto-fill` rather
+ * than a fixed count, so the number of columns follows the window instead of a
+ * guess about it, and `start` so a short session does not stretch to match a
+ * long one beside it.
+ */
+.cs-cards {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--cs-space-4);
 }
 
 /*
@@ -924,11 +965,50 @@
   flex: 1;
 }
 
-.cs-bulk {
+/*
+ * The revealed half of a fold nested inside a panel. The panel's own flex gap
+ * does not reach in here, so the stack carries its own rhythm.
+ */
+.cs-bulk,
+.cs-fold {
   display: flex;
   flex-direction: column;
   gap: var(--cs-space-3);
   margin-top: var(--cs-space-3);
+}
+
+/*
+ * The roster as a list of names to prune, rather than to mark. No status
+ * picker, so a name and its one action fit on a line at any width; the rule
+ * between rows is the same hairline the register uses.
+ */
+.cs-namelist {
+  display: flex;
+  flex-direction: column;
+  list-style: none;
+}
+
+.cs-namelist__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--cs-space-3);
+  padding: var(--cs-space-2) 0;
+  border-bottom: 1px solid var(--cs-border);
+}
+
+.cs-namelist__row:last-child {
+  border-bottom: 0;
+}
+
+.cs-namelist__name {
+  min-width: 0;
+  font-family: var(--cs-font-display);
+  font-size: var(--cs-text-base);
+  font-weight: 600;
+  line-height: var(--cs-leading-tight);
+  color: var(--cs-text);
+  overflow-wrap: anywhere;
 }
 
 /*
@@ -1450,11 +1530,9 @@
     max-width: var(--cs-shell);
   }
 
-  .cs-page--split > .cs-col {
-    display: flex;
-    flex-direction: column;
-    gap: var(--cs-space-4);
-    min-width: 0;
+  .cs-cards {
+    grid-template-columns: repeat(auto-fill, minmax(22rem, 1fr));
+    align-items: start;
   }
 
   .cs-page--split > .cs-col--aside {

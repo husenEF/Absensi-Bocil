@@ -60,6 +60,7 @@ interface AppContextType {
   untouchedCount: number;
   markedCount: number;
   handleAddStudent: (rawName: string) => Promise<boolean>;
+  handleRemoveStudent: (name: string) => Promise<void>;
   lastSaved: { tanggal: string; tally: StatusTally } | null;
   dismissLastSaved: () => void;
   handleToggleStudent: (studentName: string) => void;
@@ -1029,6 +1030,81 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  /**
+   * Take a santri off the roster.
+   *
+   * A name that appears in a saved session cannot simply be deleted: the
+   * roster is reconciled against the records on every load, so the row would
+   * be recreated the moment the page refreshed. Those santri are retired
+   * instead — out of the register, still in every record they were ever
+   * marked in, and their history untouched. Only a santri nobody has ever
+   * recorded is actually removed from the table.
+   *
+   * Like deleting a session, this happens at once and offers an undo rather
+   * than asking first; both the retirement and the delete are reversible.
+   */
+  const handleRemoveStudent = async (name: string): Promise<void> => {
+    const key = nameKey(name);
+    if (!key) return;
+
+    try {
+      const student = await db.students.where('nameKey').equals(key).first();
+      if (!student?.id) return;
+
+      const inHistory = records.some(
+        r => (r.peserta ?? []).some(n => nameKey(n) === key) || Boolean(r.statuses?.[key])
+      );
+
+      if (inHistory) await db.students.update(student.id, { active: false });
+      else await db.students.delete(student.id);
+
+      // A mark set for them in the session being filled in goes with them;
+      // buildStatusMap deliberately keeps statuses for names outside the
+      // roster, so leaving it behind would save a mark for a santri the
+      // teacher has just removed.
+      const droppedMark = sessionStatuses[key];
+      if (droppedMark) {
+        setSessionStatuses(prev => {
+          const next = { ...prev };
+          delete next[key];
+          return next;
+        });
+        setTouchedStudents(prev => {
+          const next = new Set(prev);
+          next.delete(key);
+          return next;
+        });
+      }
+
+      await loadStudents();
+
+      showToast(`${student.name} dihapus dari daftar santri.`, 'success', {
+        label: 'Urungkan',
+        onAction: async () => {
+          try {
+            if (inHistory) await db.students.update(student.id!, { active: true });
+            else {
+              const { id: _oldId, ...rest } = student;
+              await db.students.add(rest);
+            }
+            if (droppedMark) {
+              setSessionStatuses(prev => ({ ...prev, [key]: droppedMark }));
+              setTouchedStudents(prev => new Set(prev).add(key));
+            }
+            await loadStudents();
+            showToast(`${student.name} dikembalikan ke daftar.`, 'success');
+          } catch (err) {
+            console.error('[Restore student error]', err);
+            showToast('Tidak dapat mengembalikan santri.', 'error');
+          }
+        }
+      });
+    } catch (err) {
+      console.error('[Remove student error]', err);
+      showToast('Gagal menghapus santri.', 'error');
+    }
+  };
+
   // Create or Update Attendance Record
   const handleSaveAttendance = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1832,6 +1908,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       untouchedCount,
       markedCount,
       handleAddStudent,
+      handleRemoveStudent,
       lastSaved,
       dismissLastSaved,
       handleToggleStudent,

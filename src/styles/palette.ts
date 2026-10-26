@@ -15,7 +15,7 @@
  * Two rules hold the whole product together.
  *
  * **One signal colour.** Signal yellow — #ffd966 by day, the dimmer gold
- * #d4af37 at night — marks the single thing the teacher came here to do: save
+ * #e5c05e at night — marks the single thing the teacher came here to do: save
  * the register. It appears on the primary action, the active tab and nowhere
  * else. It is never load-bearing on its own; every yellow surface sits inside
  * an ink keyline, which is what carries the 3:1 boundary a pale fill cannot.
@@ -115,37 +115,50 @@ export const light: ThemeColors = {
   edge: '#1a1d1a',
 };
 
+/**
+ * Night is a cool charcoal rather than a neutral grey, and it is built from
+ * one numbered scale: 900 is the deepest well, 800 the page, 700 a panel
+ * lifted off it, 500 a hairline, 300 a drawn edge, 200 sub-text, 100 the
+ * reading colour. Running the whole theme off one ramp is what stopped the
+ * old dark mode drifting — a #555 rule beside a #202020 tray beside a
+ * #3e3e3e card never belonged to the same family.
+ */
 export const dark: ThemeColors = {
-  bg: '#2c2c2c',
-  surface: '#3e3e3e',
-  surfaceSunken: '#202020',
-  text: '#e8e8e1',
-  textMuted: '#d8d3d8',
-  border: '#555555',
-  borderStrong: '#a0a0a0',
-  brand: '#e8e8e1',
-  brandSolid: '#d4af37',
-  brandSolidHover: '#e2c250',
-  brandInk: '#1a1d1a',
+  bg: '#282830',
+  surface: '#32323b',
+  surfaceSunken: '#1e1e24',
+  text: '#e4e4e8',
+  // Two steps down the ramp, which still clears 4.5:1 on all three surfaces.
+  // The step below it, #8e8e9a, only reaches 3.92:1 on a panel, so it stays on
+  // the borders, where the bar is 3:1.
+  textMuted: '#b8b8c2',
+  border: '#52525e',
+  borderStrong: '#8e8e9a',
+  brand: '#e4e4e8',
+  // Signal yellow is dimmed to a muted gold at night; it still carries dark ink.
+  brandSolid: '#e5c05e',
+  brandSolidHover: '#f0cf74',
+  brandInk: '#1e1e24',
   brandTint: '#3a3016',
-  brandEdge: '#e8e8e1',
-  danger: '#e8e8e1',
-  dangerSolid: '#e8e8e1',
-  dangerSolidHover: '#d0d0c9',
-  dangerInk: '#1a1d1a',
+  brandEdge: '#e4e4e8',
+  danger: '#e4e4e8',
+  dangerSolid: '#e4e4e8',
+  dangerSolidHover: '#b8b8c2',
+  dangerInk: '#1e1e24',
   dangerTint: '#3a2419',
-  focus: '#d4af37',
+  focus: '#e5c05e',
   // Light enough to read as a drawn edge on charcoal, and to clear 3:1 against
-  // both the page and a panel — the dark theme's whole structure rests on it.
-  edge: '#a0a0a0',
+  // the page, a panel and a sunken tray — the dark theme's whole structure
+  // rests on it.
+  edge: '#8e8e9a',
 };
 
 /**
  * The marks.
  *
- * By day they are bright fills carrying dark ink. At night the palette dims
- * Hadir and Izin into deep fills that carry light ink instead, so a wall of
- * marks does not glare in a dark room. The letter inside the block is what the
+ * By day they are bright fills carrying dark ink. At night they are the same
+ * four hues muted a step, so a wall of marks does not glare in a dark room,
+ * and they still carry dark ink. The letter inside the block is what the
  * teacher reads either way, and it is always the readable half of the pair.
  */
 const MARK_LIGHT = {
@@ -155,11 +168,22 @@ const MARK_LIGHT = {
   alpa: '#ff9f43',
 } as const;
 
+/**
+ * At night the marks are the palette's muted accents rather than the daylight
+ * fills: bright enough to read as colour on charcoal, dim enough that a
+ * screenful of them does not burn in a dark room.
+ *
+ * Izin is the one adjustment. The palette's #4a82c4 carries its letter at only
+ * 4.17:1 in dark ink and 3.62:1 in light, so no ink makes it legible; it is
+ * lifted two steps to #5b90ce, the nearest blue of the same hue that clears
+ * 4.5:1. Every mark then carries the same dark ink, which is also what keeps
+ * the four reading as one set.
+ */
 const MARK_DARK = {
-  hadir: '#1e5c31',
-  sakit: '#d4af37',
-  izin: '#1a3b7b',
-  alpa: '#cc7722',
+  hadir: '#3da868',
+  sakit: '#e5c05e',
+  izin: '#5b90ce',
+  alpa: '#d98943',
 } as const;
 
 export const statusLight: Record<StatusKey, StatusColors> = {
@@ -171,10 +195,10 @@ export const statusLight: Record<StatusKey, StatusColors> = {
 };
 
 export const statusDark: Record<StatusKey, StatusColors> = {
-  hadir: {tint: '#15301f', ink: '#7fd9a0', solid: MARK_DARK.hadir, solidInk: '#e8e8e1'},
-  sakit: {tint: '#332a11', ink: '#e8c75e', solid: MARK_DARK.sakit, solidInk: '#1a1d1a'},
-  izin: {tint: '#17233a', ink: '#8fb4e8', solid: MARK_DARK.izin, solidInk: '#e8e8e1'},
-  alpa: {tint: '#33210f', ink: '#e8a263', solid: MARK_DARK.alpa, solidInk: '#1a1d1a'},
+  hadir: {tint: '#163322', ink: '#7fd9a0', solid: MARK_DARK.hadir, solidInk: '#1e1e24'},
+  sakit: {tint: '#352b12', ink: '#e8c75e', solid: MARK_DARK.sakit, solidInk: '#1e1e24'},
+  izin: {tint: '#1e2c45', ink: '#9cc0ec', solid: MARK_DARK.izin, solidInk: '#1e1e24'},
+  alpa: {tint: '#33210f', ink: '#e8a263', solid: MARK_DARK.alpa, solidInk: '#1e1e24'},
 };
 
 /** Teacher-facing labels. */

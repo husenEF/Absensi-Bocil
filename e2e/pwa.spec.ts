@@ -1,4 +1,5 @@
 import {expect, test} from '@playwright/test';
+import {dark, light} from '../src/styles/palette';
 
 /**
  * Installing the app.
@@ -99,11 +100,13 @@ test('nothing on the maskable icon falls outside the launcher’s crop', async (
 });
 
 test('the browser chrome is told which colour to take, in either theme', async ({page}) => {
-  const light = page.locator('meta[name="theme-color"][media*="light"]');
-  const dark = page.locator('meta[name="theme-color"][media*="dark"]');
+  const lightMeta = page.locator('meta[name="theme-color"][media*="light"]');
+  const darkMeta = page.locator('meta[name="theme-color"][media*="dark"]');
 
-  await expect(light).toHaveAttribute('content', '#f5f5f3');
-  await expect(dark).toHaveAttribute('content', '#2c2c2c');
+  // Read from the palette rather than written out again here, so a change of
+  // theme colour moves in one place instead of failing this test.
+  await expect(lightMeta).toHaveAttribute('content', light.bg);
+  await expect(darkMeta).toHaveAttribute('content', dark.bg);
 });
 
 test('the controls the browser draws itself follow the chosen theme', async ({page}) => {

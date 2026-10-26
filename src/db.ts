@@ -125,7 +125,17 @@ export async function upsertStudent(name: string): Promise<StudentRecord | undef
   if (!key) return undefined;
 
   const found = await db.students.where('nameKey').equals(key).first();
-  if (found) return found;
+  if (found) {
+    // A santri taken off the roster is retired rather than deleted, because
+    // the sessions they appear in still need their name. Typing that name in
+    // again therefore has to bring them back; without this it found the
+    // retired row and quietly did nothing at all.
+    if (!found.active && found.id !== undefined) {
+      await db.students.update(found.id, {active: true});
+      return db.students.get(found.id);
+    }
+    return found;
+  }
 
   const id = await db.students.add({
     name: name.trim(),
