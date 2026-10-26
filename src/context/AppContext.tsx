@@ -2,9 +2,22 @@ import React, { createContext, useContext, useState, useEffect, useMemo, useRef 
 import QRCode from 'qrcode';
 import jsQR from 'jsqr';
 import { db, upsertStudent, AbsensiRecord, ScheduleRecord, StudentRecord, checkForAndMigratePreviousDatabases } from '../db';
-import { buildStatusMap, nameKey, parseNameList, presentNames, rosterFromRecords, statusesFromPeserta, tally, type StatusKey, type StatusMap, type StatusTally } from '../roster';
+import { buildStatusMap, nameKey, parseNameList, presentNames, rosterFromRecords, statusesFromPeserta, tally, unmarkedNames, type StatusKey, type StatusMap, type StatusTally } from '../roster';
 import { formatIndonesianDate, formatDateShort } from '../utils/date';
 import { biMonthlyWeeks, getBiMonthlyLabel, getRecordBiMonth, todayYMD } from '../utils/period';
+
+/**
+ * A weekly class and the santri who attend it, derived from what has been
+ * recorded rather than stored. `id` is undefined for santri who do not belong
+ * to any class yet.
+ */
+export interface ScheduleGroup {
+  id: number | undefined;
+  title: string;
+  hari?: string;
+  waktu?: string;
+  names: string[];
+}
 
 interface BiMonthlyPeriod {
   year: number;
@@ -51,11 +64,16 @@ interface AppContextType {
   currentActiveNames: string[];
   allRegisteredStudents: string[];
   students: StudentRecord[];
-  sessionStatusFor: (studentName: string) => StatusKey;
+  sessionStatusFor: (studentName: string) => StatusKey | undefined;
   setSessionStatus: (studentName: string, status: StatusKey) => void;
   handleMarkAllPresent: () => void;
+  handleClearSession: () => void;
   sessionTally: StatusTally;
+  /** Roster santri nobody has marked yet. */
   untouchedCount: number;
+  markedCount: number;
+  /** Roster grouped by the schedule its santri attend. */
+  scheduleGroups: ScheduleGroup[];
   handleAddStudent: (rawName: string) => Promise<boolean>;
   lastSaved: { tanggal: string; tally: StatusTally } | null;
   dismissLastSaved: () => void;
@@ -914,37 +932,102 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return () => { cancelled = true; };
   }, [tanggalInput, selectedScheduleId, records]);
 
-  const sessionStatusFor = (studentName: string): StatusKey => {
-    return sessionStatuses[nameKey(studentName)] ?? 'hadir';
+  /** The mark on this santri for the session being edited, or nothing yet. */
+  const sessionStatusFor = (studentName: string): StatusKey | undefined => {
+    return sessionStatuses[nameKey(studentName)];
   };
 
+  /** Tapping the mark a santri already carries takes it off again. */
   const setSessionStatus = (studentName: string, status: StatusKey) => {
-    setSessionStatuses(prev => ({ ...prev, [nameKey(studentName)]: status }));
-    setTouchedStudents(prev => {
-      const next = new Set(prev);
-      next.add(nameKey(studentName));
+    const key = nameKey(studentName);
+    setSessionStatuses(prev => {
+      const next = { ...prev };
+      if (next[key] === status) delete next[key];
+      else next[key] = status;
       return next;
     });
+    setTouchedStudents(prev => new Set(prev).add(key));
   };
 
   const handleMarkAllPresent = () => {
-    const next: StatusMap = {};
-    allRegisteredStudents.forEach(name => {
-      next[nameKey(name)] = 'hadir';
-    });
+    const next: StatusMap = { ...sessionStatuses };
+    // Only the santri still waiting for a mark. Marks the teacher has already
+    // set — the two who are ill today — are not swept away by this shortcut.
+    const filled = allRegisteredStudents.filter(name => !next[nameKey(name)]);
+    filled.forEach(name => { next[nameKey(name)] = 'hadir'; });
     setSessionStatuses(next);
-    setTouchedStudents(new Set(allRegisteredStudents.map(nameKey)));
-    showToast('Semua santri ditandai hadir.', 'info');
+    setTouchedStudents(new Set(Object.keys(next)));
+    showToast(
+      filled.length === 0
+        ? 'Semua santri sudah ditandai.'
+        : `${filled.length} santri sisanya ditandai hadir.`,
+      'info'
+    );
+  };
+
+  const handleClearSession = () => {
+    setSessionStatuses({});
+    setTouchedStudents(new Set());
+    showToast('Semua tanda dikosongkan.', 'info');
   };
 
   const sessionTally = useMemo<StatusTally>(() => {
     return tally(buildStatusMap(allRegisteredStudents, sessionStatuses));
   }, [allRegisteredStudents, sessionStatuses]);
 
-  /** Santri whose status the teacher has not looked at yet. */
+  /** Santri still waiting for a mark. */
   const untouchedCount = useMemo(() => {
-    return allRegisteredStudents.filter(n => !touchedStudents.has(nameKey(n))).length;
-  }, [allRegisteredStudents, touchedStudents]);
+    return unmarkedNames(allRegisteredStudents, sessionStatuses).length;
+  }, [allRegisteredStudents, sessionStatuses]);
+
+  const markedCount = allRegisteredStudents.length - untouchedCount;
+
+  /**
+   * Which santri belong to which weekly class.
+   *
+   * Nothing links a santri to a schedule in the database, and asking teachers
+   * to maintain that by hand would be a second register to keep. The link is
+   * read out of what they have already recorded instead: a santri belongs to a
+   * class once they have been marked in one of its sessions. Santri who have
+   * only appeared in unlinked sessions fall into "Lainnya".
+   */
+  const scheduleGroups = useMemo<ScheduleGroup[]>(() => {
+    const membership = new Map<number, Set<string>>();
+    const grouped = new Set<string>();
+
+    for (const record of records) {
+      const id = record.scheduleId;
+      if (id === undefined || id === null) continue;
+      const names = membership.get(id) ?? new Set<string>();
+      const fromRecord = [
+        ...(record.peserta ?? []).map(nameKey),
+        ...Object.keys(record.statuses ?? {})
+      ];
+      for (const key of fromRecord) {
+        if (!key) continue;
+        names.add(key);
+        grouped.add(key);
+      }
+      membership.set(id, names);
+    }
+
+    const groups: ScheduleGroup[] = schedules
+      .filter(s => s.id !== undefined)
+      .map(s => ({
+        id: s.id!,
+        title: s.title,
+        hari: s.hari,
+        waktu: s.waktu,
+        names: allRegisteredStudents.filter(n => membership.get(s.id!)?.has(nameKey(n)))
+      }));
+
+    const ungrouped = allRegisteredStudents.filter(n => !grouped.has(nameKey(n)));
+    if (ungrouped.length > 0) {
+      groups.push({ id: undefined, title: 'Belum masuk kelompok', names: ungrouped });
+    }
+
+    return groups;
+  }, [records, schedules, allRegisteredStudents]);
 
   const dismissLastSaved = () => setLastSaved(null);
 
@@ -996,11 +1079,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const statuses = buildStatusMap(rosterNames, sessionStatuses);
     const parsedPeserta = presentNames(rosterNames, statuses);
 
-    if (parsedPeserta.length === 0 && sessionTally.hadir === 0) {
-      const proceed = window.confirm(
-        'Tidak ada santri yang hadir pada sesi ini. Simpan tetap?'
-      );
-      if (!proceed) return;
+    if (Object.keys(statuses).length === 0) {
+      showToast('Tandai dulu kehadiran santri sebelum menyimpan.', 'error');
+      return;
     }
 
     try {
@@ -1782,8 +1863,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       sessionStatusFor,
       setSessionStatus,
       handleMarkAllPresent,
+      handleClearSession,
       sessionTally,
       untouchedCount,
+      markedCount,
+      scheduleGroups,
       handleAddStudent,
       lastSaved,
       dismissLastSaved,

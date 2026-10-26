@@ -43,6 +43,7 @@ const PAIRS: Array<[string, keyof typeof light]> = [
   ['cs-brand-solid-hover', 'brandSolidHover'],
   ['cs-brand-ink', 'brandInk'],
   ['cs-brand-tint', 'brandTint'],
+  ['cs-brand-edge', 'brandEdge'],
   ['cs-danger', 'danger'],
   ['cs-danger-solid', 'dangerSolid'],
   ['cs-danger-solid-hover', 'dangerSolidHover'],

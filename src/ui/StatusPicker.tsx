@@ -6,12 +6,21 @@ type Props = {
   readonly personName: string;
   /** Unique per row. Names alone collide when two differ only by case. */
   readonly groupId: string;
-  readonly value: StatusKey;
+  /** The mark this santri carries, or nothing if they have not been marked. */
+  readonly value: StatusKey | undefined;
   readonly onChange: (next: StatusKey) => void;
 };
 
 /**
  * Four tap targets — Hadir / Sakit / Izin / Alpa — as a radio group.
+ *
+ * Nothing is chosen until the teacher chooses it. A register that opened with
+ * everyone on Hadir recorded a class nobody had looked at, so the empty state
+ * here is the honest one and the four boxes start dashed and unfilled.
+ *
+ * Tapping the mark a santri already carries takes it off again, which is the
+ * only way back to unmarked after a mistap — a radio group cannot normally be
+ * emptied by clicking.
  *
  * Every option shows its letter AND its word, so the meaning never rests on
  * colour alone. Each is a 48px target, operable with a single finger: no
@@ -28,7 +37,11 @@ export const StatusPicker: React.FC<Props> = ({personName, groupId, value, onCha
     <div
       className="cs-status"
       role="radiogroup"
-      aria-label={`Status kehadiran ${personName}`}
+      aria-label={
+        value
+          ? `Status kehadiran ${personName}`
+          : `Status kehadiran ${personName}, belum ditandai`
+      }
     >
       {STATUS_ORDER.map((key) => {
         const selected = key === value;
@@ -46,6 +59,11 @@ export const StatusPicker: React.FC<Props> = ({personName, groupId, value, onCha
               value={key}
               checked={selected}
               onChange={() => onChange(key)}
+              // `change` does not fire when a checked radio is clicked again,
+              // so clearing a mark has to be caught here.
+              onClick={() => {
+                if (selected) onChange(key);
+              }}
             />
             <span className="cs-status__code" aria-hidden="true">
               {STATUS_CODE[key]}
