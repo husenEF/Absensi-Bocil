@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useMemo, useRef 
 import QRCode from 'qrcode';
 import jsQR from 'jsqr';
 import { db, upsertStudent, AbsensiRecord, ScheduleRecord, StudentRecord, checkForAndMigratePreviousDatabases } from '../db';
-import { buildStatusMap, nameKey, parseNameList, presentNames, rosterFromRecords, statusesFromPeserta, tally, unmarkedNames, type StatusKey, type StatusMap, type StatusTally } from '../roster';
+import { buildStatusMap, nameKey, parseNameList, presentNames, rosterFromRecords, participantLine, statusesFromPeserta, tally, unmarkedNames, type StatusKey, type StatusMap, type StatusTally } from '../roster';
 import { formatIndonesianDate, formatDateShort } from '../utils/date';
 import { biMonthlyWeeks, getBiMonthlyLabel, getRecordBiMonth, todayYMD } from '../utils/period';
 
@@ -1714,30 +1714,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       lines.push(period.title);
 
       if (matchRecords.length === 0) {
-        if (period.isWeek1) {
-          lines.push(`* Tgl kursus : -`);
-          lines.push(`* Peserta Hadir : -`);
-        } else {
-          lines.push(`* Tgl Kursus : -`);
-          lines.push(`* Peserta : -`);
-        }
+        lines.push(`* Tgl Kursus : -`);
+        lines.push(`* Peserta : -`);
       } else {
         matchRecords.forEach((rec, idx) => {
           const dateToken = formatDateShort(rec.tanggal);
-          const uniqueNames: string[] = Array.from(new Set(rec.peserta.map(n => n.trim()).filter(n => n.length > 0)));
-          uniqueNames.sort((a, b) => a.localeCompare(b, 'id', { sensitivity: 'base' }));
-          const namesJoined = uniqueNames.length > 0 ? uniqueNames.join(', ') : '-';
+          const namesJoined = participantLine(rec);
           
           // Add trailing comma to the date token if there is another session scheduled after it in the same week
           const trailingComma = idx < matchRecords.length - 1 ? ',' : '';
 
-          if (period.isWeek1) {
-            lines.push(`* Tgl kursus : ${dateToken}${trailingComma}`);
-            lines.push(`* Peserta Hadir : ${namesJoined}`);
-          } else {
-            lines.push(`* Tgl Kursus : ${dateToken}${trailingComma}`);
-            lines.push(`* Peserta : ${namesJoined}`);
-          }
+          lines.push(`* Tgl Kursus : ${dateToken}${trailingComma}`);
+          lines.push(`* Peserta : ${namesJoined}`);
         });
       }
       lines.push("");

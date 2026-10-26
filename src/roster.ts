@@ -11,7 +11,7 @@
  * keeps producing the same output.
  */
 
-import type {StatusKey} from './styles/palette';
+import {STATUS_CODE, STATUS_ORDER, type StatusKey} from './styles/palette';
 
 export type {StatusKey};
 
@@ -163,6 +163,49 @@ export function rosterFromRecords(
   return [...byKey.entries()]
     .map(([key, name]) => ({name, nameKey: key}))
     .sort((a, b) => a.name.localeCompare(b.name, 'id'));
+}
+
+/**
+ * The participant line for one session's WhatsApp report: every santri the
+ * teacher marked, each carrying their status letter.
+ *
+ * The line used to list `peserta` alone, which is only those present, so a
+ * coordinator reading the report could not tell a santri who was ill from one
+ * who was never mentioned at all. Absences are the half of attendance that
+ * gets acted on, so they are named.
+ *
+ * Order is by mark and then by name — who turned up first, then the absences,
+ * which is the order the line gets read in.
+ */
+export function participantLine(record: {
+  peserta?: readonly string[];
+  statuses?: StatusMap;
+}): string {
+  const statuses = record.statuses ?? statusesFromPeserta(record.peserta ?? []);
+  const byKey = new Map<string, {name: string; status: StatusKey}>();
+
+  // `peserta` keeps the teacher's spelling and stays authoritative for who was
+  // present, so names come from there first.
+  for (const raw of record.peserta ?? []) {
+    const name = raw.trim();
+    const key = nameKey(name);
+    if (!name || byKey.has(key)) continue;
+    byKey.set(key, {name, status: statuses[key] ?? 'hadir'});
+  }
+
+  for (const [key, status] of Object.entries(statuses)) {
+    if (!key || byKey.has(key)) continue;
+    byKey.set(key, {name: capitalizeWords(key), status});
+  }
+
+  const entries = [...byKey.values()].sort((a, b) => {
+    const byStatus = STATUS_ORDER.indexOf(a.status) - STATUS_ORDER.indexOf(b.status);
+    if (byStatus !== 0) return byStatus;
+    return a.name.localeCompare(b.name, 'id', {sensitivity: 'base'});
+  });
+
+  if (entries.length === 0) return '-';
+  return entries.map((e) => `${e.name} (${STATUS_CODE[e.status]})`).join(', ');
 }
 
 /**

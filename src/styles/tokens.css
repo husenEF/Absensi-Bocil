@@ -117,8 +117,15 @@
 
   /* measure: a register is read down a column, not across a screen */
   --cs-measure: 34rem;
-  /* the outer shell, which the masthead, the notices and the footer share */
-  --cs-shell: 64rem;
+  /*
+   * The outer shell every page sits in: masthead, notices, content, footer.
+   * 1280px, which is the usable width of a 13–14" laptop once the browser
+   * chrome is off, so the two-column register fills a screen without the
+   * register itself growing past a readable column.
+   */
+  --cs-shell: 80rem;
+  /* A dialog is read, not scanned, so it keeps the reading measure. */
+  --cs-dialog-width: 32rem;
 }
 
 html.dark {
