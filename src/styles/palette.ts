@@ -1,9 +1,23 @@
 /**
- * ClassSync palette — ink on paper, with colour reserved for attendance.
+ * ClassSync palette — a register drawn in heavy keylines.
  *
- * The rule that shapes everything else: **the only colour in the product is the
- * four attendance marks.** Buttons, links, headings and rules are ink. A colour
- * on screen therefore always answers one question — was this santri here?
+ * Two rules hold the whole product together.
+ *
+ * **One signal colour.** Signal yellow marks the single thing the teacher came
+ * here to do: save the register. It appears on the primary action, the active
+ * tab and nowhere else. It is never load-bearing on its own — every yellow
+ * surface sits inside an ink keyline, which is what carries the 3:1 boundary a
+ * pale fill cannot.
+ *
+ * **Four marks, and nothing else wears them.** Hadir, Sakit, Izin and Alpa own
+ * the only other colours on screen, so a colour always answers one question:
+ * was this santri here? Buttons, headings, rules and destructive actions are
+ * all ink, which is also why a red "delete" never gets confused with a coral
+ * Alpa.
+ *
+ * Structure is drawn rather than shaded: a 2px ink keyline and a hard offset
+ * shadow in the same ink. There is no blur and no gradient anywhere, so the
+ * interface stays legible in sunlight on a phone held at arm's length.
  *
  * The four marks are the user's palette (colorhunt.co/palette/ff7f50ffd16606d6a0118ab2).
  * Measured, they can only be used one way: as solid fills carrying ink. As text
@@ -36,6 +50,8 @@ export type ThemeColors = {
   brandSolidHover: string;
   brandInk: string;
   brandTint: string;
+  /** The keyline drawn around a brand fill. A pale fill cannot carry 3:1 alone. */
+  brandEdge: string;
   /** Destructive actions are ink too; the words and the gate carry the weight. */
   danger: string;
   dangerSolid: string;
@@ -60,45 +76,47 @@ export type StatusColors = {
 };
 
 export const light: ThemeColors = {
-  bg: '#ffffff',
+  bg: '#faf9f5',
   surface: '#ffffff',
-  surfaceSunken: '#f6f5f2',
-  text: '#000000',
-  textMuted: '#5b5b5b',
-  border: '#e2dfd8',
-  borderStrong: '#8c8880',
-  brand: '#000000',
-  brandSolid: '#000000',
-  brandSolidHover: '#2b2b2b',
-  brandInk: '#ffffff',
-  brandTint: '#f6f5f2',
-  danger: '#000000',
-  dangerSolid: '#000000',
-  dangerSolidHover: '#2b2b2b',
+  surfaceSunken: '#f1efe6',
+  text: '#121212',
+  textMuted: '#56534c',
+  border: '#ded9cc',
+  borderStrong: '#121212',
+  brand: '#121212',
+  brandSolid: '#ffe14d',
+  brandSolidHover: '#ffd60a',
+  brandInk: '#121212',
+  brandTint: '#fff8d6',
+  brandEdge: '#121212',
+  danger: '#121212',
+  dangerSolid: '#121212',
+  dangerSolidHover: '#2f2f2f',
   dangerInk: '#ffffff',
-  dangerTint: '#fff1ea',
-  focus: '#000000',
+  dangerTint: '#fdeee9',
+  focus: '#121212',
 };
 
 export const dark: ThemeColors = {
-  bg: '#111010',
-  surface: '#111010',
-  surfaceSunken: '#1b1a18',
-  text: '#fafaf8',
-  textMuted: '#adaaa4',
-  border: '#302e2b',
-  borderStrong: '#8c8880',
-  brand: '#fafaf8',
-  brandSolid: '#fafaf8',
-  brandSolidHover: '#e4e2dd',
-  brandInk: '#111010',
-  brandTint: '#1b1a18',
-  danger: '#fafaf8',
-  dangerSolid: '#fafaf8',
-  dangerSolidHover: '#e4e2dd',
-  dangerInk: '#111010',
-  dangerTint: '#2a1a14',
-  focus: '#fafaf8',
+  bg: '#0b0b0a',
+  surface: '#171714',
+  surfaceSunken: '#211f1b',
+  text: '#f7f6f1',
+  textMuted: '#a9a69c',
+  border: '#36342d',
+  borderStrong: '#8b887f',
+  brand: '#f7f6f1',
+  brandSolid: '#ffe14d',
+  brandSolidHover: '#ffd60a',
+  brandInk: '#121212',
+  brandTint: '#2b2614',
+  brandEdge: '#f7f6f1',
+  danger: '#f7f6f1',
+  dangerSolid: '#f7f6f1',
+  dangerSolidHover: '#e2e0d9',
+  dangerInk: '#121212',
+  dangerTint: '#2d1a14',
+  focus: '#ffe14d',
 };
 
 /**
@@ -114,17 +132,17 @@ const MARK = {
 } as const;
 
 export const statusLight: Record<StatusKey, StatusColors> = {
-  hadir: {tint: '#e3f9f1', ink: '#055c45', solid: MARK.hadir, solidInk: '#000000'},
-  sakit: {tint: '#fff4de', ink: '#6b4a00', solid: MARK.sakit, solidInk: '#000000'},
-  izin: {tint: '#e2f1f7', ink: '#0d5e7a', solid: MARK.izin, solidInk: '#000000'},
-  alpa: {tint: '#ffeee7', ink: '#8c3410', solid: MARK.alpa, solidInk: '#000000'},
+  hadir: {tint: '#e3f9f1', ink: '#055c45', solid: MARK.hadir, solidInk: '#121212'},
+  sakit: {tint: '#fff4de', ink: '#6b4a00', solid: MARK.sakit, solidInk: '#121212'},
+  izin: {tint: '#e2f1f7', ink: '#0d5e7a', solid: MARK.izin, solidInk: '#121212'},
+  alpa: {tint: '#ffeee7', ink: '#8c3410', solid: MARK.alpa, solidInk: '#121212'},
 };
 
 export const statusDark: Record<StatusKey, StatusColors> = {
-  hadir: {tint: '#0c2a22', ink: '#5fe3bd', solid: MARK.hadir, solidInk: '#111010'},
-  sakit: {tint: '#2b2310', ink: '#ffd98a', solid: MARK.sakit, solidInk: '#111010'},
-  izin: {tint: '#0d2630', ink: '#6cc2dd', solid: MARK.izin, solidInk: '#111010'},
-  alpa: {tint: '#2e1a12', ink: '#ff9f7d', solid: MARK.alpa, solidInk: '#111010'},
+  hadir: {tint: '#0c2a22', ink: '#5fe3bd', solid: MARK.hadir, solidInk: '#121212'},
+  sakit: {tint: '#2b2310', ink: '#ffd98a', solid: MARK.sakit, solidInk: '#121212'},
+  izin: {tint: '#0d2630', ink: '#6cc2dd', solid: MARK.izin, solidInk: '#121212'},
+  alpa: {tint: '#3a211a', ink: '#ff9f7d', solid: MARK.alpa, solidInk: '#121212'},
 };
 
 /** Teacher-facing labels. */

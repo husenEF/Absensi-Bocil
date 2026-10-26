@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useMemo, useRef 
 import QRCode from 'qrcode';
 import jsQR from 'jsqr';
 import { db, upsertStudent, AbsensiRecord, ScheduleRecord, StudentRecord, checkForAndMigratePreviousDatabases } from '../db';
-import { buildStatusMap, nameKey, parseNameList, presentNames, rosterFromRecords, statusesFromPeserta, tally, type StatusKey, type StatusMap, type StatusTally } from '../roster';
+import { buildStatusMap, nameKey, parseNameList, presentNames, rosterFromRecords, participantLine, statusesFromPeserta, tally, unmarkedNames, type StatusKey, type StatusMap, type StatusTally } from '../roster';
 import { formatIndonesianDate, formatDateShort } from '../utils/date';
 import { biMonthlyWeeks, getBiMonthlyLabel, getRecordBiMonth, todayYMD } from '../utils/period';
 
@@ -51,11 +51,14 @@ interface AppContextType {
   currentActiveNames: string[];
   allRegisteredStudents: string[];
   students: StudentRecord[];
-  sessionStatusFor: (studentName: string) => StatusKey;
+  sessionStatusFor: (studentName: string) => StatusKey | undefined;
   setSessionStatus: (studentName: string, status: StatusKey) => void;
   handleMarkAllPresent: () => void;
+  handleClearSession: () => void;
   sessionTally: StatusTally;
+  /** Roster santri nobody has marked yet. */
   untouchedCount: number;
+  markedCount: number;
   handleAddStudent: (rawName: string) => Promise<boolean>;
   lastSaved: { tanggal: string; tally: StatusTally } | null;
   dismissLastSaved: () => void;
@@ -205,6 +208,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [students, setStudents] = useState<StudentRecord[]>([]);
   const [sessionStatuses, setSessionStatuses] = useState<StatusMap>({});
   const [touchedStudents, setTouchedStudents] = useState<Set<string>>(new Set());
+
+  /**
+   * Which session the marks on screen belong to, and whether they hold work
+   * that is not in the database yet.
+   *
+   * Refs rather than state: the loader below reads them across an await, and
+   * a re-render in between would hand it a stale value — which is the whole
+   * failure it is there to prevent.
+   */
+  const sessionKeyRef = useRef<string | null>(null);
+  const sessionDirtyRef = useRef(false);
   const [lastSaved, setLastSaved] = useState<{ tanggal: string; tally: StatusTally } | null>(null);
   const [schedules, setSchedules] = useState<ScheduleRecord[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -871,28 +885,48 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   /**
-   * Status for one santri in the session being edited.
-   *
-   * Everyone starts at Hadir, so the teacher only touches the exceptions —
-   * the pattern every established register app uses.
-   */
-  /**
    * Load the statuses already saved for this date and class.
    *
    * Without this, reopening a session saved earlier starts every santri back
    * at Hadir, so saving again quietly erased the absences already recorded —
    * the record's own `statuses` were never read back in.
+   *
+   * It must not run over the teacher's own work. `records` is in the
+   * dependencies so an import or a delete elsewhere is reflected here, but
+   * that also fires while a register is being filled in: the first load after
+   * mount lands a moment later, finds no saved session for today, and calls
+   * `setSessionStatuses({})` — wiping every mark made in the meantime. On a
+   * quick laptop the load wins the race and nothing is noticed; on a slow
+   * phone, or on CI, the teacher watches their marks disappear.
+   *
+   * So a reload only happens when it is moving to a *different* session, or
+   * when the current one has nothing unsaved in it.
    */
   useEffect(() => {
     let cancelled = false;
+    const sessionKey = `${tanggalInput}|${selectedScheduleId ?? ''}`;
+
+    // Claim the session up front. Doing this only after a successful read left
+    // the key null for the whole of the first load, so the check below had
+    // nothing to compare against and cleared the form anyway.
+    if (sessionKeyRef.current !== sessionKey) {
+      sessionKeyRef.current = sessionKey;
+      sessionDirtyRef.current = false;
+    }
 
     const load = async () => {
       if (!tanggalInput) return;
+      if (sessionDirtyRef.current) return;
+
       try {
         const sameDate = await db.absensi.where('tanggal').equals(tanggalInput).toArray();
         const linkedId = selectedScheduleId ? Number(selectedScheduleId) : undefined;
         const existing = sameDate.find(r => (r.scheduleId ?? undefined) === linkedId);
         if (cancelled) return;
+
+        // Checked again after the await: a mark made while the read was in
+        // flight is exactly the case this guard exists for.
+        if (sessionKeyRef.current !== sessionKey || sessionDirtyRef.current) return;
 
         if (existing?.statuses && Object.keys(existing.statuses).length > 0) {
           setSessionStatuses(existing.statuses);
@@ -914,37 +948,58 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return () => { cancelled = true; };
   }, [tanggalInput, selectedScheduleId, records]);
 
-  const sessionStatusFor = (studentName: string): StatusKey => {
-    return sessionStatuses[nameKey(studentName)] ?? 'hadir';
+  /** The mark on this santri for the session being edited, or nothing yet. */
+  const sessionStatusFor = (studentName: string): StatusKey | undefined => {
+    return sessionStatuses[nameKey(studentName)];
   };
 
+  /** Tapping the mark a santri already carries takes it off again. */
   const setSessionStatus = (studentName: string, status: StatusKey) => {
-    setSessionStatuses(prev => ({ ...prev, [nameKey(studentName)]: status }));
-    setTouchedStudents(prev => {
-      const next = new Set(prev);
-      next.add(nameKey(studentName));
+    const key = nameKey(studentName);
+    sessionDirtyRef.current = true;
+    setSessionStatuses(prev => {
+      const next = { ...prev };
+      if (next[key] === status) delete next[key];
+      else next[key] = status;
       return next;
     });
+    setTouchedStudents(prev => new Set(prev).add(key));
   };
 
   const handleMarkAllPresent = () => {
-    const next: StatusMap = {};
-    allRegisteredStudents.forEach(name => {
-      next[nameKey(name)] = 'hadir';
-    });
+    sessionDirtyRef.current = true;
+    const next: StatusMap = { ...sessionStatuses };
+    // Only the santri still waiting for a mark. Marks the teacher has already
+    // set — the two who are ill today — are not swept away by this shortcut.
+    const filled = allRegisteredStudents.filter(name => !next[nameKey(name)]);
+    filled.forEach(name => { next[nameKey(name)] = 'hadir'; });
     setSessionStatuses(next);
-    setTouchedStudents(new Set(allRegisteredStudents.map(nameKey)));
-    showToast('Semua santri ditandai hadir.', 'info');
+    setTouchedStudents(new Set(Object.keys(next)));
+    showToast(
+      filled.length === 0
+        ? 'Semua santri sudah ditandai.'
+        : `${filled.length} santri sisanya ditandai hadir.`,
+      'info'
+    );
+  };
+
+  const handleClearSession = () => {
+    sessionDirtyRef.current = true;
+    setSessionStatuses({});
+    setTouchedStudents(new Set());
+    showToast('Semua tanda dikosongkan.', 'info');
   };
 
   const sessionTally = useMemo<StatusTally>(() => {
     return tally(buildStatusMap(allRegisteredStudents, sessionStatuses));
   }, [allRegisteredStudents, sessionStatuses]);
 
-  /** Santri whose status the teacher has not looked at yet. */
+  /** Santri still waiting for a mark. */
   const untouchedCount = useMemo(() => {
-    return allRegisteredStudents.filter(n => !touchedStudents.has(nameKey(n))).length;
-  }, [allRegisteredStudents, touchedStudents]);
+    return unmarkedNames(allRegisteredStudents, sessionStatuses).length;
+  }, [allRegisteredStudents, sessionStatuses]);
+
+  const markedCount = allRegisteredStudents.length - untouchedCount;
 
   const dismissLastSaved = () => setLastSaved(null);
 
@@ -996,11 +1051,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const statuses = buildStatusMap(rosterNames, sessionStatuses);
     const parsedPeserta = presentNames(rosterNames, statuses);
 
-    if (parsedPeserta.length === 0 && sessionTally.hadir === 0) {
-      const proceed = window.confirm(
-        'Tidak ada santri yang hadir pada sesi ini. Simpan tetap?'
-      );
-      if (!proceed) return;
+    if (Object.keys(statuses).length === 0) {
+      showToast('Tandai dulu kehadiran santri sebelum menyimpan.', 'error');
+      return;
     }
 
     try {
@@ -1035,6 +1088,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       setNamesInput('');
       setSelectedScheduleId(undefined);
+      sessionDirtyRef.current = false;
+      sessionKeyRef.current = null;
       setSessionStatuses({});
       setTouchedStudents(new Set());
       setLastSaved({ tanggal: tanggalInput, tally: tally(statuses) });
@@ -1077,6 +1132,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       setNamesInput('');
       setSelectedScheduleId(undefined);
+      sessionDirtyRef.current = false;
+      sessionKeyRef.current = null;
       setSessionStatuses({});
       setTouchedStudents(new Set());
       setLastSaved({ tanggal: staged.tanggal, tally: tally(staged.statuses) });
@@ -1633,30 +1690,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       lines.push(period.title);
 
       if (matchRecords.length === 0) {
-        if (period.isWeek1) {
-          lines.push(`* Tgl kursus : -`);
-          lines.push(`* Peserta Hadir : -`);
-        } else {
-          lines.push(`* Tgl Kursus : -`);
-          lines.push(`* Peserta : -`);
-        }
+        lines.push(`* Tgl Kursus : -`);
+        lines.push(`* Peserta : -`);
       } else {
         matchRecords.forEach((rec, idx) => {
           const dateToken = formatDateShort(rec.tanggal);
-          const uniqueNames: string[] = Array.from(new Set(rec.peserta.map(n => n.trim()).filter(n => n.length > 0)));
-          uniqueNames.sort((a, b) => a.localeCompare(b, 'id', { sensitivity: 'base' }));
-          const namesJoined = uniqueNames.length > 0 ? uniqueNames.join(', ') : '-';
+          const namesJoined = participantLine(rec);
           
           // Add trailing comma to the date token if there is another session scheduled after it in the same week
           const trailingComma = idx < matchRecords.length - 1 ? ',' : '';
 
-          if (period.isWeek1) {
-            lines.push(`* Tgl kursus : ${dateToken}${trailingComma}`);
-            lines.push(`* Peserta Hadir : ${namesJoined}`);
-          } else {
-            lines.push(`* Tgl Kursus : ${dateToken}${trailingComma}`);
-            lines.push(`* Peserta : ${namesJoined}`);
-          }
+          lines.push(`* Tgl Kursus : ${dateToken}${trailingComma}`);
+          lines.push(`* Peserta : ${namesJoined}`);
         });
       }
       lines.push("");
@@ -1782,8 +1827,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       sessionStatusFor,
       setSessionStatus,
       handleMarkAllPresent,
+      handleClearSession,
       sessionTally,
       untouchedCount,
+      markedCount,
       handleAddStudent,
       lastSaved,
       dismissLastSaved,

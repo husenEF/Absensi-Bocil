@@ -68,8 +68,13 @@ describe.each(themes)('%s theme', (_name, t) => {
     expect(ratio(t.focus, t.surface)).toBeGreaterThanOrEqual(NON_TEXT);
   });
 
-  it('the primary button stands out from the page', () => {
-    expect(ratio(t.brandSolid, t.surface)).toBeGreaterThanOrEqual(NON_TEXT);
+  it('the primary button has a visible boundary against the page', () => {
+    // Signal yellow is a pale fill: against white it reaches only ~1.4:1, and
+    // no yellow bright enough to be a signal will ever clear 3:1 on paper.
+    // The boundary is therefore drawn, not filled — every brand surface sits
+    // inside an ink keyline, and that keyline is what 1.4.11 measures.
+    expect(ratio(t.brandEdge, t.surface)).toBeGreaterThanOrEqual(NON_TEXT);
+    expect(ratio(t.brandEdge, t.bg)).toBeGreaterThanOrEqual(NON_TEXT);
   });
 });
 
@@ -140,6 +145,7 @@ describe('colour is reserved for attendance', () => {
       theme.border,
       theme.borderStrong,
       theme.brandSolid,
+      theme.brandEdge,
       theme.dangerSolid,
       theme.focus,
     ].map((c) => c.toLowerCase());
