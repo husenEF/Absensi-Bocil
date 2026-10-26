@@ -1,7 +1,9 @@
-// Bumped whenever the shell's own files change, which is what retires the
-// previous cache in the activate handler below. The icons changed with it, so
-// an installed app that kept serving v1 would keep the old launcher artwork.
-const CACHE_NAME = 'presensi-kelas-cache-v2';
+// Written by scripts/sync-version.mjs from the version in package.json — edit
+// that, not this line. The activate handler below deletes every cache whose
+// name is not this one, so the name changing is what retires the previous
+// shell; while it stayed the same across a release, an installed app went on
+// serving the old build forever with nothing to report.
+const CACHE_NAME = 'classsync-shell-v2.3.0';
 const ASSETS_TO_CACHE = [
   './',
   'index.html',
