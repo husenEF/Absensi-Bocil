@@ -94,13 +94,19 @@ murah di bawah sinar matahari.
 
 Warna dipakai secara hemat dan punya arti tetap:
 
-- **Kuning sinyal** hanya untuk satu aksi utama dan tab yang sedang aktif. Karena
-  kuning pucat tidak akan pernah mencapai kontras 3:1 di atas kertas putih, batas
-  visualnya selalu datang dari garis tepi tinta — bukan dari warnanya.
-- **Empat warna tanda** (teal, kuning tua, biru, koral) hanya milik Hadir, Sakit,
+- **Kuning sinyal** (`#ffd966` siang, emas `#d4af37` malam) hanya untuk satu aksi
+  utama dan tab yang sedang aktif. Karena kuning pucat tidak akan pernah mencapai
+  kontras 3:1 di atas kertas putih, batas visualnya selalu datang dari garis tepi
+  tinta — bukan dari warnanya.
+- **Empat warna tanda** (hijau, kuning, biru, oranye) hanya milik Hadir, Sakit,
   Izin, dan Alpa. Tidak ada elemen lain yang memakainya, sehingga sebuah warna di
-  layar selalu menjawab satu pertanyaan: santri ini hadir atau tidak.
+  layar selalu menjawab satu pertanyaan: santri ini hadir atau tidak. Satu-satunya
+  perkecualian yang disengaja: Sakit memakai kuning yang sama dengan tombol utama.
 - Semua yang lain — tombol, judul, garis, bahkan aksi hapus — memakai tinta.
+- **Mode gelap** memakai arang lembut `#2c2c2c`, bukan hitam pekat, dan garis
+  tepinya dibalik menjadi abu terang: garis hitam di atas halaman gelap tidak
+  menggambar apa pun. Hadir dan Izin ikut diredupkan supaya satu layar penuh
+  tanda tidak menyilaukan di ruangan gelap.
 
 Setiap pasangan warna diuji terhadap WCAG 2.2 AA di `src/styles/palette.test.ts`,
 jadi sebuah warna tidak bisa diubah menjadi tidak terbaca tanpa ada tes yang gagal.
@@ -178,6 +184,7 @@ Berkasnya ada di `e2e/`:
 | `checkin.spec.ts` | Alur presensi utuh, dari layar kosong sampai tersimpan |
 | `report.spec.ts` | Bentuk laporan WhatsApp |
 | `accessibility.spec.ts` | Cincin fokus, operasi lewat papan ketik, huruf pada tanda, 320px tanpa geser samping, ukuran sasaran sentuh |
+| `pages.spec.ts` | Jadwal (tambah, hapus, muncul di presensi), Sinkron, dan sapuan ukuran sasaran sentuh di kelima tab |
 
 Karena aplikasinya tidak punya API, data contoh ditulis langsung ke IndexedDB
 lewat `e2e/helpers.ts`.

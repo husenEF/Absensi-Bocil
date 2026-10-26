@@ -137,6 +137,11 @@ describe('colour is reserved for attendance', () => {
   ])('%s: no chrome colour reuses a mark colour', (_n, theme, statuses) => {
     // If a button or a heading borrowed a mark's colour, a colour on screen
     // would stop meaning one thing. Ink and paper only, everywhere else.
+    //
+    // Sakit is the single, deliberate exception: the ClassSync palette paints
+    // the primary action and the Sakit mark in the same yellow. Pinning it
+    // here means the overlap stays one colour in one place rather than
+    // spreading to Hadir, Izin or Alpa, which must never appear as chrome.
     const chrome = [
       theme.bg,
       theme.surface,
@@ -150,7 +155,12 @@ describe('colour is reserved for attendance', () => {
       theme.focus,
     ].map((c) => c.toLowerCase());
 
-    for (const mark of marks(statuses as Record<string, StatusColors>)) {
+    const s = statuses as Record<string, StatusColors>;
+    const sharedYellow = s.sakit.solid.toLowerCase();
+    expect(sharedYellow).toBe(theme.brandSolid.toLowerCase());
+
+    for (const mark of marks(s)) {
+      if (mark === sharedYellow) continue;
       expect(chrome, `${mark} is used as chrome`).not.toContain(mark);
     }
   });

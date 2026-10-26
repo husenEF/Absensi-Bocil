@@ -112,6 +112,16 @@
 }
 
 /*
+ * A panel whose entire content is one button. Folded shut, "Tambah santri" is
+ * a single action, and a full panel's padding around it read as a gap in the
+ * page rather than as something to press. The button keeps its 48px; only the
+ * space around it goes.
+ */
+.cs-card--action {
+  padding: var(--cs-space-2);
+}
+
+/*
  * A destructive or a settled panel keeps the keyline and takes a thick rule
  * down its leading edge — the one place a mark colour touches the chrome, and
  * it is always saying something about attendance.
@@ -210,15 +220,40 @@
   gap: var(--cs-space-3);
 }
 
+/* A plain vertical stack on the page's own rhythm — a form, or a list of
+   rows inside a panel. */
+.cs-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cs-space-4);
+  list-style: none;
+}
+
 .cs-grid-2 {
   display: grid;
   grid-template-columns: 1fr;
   gap: var(--cs-space-4);
 }
 
+.cs-grid-3 {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--cs-space-4);
+}
+
+/* Let each column hug its own content, for a pair whose two panels say
+   different amounts and would otherwise leave the shorter one half empty. */
+.cs-grid--top {
+  align-items: start;
+}
+
 @media (min-width: 48rem) {
   .cs-grid-2 {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .cs-grid-3 {
+    grid-template-columns: repeat(3, 1fr);
   }
 }
 
@@ -236,6 +271,9 @@
  * ring, such as a mark sitting on a filled row.
  */
 .cs-btn:focus-visible,
+/* A file picker has to be a label wrapping a hidden input, so the ring has to
+   follow the input's focus out to the box the teacher actually sees. */
+.cs-btn:has(:focus-visible),
 .cs-iconbtn:focus-visible,
 .cs-tab:focus-visible,
 .cs-group__btn:focus-visible,
@@ -790,7 +828,9 @@
   border: var(--cs-keyline) solid var(--cs-edge);
   border-radius: var(--cs-radius-sm);
   font-weight: 800;
-  color: #121212;
+  /* The letter's colour comes from the mark it sits on — see the modifiers
+     further down. Hard-coding ink here left Hadir and Izin unreadable once the
+     dark theme dimmed those two fills. */
 }
 
 /* --------------------------------------------------------------- tallies */
@@ -825,6 +865,12 @@
   border: 1px solid var(--cs-edge);
   border-radius: 2px;
   flex: none;
+}
+
+/* A chip that is only a figure. With no mark behind it the swatch would be an
+   empty box the reader has to decide to ignore. */
+.cs-chip--count::before {
+  display: none;
 }
 
 .cs-chip--hadir::before { background-color: var(--cs-hadir-solid); }
@@ -1138,10 +1184,10 @@
   color: var(--cs-text);
 }
 
-.cs-legend__mark--hadir { background-color: var(--cs-hadir-solid); }
-.cs-legend__mark--sakit { background-color: var(--cs-sakit-solid); }
-.cs-legend__mark--izin  { background-color: var(--cs-izin-solid); }
-.cs-legend__mark--alpa  { background-color: var(--cs-alpa-solid); }
+.cs-legend__mark--hadir { background-color: var(--cs-hadir-solid); color: var(--cs-hadir-solid-ink); }
+.cs-legend__mark--sakit { background-color: var(--cs-sakit-solid); color: var(--cs-sakit-solid-ink); }
+.cs-legend__mark--izin  { background-color: var(--cs-izin-solid);  color: var(--cs-izin-solid-ink); }
+.cs-legend__mark--alpa  { background-color: var(--cs-alpa-solid);  color: var(--cs-alpa-solid-ink); }
 
 /* The stack of notices above the page content. */
 .cs-notices {
@@ -1225,7 +1271,9 @@
   gap: var(--cs-space-4);
   width: 100%;
   padding: var(--cs-space-4);
-  padding-bottom: calc(var(--cs-tap) + var(--cs-space-7));
+  /* The footer below carries the clearance for the fixed tab bar, so repeating
+     it here only left a band of empty page under the last panel. */
+  padding-bottom: var(--cs-space-5);
 }
 
 .cs-footer {
@@ -1307,6 +1355,49 @@
 
 .cs-tab__label {
   letter-spacing: -0.01em;
+}
+
+/* ------------------------------------------------------------------- sync */
+
+/*
+ * The camera preview. Black inside its keyline, because the picture is the
+ * content and anything else behind it reads as part of what is being scanned.
+ */
+.cs-viewfinder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background-color: #000000;
+  border: var(--cs-keyline) solid var(--cs-edge);
+  border-radius: var(--cs-radius);
+}
+
+.cs-viewfinder__video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/*
+ * A barcode is only scannable on white, whatever the theme, so this panel
+ * keeps its own paper rather than taking the surface colour.
+ */
+.cs-qr {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--cs-space-3);
+  background-color: #ffffff;
+  border: var(--cs-keyline) solid var(--cs-edge);
+  border-radius: var(--cs-radius);
+}
+
+.cs-qr img {
+  width: 12rem;
+  height: 12rem;
+  object-fit: contain;
 }
 
 /* A step number in the margin: the guide really is a sequence, so the figure
