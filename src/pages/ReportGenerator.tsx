@@ -519,7 +519,7 @@ export const ReportGenerator: React.FC = () => {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0 }}
-      className="space-y-6"
+      className="cs-shell space-y-6"
     >
       {/* Week 3 Sticky Alert / Announcement */}
       {todayIsThirdWeek && !hideWeekReminder && (

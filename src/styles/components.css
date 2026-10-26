@@ -28,6 +28,17 @@
 
 /* ------------------------------------------------------------------ page */
 
+/*
+ * The container. Every page sits inside it so the content lines up with the
+ * masthead above and the tab bar below, instead of running edge to edge on a
+ * laptop while the header stays centred.
+ */
+.cs-shell {
+  width: 100%;
+  max-width: var(--cs-shell);
+  margin-inline: auto;
+}
+
 .cs-page {
   display: flex;
   flex-direction: column;
@@ -60,6 +71,44 @@
 .cs-card--inset {
   background-color: var(--cs-surface-sunken);
   box-shadow: none;
+}
+
+/*
+ * A notice is a bar, not a panel. It is something the teacher reads once and
+ * dismisses, so it gets one row and the smallest offset — a full-height card
+ * for it pushed the register, which is the reason they opened the app, below
+ * the fold.
+ */
+.cs-card--bar {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--cs-space-3);
+  padding: var(--cs-space-2) var(--cs-space-3);
+  box-shadow: var(--cs-lift-sm);
+}
+
+.cs-card--bar .cs-label {
+  padding-bottom: 0;
+  border-bottom: 0;
+  flex: none;
+}
+
+.cs-card--bar .cs-muted {
+  flex: 1 1 14rem;
+  min-width: 0;
+}
+
+.cs-card--bar .cs-btn {
+  flex: none;
+  min-height: 40px;
+  padding-block: var(--cs-space-1);
+}
+
+.cs-card--bar .cs-iconbtn {
+  width: 40px;
+  height: 40px;
+  flex: none;
 }
 
 /*
@@ -902,7 +951,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--cs-space-4);
-  width: min(30rem, 100%);
+  width: min(var(--cs-dialog-width), 100%);
   max-height: 90vh;
   overflow-y: auto;
   padding: var(--cs-space-5);
@@ -1017,6 +1066,13 @@
 .cs-legend__mark--izin  { background-color: var(--cs-izin-solid); }
 .cs-legend__mark--alpa  { background-color: var(--cs-alpa-solid); }
 
+/* The stack of notices above the page content. */
+.cs-notices {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cs-space-2);
+}
+
 /* -------------------------------------------------------------- the shell */
 
 .cs-masthead {
@@ -1087,6 +1143,9 @@
 
 .cs-main {
   flex: 1 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--cs-space-4);
   width: 100%;
   padding: var(--cs-space-4);
   padding-bottom: calc(var(--cs-tap) + var(--cs-space-7));
@@ -1199,7 +1258,7 @@
 
   .cs-page--split {
     display: grid;
-    grid-template-columns: 22rem 1fr;
+    grid-template-columns: 24rem minmax(0, 1fr);
     align-items: start;
     gap: var(--cs-space-5);
     max-width: var(--cs-shell);

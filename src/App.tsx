@@ -152,23 +152,27 @@ const MainAppContent: React.FC = () => {
       </header>
 
       <main className="cs-main">
-        <div className="cs-page cs-page--wide">
-          {deferredPrompt && (
-            <section className="cs-card">
-              <p className="cs-label">Pasang di layar utama</p>
-              <p className="cs-muted">
-                ClassSync bisa dibuka seperti aplikasi biasa, lengkap tanpa internet.
-              </p>
-              <Button variant="primary" onClick={executePWAPrompt}>
-                Pasang ClassSync
-              </Button>
-            </section>
-          )}
+        {/* Notices are single rows. Both are read once and dismissed, so
+            neither earns the height of a panel above the register. */}
+        {(deferredPrompt || !hideDbNotice) && (
+          <div className="cs-shell cs-notices">
+            {deferredPrompt && (
+              <section className="cs-card cs-card--bar">
+                <p className="cs-muted">
+                  Pasang ClassSync di layar utama untuk membukanya seperti aplikasi biasa.
+                </p>
+                <Button variant="primary" onClick={executePWAPrompt}>
+                  Pasang
+                </Button>
+              </section>
+            )}
 
-          {!hideDbNotice && (
-            <section className="cs-card cs-card--inset">
-              <div className="cs-card__head">
-                <p className="cs-label">Data tersimpan di ponsel ini</p>
+            {!hideDbNotice && (
+              <section className="cs-card cs-card--bar cs-card--inset">
+                <p className="cs-muted">
+                  Presensi tersimpan di ponsel ini saja dan tidak dikirim ke mana pun.
+                  Ingat untuk mengunduh cadangan sesekali.
+                </p>
                 <button
                   type="button"
                   onClick={handleDismissDbNotice}
@@ -177,14 +181,10 @@ const MainAppContent: React.FC = () => {
                 >
                   <X className="cs-icon" />
                 </button>
-              </div>
-              <p className="cs-muted">
-                Presensi yang Anda catat tersimpan di ponsel ini saja dan tidak dikirim ke
-                mana pun. Ingat untuk mengunduh cadangan sesekali.
-              </p>
-            </section>
-          )}
-        </div>
+              </section>
+            )}
+          </div>
+        )}
 
         <AnimatePresence mode="wait">
           {renderActivePage()}

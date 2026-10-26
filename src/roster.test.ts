@@ -1,6 +1,7 @@
 import {describe, expect, it} from 'vitest';
 import {
   buildStatusMap,
+  participantLine,
   unmarkedNames,
   capitalizeWords,
   escapeHtml,
@@ -181,5 +182,53 @@ describe('escapeHtml', () => {
   it('leaves ordinary Indonesian names alone', () => {
     expect(escapeHtml("Siti Nur'aini")).toBe('Siti Nur&#39;aini');
     expect(escapeHtml('Ahmad')).toBe('Ahmad');
+  });
+});
+
+
+describe('participantLine', () => {
+  it('names every marked santri with their status letter', () => {
+    const line = participantLine({
+      peserta: ['Ubin'],
+      statuses: {ubin: 'hadir', aan: 'izin'},
+    });
+    expect(line).toBe('Ubin (H), Aan (I)');
+  });
+
+  it('puts those who came first, then the absences, by mark', () => {
+    const line = participantLine({
+      peserta: ['Ubin'],
+      statuses: {
+        ubin: 'hadir',
+        aan: 'izin',
+        'budi santoso': 'sakit',
+        'dewi lestari': 'alpa',
+      },
+    });
+    expect(line).toBe('Ubin (H), Budi Santoso (S), Aan (I), Dewi Lestari (A)');
+  });
+
+  it('sorts by name inside a single mark', () => {
+    const line = participantLine({
+      peserta: ['Umar', 'Budi', 'Ahmad'],
+      statuses: {umar: 'hadir', budi: 'hadir', ahmad: 'hadir'},
+    });
+    expect(line).toBe('Ahmad (H), Budi (H), Umar (H)');
+  });
+
+  it('keeps the spelling the teacher typed rather than the matching key', () => {
+    const line = participantLine({
+      peserta: ['Siti Aminah'],
+      statuses: {'siti aminah': 'hadir'},
+    });
+    expect(line).toBe('Siti Aminah (H)');
+  });
+
+  it('reads an old record that only ever listed who was present', () => {
+    expect(participantLine({peserta: ['Budi', 'Siti']})).toBe('Budi (H), Siti (H)');
+  });
+
+  it('says so plainly when a session recorded nobody', () => {
+    expect(participantLine({peserta: [], statuses: {}})).toBe('-');
   });
 });
