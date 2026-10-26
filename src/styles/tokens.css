@@ -138,59 +138,60 @@
 html.dark {
   color-scheme: dark;
 
-  /* Soft charcoal, not black: the page recedes without the panels having to
-     glow to be seen against it. */
-  --cs-bg: #2c2c2c;
-  --cs-surface: #3e3e3e;
-  --cs-surface-sunken: #202020;
-  --cs-text: #e8e8e1;
-  --cs-text-muted: #d8d3d8;
+  /* A cool charcoal, not black, and all of it off one ramp: the page recedes
+     without the panels having to glow to be seen against it, and a rule, a
+     tray and a card all read as the same material. */
+  --cs-bg: #282830;
+  --cs-surface: #32323b;
+  --cs-surface-sunken: #1e1e24;
+  --cs-text: #e4e4e8;
+  --cs-text-muted: #b8b8c2;
 
-  --cs-border: #555555;
-  --cs-border-strong: #a0a0a0;
+  --cs-border: #52525e;
+  --cs-border-strong: #8e8e9a;
 
-  --cs-brand: #e8e8e1;
-  /* Signal yellow is dimmed to gold at night; it still carries dark ink. */
-  --cs-brand-solid: #d4af37;
-  --cs-brand-solid-hover: #e2c250;
-  --cs-brand-ink: #1a1d1a;
+  --cs-brand: #e4e4e8;
+  /* Signal yellow is dimmed to a muted gold at night; it still carries dark ink. */
+  --cs-brand-solid: #e5c05e;
+  --cs-brand-solid-hover: #f0cf74;
+  --cs-brand-ink: #1e1e24;
   --cs-brand-tint: #3a3016;
-  --cs-brand-edge: #e8e8e1;
+  --cs-brand-edge: #e4e4e8;
 
-  --cs-danger: #e8e8e1;
-  --cs-danger-solid: #e8e8e1;
-  --cs-danger-solid-hover: #d0d0c9;
-  --cs-danger-ink: #1a1d1a;
+  --cs-danger: #e4e4e8;
+  --cs-danger-solid: #e4e4e8;
+  --cs-danger-solid-hover: #b8b8c2;
+  --cs-danger-ink: #1e1e24;
   --cs-danger-tint: #3a2419;
 
-  --cs-focus: #d4af37;
+  --cs-focus: #e5c05e;
 
-  /* The marks keep their hues and lose their glare: Hadir and Izin become deep
-     fills carrying light ink, so a screenful of them does not burn in a dark
-     room. The letter is what is read either way. */
-  --cs-hadir-tint: #15301f;
+  /* The marks keep their hues and lose their glare: the same four colours
+     muted a step, all still carrying dark ink, so a screenful of them does not
+     burn in a dark room. The letter is what is read either way. */
+  --cs-hadir-tint: #163322;
   --cs-hadir-ink: #7fd9a0;
-  --cs-hadir-solid: #1e5c31;
-  --cs-hadir-solid-ink: #e8e8e1;
+  --cs-hadir-solid: #3da868;
+  --cs-hadir-solid-ink: #1e1e24;
 
-  --cs-sakit-tint: #332a11;
+  --cs-sakit-tint: #352b12;
   --cs-sakit-ink: #e8c75e;
-  --cs-sakit-solid: #d4af37;
-  --cs-sakit-solid-ink: #1a1d1a;
+  --cs-sakit-solid: #e5c05e;
+  --cs-sakit-solid-ink: #1e1e24;
 
-  --cs-izin-tint: #17233a;
-  --cs-izin-ink: #8fb4e8;
-  --cs-izin-solid: #1a3b7b;
-  --cs-izin-solid-ink: #e8e8e1;
+  --cs-izin-tint: #1e2c45;
+  --cs-izin-ink: #9cc0ec;
+  --cs-izin-solid: #5b90ce;
+  --cs-izin-solid-ink: #1e1e24;
 
   --cs-alpa-tint: #33210f;
   --cs-alpa-ink: #e8a263;
-  --cs-alpa-solid: #cc7722;
-  --cs-alpa-solid-ink: #1a1d1a;
+  --cs-alpa-solid: #d98943;
+  --cs-alpa-solid-ink: #1e1e24;
 
   /* At night the keyline inverts: a black edge on a charcoal page draws
-     nothing, so the edge and its offset shadow are drawn in light grey. */
-  --cs-edge: #a0a0a0;
+     nothing, so the edge and its offset shadow are drawn in the ramp's grey. */
+  --cs-edge: #8e8e9a;
 }
 
 /*

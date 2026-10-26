@@ -30,13 +30,13 @@
 }
 
 html.dark {
-  --paper: #3e3e3e;
-  --paper-sunken: #202020;
-  --rule: #555555;
-  --rule-strong: #a0a0a0;
-  --ink: #e8e8e1;
-  --ink-muted: #d8d3d8;
-  --ink-soft: #b0b0ab;
+  --paper: #32323b;
+  --paper-sunken: #1e1e24;
+  --rule: #52525e;
+  --rule-strong: #8e8e9a;
+  --ink: #e4e4e8;
+  --ink-muted: #b8b8c2;
+  --ink-soft: #b8b8c2;
 }
 
 @theme {

@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { motion } from "motion/react";
-import { Check, Eraser, Plus, Save, Search, UserPlus, X } from "lucide-react";
+import { Check, Eraser, Plus, Save, Search, Trash2, UserMinus, UserPlus, X } from "lucide-react";
 import { useApp } from "../context/AppContext";
 import { formatIndonesianDate } from "../utils/date";
 import { STATUS_CODE, STATUS_LABEL, STATUS_ORDER } from "../styles/palette";
@@ -79,6 +79,7 @@ export const AttendanceInput: React.FC = () => {
     handleMarkAllPresent,
     handleClearSession,
     handleAddStudent,
+    handleRemoveStudent,
     handleSaveAttendance,
     lastSaved,
     dismissLastSaved,
@@ -93,6 +94,7 @@ export const AttendanceInput: React.FC = () => {
   const [newNameError, setNewNameError] = useState<string | undefined>();
   const [showBulk, setShowBulk] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
+  const [showManage, setShowManage] = useState(false);
   const [query, setQuery] = useState("");
 
   const linkedSchedule = schedules.find((s) => s.id === selectedScheduleId);
@@ -471,7 +473,9 @@ export const AttendanceInput: React.FC = () => {
             week, so the form sat above the Save button taking room from the
             thing teachers actually come back for. */}
         <section
-          className={`my-3 md:my-0 cs-card${showAdd ? "" : " cs-card--action"}`}
+          className={`my-3 md:my-0 cs-card${
+            showAdd || showManage ? "" : " cs-card--action"
+          }`}
         >
           <Button
             variant="ghost"
@@ -555,6 +559,47 @@ export const AttendanceInput: React.FC = () => {
                 ) : null}
               </div>
             </>
+          ) : null}
+
+          {/* Taking a name off the list. Folded away like the add form, and
+              below it, because a roster is typed once and pruned far less
+              often than it is added to. */}
+          {hasRoster ? (
+            <div>
+              <Button
+                variant="ghost"
+                icon={<UserMinus className="cs-icon" />}
+                aria-expanded={showManage}
+                onClick={() => setShowManage((v) => !v)}
+              >
+                {showManage ? "Tutup kelola daftar" : "Hapus santri dari daftar"}
+              </Button>
+
+              {showManage ? (
+                <div className="cs-fold">
+                  <p className="cs-muted">
+                    Santri yang pernah dicatat tetap tersimpan di riwayat dan di
+                    laporan. Menghapusnya di sini hanya berarti namanya tidak
+                    ditawarkan lagi saat mencatat presensi baru.
+                  </p>
+                  <ul className="cs-namelist" aria-label="Daftar santri tersimpan">
+                    {allRegisteredStudents.map((name) => (
+                      <li key={name} className="cs-namelist__row">
+                        <span className="cs-namelist__name">{name}</span>
+                        <Button
+                          variant="ghost"
+                          icon={<Trash2 className="cs-icon" />}
+                          aria-label={`Hapus ${name} dari daftar santri`}
+                          onClick={() => void handleRemoveStudent(name)}
+                        >
+                          Hapus
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+            </div>
           ) : null}
         </section>
 

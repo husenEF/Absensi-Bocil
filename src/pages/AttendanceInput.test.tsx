@@ -257,6 +257,122 @@ describe('adding santri', () => {
   });
 });
 
+describe('removing santri', () => {
+  const openManageList = async () => {
+    await userEvent.click(
+      screen.getByRole('button', {name: 'Hapus santri dari daftar'}),
+    );
+    return screen.findByRole('list', {name: 'Daftar santri tersimpan'});
+  };
+
+  it('keeps the list folded away until it is asked for', async () => {
+    renderPage();
+    await rosterNames();
+
+    expect(
+      screen.queryByRole('list', {name: 'Daftar santri tersimpan'}),
+    ).not.toBeInTheDocument();
+
+    await openManageList();
+
+    expect(
+      screen.getByRole('list', {name: 'Daftar santri tersimpan'}),
+    ).toBeInTheDocument();
+  });
+
+  it('names the santri in each delete button, so the rows are told apart', async () => {
+    renderPage();
+    await rosterNames();
+    await openManageList();
+
+    // Nine identical "Hapus" buttons are nine identical announcements. The
+    // visible label is still "Hapus", which the accessible name contains.
+    expect(
+      screen.getByRole('button', {name: `Hapus ${ROSTER[0]} dari daftar santri`}),
+    ).toBeInTheDocument();
+  });
+
+  it('takes a santri off the register and off the count', async () => {
+    renderPage();
+    await rosterNames();
+    await openManageList();
+
+    await userEvent.click(
+      screen.getByRole('button', {name: `Hapus ${ROSTER[0]} dari daftar santri`}),
+    );
+
+    await waitFor(() => expect(screen.queryByText(ROSTER[0])).not.toBeInTheDocument());
+    // The undo that goes with this lives on the shared toast, which the app
+    // shell owns rather than this page.
+    expect(
+      await screen.findByText(`0/${ROSTER.length - 1} ditandai`),
+    ).toBeInTheDocument();
+  });
+
+  it('deletes a santri nobody has ever recorded outright', async () => {
+    renderPage();
+    await rosterNames();
+    await openManageList();
+
+    await userEvent.click(
+      screen.getByRole('button', {name: `Hapus ${ROSTER[0]} dari daftar santri`}),
+    );
+
+    // No session mentions them, so there is nothing for the roster
+    // reconciliation to rebuild them from and the row can simply go.
+    await waitFor(async () =>
+      expect(await db.students.where('nameKey').equals(ROSTER[0].toLowerCase()).count()).toBe(0),
+    );
+  });
+
+  it('retires a santri who appears in a saved session, rather than deleting them', async () => {
+    const key = ROSTER[0].toLowerCase();
+    await db.absensi.add({
+      tanggal: '2026-01-05',
+      peserta: [ROSTER[0]],
+      statuses: {[key]: 'hadir'},
+      createdAt: Date.now(),
+    });
+
+    renderPage();
+    await rosterNames();
+    await openManageList();
+
+    await userEvent.click(
+      screen.getByRole('button', {name: `Hapus ${ROSTER[0]} dari daftar santri`}),
+    );
+
+    await waitFor(() => expect(screen.queryByText(ROSTER[0])).not.toBeInTheDocument());
+
+    // The row has to survive: the roster is rebuilt from the records on every
+    // load, so a deleted santri named in a session would simply reappear —
+    // and that session would lose the name it was written with.
+    const stored = await db.students.where('nameKey').equals(key).first();
+    expect(stored).toBeDefined();
+    expect(stored?.active).toBe(false);
+  });
+
+  it('drops a mark set for a santri who is then removed mid-session', async () => {
+    renderPage();
+    await rosterNames();
+
+    await userEvent.click(marksFor(ROSTER[0]).getByRole('radio', {name: /Hadir/}));
+    expect(await screen.findByText(`1/${ROSTER.length} ditandai`)).toBeInTheDocument();
+
+    await openManageList();
+    await userEvent.click(
+      screen.getByRole('button', {name: `Hapus ${ROSTER[0]} dari daftar santri`}),
+    );
+
+    // buildStatusMap deliberately keeps statuses for names outside the
+    // roster, so without clearing it the save would file a mark for a santri
+    // the teacher had just taken off the list.
+    expect(
+      await screen.findByText(`0/${ROSTER.length - 1} ditandai`),
+    ).toBeInTheDocument();
+  });
+});
+
 describe('saving', () => {
   it('records only the santri who were marked', async () => {
     renderPage();

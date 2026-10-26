@@ -178,4 +178,21 @@ describe('upsertStudent', () => {
     expect(await upsertStudent('   ')).toBeUndefined();
     expect(await db.students.count()).toBe(0);
   });
+
+  it('brings a retired santri back rather than silently doing nothing', async () => {
+    const {upsertStudent, db} = await import('./db');
+    await db.open();
+
+    const added = await upsertStudent('Zaid');
+    await db.students.update(added!.id!, {active: false});
+
+    const revived = await upsertStudent('zaid');
+
+    // Same row — so the history keeps pointing at one santri — but back on
+    // the roster. Without this the name could be removed once and never typed
+    // back in again.
+    expect(revived?.id).toBe(added?.id);
+    expect(revived?.active).toBe(true);
+    expect(await db.students.count()).toBe(1);
+  });
 });
