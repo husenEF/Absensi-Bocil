@@ -1,10 +1,11 @@
-import React from 'react';
+import React, {useState} from 'react';
 import {motion} from 'motion/react';
-import {Bell, CalendarDays, Clock, Plus, Trash2} from 'lucide-react';
+import {Bell, CalendarDays, Clock, Plus, Trash2, UserMinus, UserPlus} from 'lucide-react';
 import {useApp} from '../context/AppContext';
 import {buildICalendar} from '../utils/calendar';
 import {Button} from '../ui/Button';
 import {Field} from '../ui/Field';
+import type {StudentRecord} from '../roster';
 
 const HARI_LIST = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
 
@@ -14,6 +15,91 @@ type Schedule = {
   hari: string;
   waktu: string;
   remindMinutesBefore: number;
+};
+
+/**
+ * The santri who belong to one class, and the means to change that.
+ *
+ * A santri is in one class at most, so adding someone already elsewhere moves
+ * them, and the picker says so before it happens rather than after.
+ */
+const ClassMembers: React.FC<{
+  schedule: Schedule;
+  schedules: Schedule[];
+  students: StudentRecord[];
+  onAssign: (name: string, scheduleId: number | undefined) => Promise<void>;
+}> = ({schedule, schedules, students, onAssign}) => {
+  const [pick, setPick] = useState('');
+  const members = students.filter((st) => st.scheduleId === schedule.id);
+  const candidates = students.filter((st) => st.scheduleId !== schedule.id);
+  const titleOf = (id: number | undefined) => schedules.find((x) => x.id === id)?.title;
+
+  return (
+    <div className="cs-fold">
+      <p className="cs-label">
+        Santri
+        <span className="cs-label__count">{members.length}</span>
+      </p>
+
+      {members.length > 0 ? (
+        <ul className="cs-namelist" aria-label={`Santri ${schedule.title}`}>
+          {members.map((st) => (
+            <li key={st.nameKey} className="cs-namelist__row">
+              <span className="cs-namelist__name">{st.name}</span>
+              <Button
+                variant="ghost"
+                icon={<UserMinus className="cs-icon" />}
+                aria-label={`Keluarkan ${st.name} dari ${schedule.title}`}
+                onClick={() => void onAssign(st.name, undefined)}
+              >
+                Keluarkan
+              </Button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="cs-muted">
+          Belum ada santri. Anggota kelas tampil paling atas saat mencatat presensi
+          kelas ini.
+        </p>
+      )}
+
+      {candidates.length > 0 ? (
+        <div className="cs-addrow">
+          <Field id={`sch-member-${schedule.id}`} label="Tambah santri">
+            {(p) => (
+              <select
+                {...p}
+                className="cs-select"
+                value={pick}
+                onChange={(e) => setPick(e.target.value)}
+              >
+                <option value="">Pilih santri</option>
+                {candidates.map((st) => {
+                  const from = titleOf(st.scheduleId);
+                  return (
+                    <option key={st.nameKey} value={st.name}>
+                      {from ? `${st.name} — pindah dari ${from}` : st.name}
+                    </option>
+                  );
+                })}
+              </select>
+            )}
+          </Field>
+          <Button
+            icon={<UserPlus className="cs-icon" />}
+            disabled={!pick}
+            onClick={async () => {
+              await onAssign(pick, schedule.id);
+              setPick('');
+            }}
+          >
+            Tambah
+          </Button>
+        </div>
+      ) : null}
+    </div>
+  );
 };
 
 export const ScheduleManagement: React.FC = () => {
@@ -50,7 +136,22 @@ export const ScheduleManagement: React.FC = () => {
     handleAddSchedule,
     handleDeleteSchedule,
     requestNotificationPermission,
+    students,
+    assignStudentToSchedule,
   } = useApp();
+
+  const roster = students
+    .filter((st) => st.active)
+    .sort((a, b) => a.name.localeCompare(b.name, 'id', {sensitivity: 'base'}));
+  const unplaced = roster.filter((st) => st.scheduleId === undefined).length;
+  const titleOf = (id: number | undefined) => schedules.find((x) => x.id === id)?.title;
+
+  /* Santri ticked in the new-class form, by name. */
+  const [newMembers, setNewMembers] = useState<string[]>([]);
+  const toggleNewMember = (name: string) =>
+    setNewMembers((prev) =>
+      prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name],
+    );
 
   return (
     <motion.div
@@ -84,7 +185,12 @@ export const ScheduleManagement: React.FC = () => {
         <section className="cs-card">
           <p className="cs-label">Tambah jadwal</p>
 
-          <form onSubmit={handleAddSchedule} className="cs-stack">
+          <form
+            onSubmit={async (e) => {
+              if (await handleAddSchedule(e, newMembers)) setNewMembers([]);
+            }}
+            className="cs-stack"
+          >
             <Field id="sch-title" label="Nama kelas" hint="Contoh: Iqra sore">
               {(p) => (
                 <input
@@ -148,6 +254,34 @@ export const ScheduleManagement: React.FC = () => {
               )}
             </Field>
 
+            {roster.length > 0 ? (
+              <fieldset className="cs-stack">
+                <legend className="cs-field__label">
+                  Santri di kelas ini ({newMembers.length})
+                </legend>
+                <ul className="cs-namelist" aria-label="Pilih santri untuk kelas baru">
+                  {roster.map((st) => {
+                    const from = titleOf(st.scheduleId);
+                    return (
+                      <li key={st.nameKey} className="cs-namelist__row">
+                        <label className="cs-check">
+                          <input
+                            type="checkbox"
+                            checked={newMembers.includes(st.name)}
+                            onChange={() => toggleNewMember(st.name)}
+                          />
+                          <span>
+                            {st.name}
+                            {from ? ` — pindah dari ${from}` : ''}
+                          </span>
+                        </label>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </fieldset>
+            ) : null}
+
             <Button type="submit" variant="primary" block icon={<Plus className="cs-icon" />}>
               Simpan jadwal
             </Button>
@@ -191,6 +325,13 @@ export const ScheduleManagement: React.FC = () => {
               </p>
             </div>
           ) : (
+            <>
+            {unplaced > 0 ? (
+              <p className="cs-muted">
+                {unplaced} santri belum punya kelas. Mereka tetap bisa ditandai di
+                kelas mana pun.
+              </p>
+            ) : null}
             <ul className="cs-stack" aria-label="Jadwal tersimpan">
               {schedules.map((s) => (
                 <li key={s.id} className="cs-card cs-card--inset">
@@ -210,9 +351,16 @@ export const ScheduleManagement: React.FC = () => {
                       ? 'diingatkan saat mulai'
                       : `diingatkan ${s.remindMinutesBefore} menit sebelumnya`}
                   </p>
+                  <ClassMembers
+                    schedule={s}
+                    schedules={schedules}
+                    students={roster}
+                    onAssign={assignStudentToSchedule}
+                  />
                 </li>
               ))}
             </ul>
+            </>
           )}
         </section>
       </div>

@@ -238,9 +238,14 @@ export const AttendanceHistory: React.FC = () => {
                     </label>
                   </div>
 
-                  {linked ? (
+                  {linked || record.waktu ? (
                     <p className="cs-muted">
-                      {linked.title} — setiap {linked.hari}, {linked.waktu}
+                      {linked
+                        ? `${linked.title} — setiap ${linked.hari}, ${linked.waktu}`
+                        : "Sesi lepas"}
+                      {record.waktu && record.waktu !== linked?.waktu
+                        ? ` · sesi ini pukul ${record.waktu}`
+                        : ""}
                     </p>
                   ) : null}
 

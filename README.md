@@ -35,13 +35,28 @@ tanda yang sudah terpilih akan melepasnya lagi, jadi salah tekan bisa dibatalkan
 
 ### Kelas dan tanggal
 
-Memilih kelas (misalnya "Ngaji Pagi, setiap Senin 07:00") melakukan dua hal:
-mengisi tanggalnya dan mengelompokkan sesi itu di laporan. **Daftar santri tetap
-lengkap** — guru yang mengampu lima kelompok tetap bisa menandai santri yang
-datang ke kelas yang bukan jadwalnya.
+Kelas dibuat di tab **Jadwal**: nama, hari dan jam tiap pekan, dan santri yang
+masuk ke kelas itu — dicentang langsung di formulir. Setiap santri masuk
+**satu** kelas. Anggota kelas bisa diubah kapan saja, dari kartu kelasnya di
+Jadwal atau dari *Kelola kelas & daftar santri* di layar presensi. Santri baru
+yang ditambahkan saat sebuah kelas dipilih otomatis masuk ke kelas itu.
 
-Untuk mengisi presensi yang terlewat, pilihan *"Pindah ke sesi hari …"* melompat
-ke pekan-pekan sebelumnya pada hari yang sama.
+Di layar presensi, guru memilih kelas atau *Tanpa jadwal* untuk sesi lepas.
+Bila kelas dipilih, anggotanya tampil paling atas dan santri lain dilipat di
+bawah *Santri lain*. **Daftar santri tetap lengkap** — lipatan itu bisa dibuka
+kapan saja, jadi santri yang datang ke kelas yang bukan kelasnya tetap bisa
+ditandai. Lipatan terbuka sendiri bila berisi santri yang sudah ditandai, nama
+yang baru ditambahkan, satu-satunya hasil pencarian, atau bila kelasnya belum
+punya anggota. *Tandai sisanya hadir* hanya mengisi anggota kelas.
+
+Memilih kelas memindahkan tanggal ke hari kelas itu yang terakhir — hari ini
+bila memang harinya, atau pekan lalu — selama tanggalnya belum diubah sendiri,
+dan mengisi jamnya dengan jam kelas.
+
+Tanggal dan **jam** sesi tetap bisa diubah walau kelas sudah dipilih: kelas
+yang pindah hari atau jam tetap tercatat sebagai sesi kelas itu. Untuk mengisi
+presensi yang terlewat, pilihan *"Pindah ke sesi hari …"* melompat ke
+pekan-pekan sebelumnya pada hari yang sama.
 
 ### Mencari santri
 
@@ -62,6 +77,26 @@ Mohon untuk dikirimkan Laporan Kursus periode September - Oktober 2026
 * Tgl Kursus : 28/10
 * Peserta : Aan (H), Ubin (H)
 ```
+
+Pekan dihitung mulai dari sesi pertama pada periode itu dan selalu paling
+sedikit empat pekan, jadi bila sesi pertama jatuh di akhir periode, pekan
+terakhir bisa melewati bulan periode. Ini disengaja agar bentuk laporan tidak
+berubah dari versi sebelumnya.
+
+Laporan bisa disusun untuk satu kelas atau semua kelas (pilihan *Kelompok
+kelas*). Bila semua kelas diekspor dan sesinya berasal dari lebih dari satu
+kelas, laporan dikelompokkan per kelas — satu judul di atas, lalu bagian
+`*Nama Kelas*` untuk tiap kelas dengan format pekan yang sama, dan *Tanpa
+kelas* paling akhir. Sesi yang pindah hari tetap masuk bagian kelasnya.
+
+Di dalam laporan yang dikelompokkan, setiap bagian kelas memakai format yang
+persis sama — termasuk pekan kosong yang tetap ditulis *"Tgl Kursus : -"*,
+supaya koordinator membaca bentuk yang sama di setiap kelas.
+
+**Format Excel** juga mengikuti pilihan *Kelompok kelas*: tanggal dan santri
+diambil dari sesi kelas itu, seluruh anggota kelas mendapat baris walau belum
+pernah hadir, dan setiap kelas punya draf sendiri. Draf *Semua kelas* tetap
+memakai draf periode yang lama.
 
 Setiap santri yang ditandai disebut lengkap dengan hurufnya — yang hadir dulu,
 baru yang berhalangan. Koordinator jadi bisa membedakan santri yang sakit dari

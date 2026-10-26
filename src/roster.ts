@@ -36,6 +36,13 @@ export type StudentRecord = {
   nameKey: string;
   /** Inactive santri stay in history but are not offered for new sessions. */
   active: boolean;
+  /**
+   * The one weekly class this santri belongs to. Undefined means no class.
+   *
+   * Membership only decides who is listed first on the register; it never
+   * hides anyone, because santri do turn up to classes that are not theirs.
+   */
+  scheduleId?: number;
   createdAt: number;
 };
 
@@ -206,6 +213,51 @@ export function participantLine(record: {
 
   if (entries.length === 0) return '-';
   return entries.map((e) => `${e.name} (${STATUS_CODE[e.status]})`).join(', ');
+}
+
+/**
+ * The class a santri can be placed in from their history alone, or undefined.
+ *
+ * Only an unambiguous answer counts: every session that marked them and was
+ * filed under a class must be filed under the same one. A santri seen in two
+ * classes is left for the teacher to place, rather than guessed into one.
+ */
+export function classFromHistory(
+  records: ReadonlyArray<{peserta?: string[]; statuses?: StatusMap; scheduleId?: number}>,
+  key: string,
+): number | undefined {
+  const classes = new Set<number>();
+  for (const record of records) {
+    if (record.scheduleId === undefined) continue;
+    const marked =
+      Boolean(record.statuses?.[key]) ||
+      (record.peserta ?? []).some((n) => nameKey(n) === key);
+    if (marked) classes.add(record.scheduleId);
+  }
+  return classes.size === 1 ? [...classes][0] : undefined;
+}
+
+/**
+ * Split register names into a class's members and everyone else.
+ *
+ * Both halves keep the order they were given in. With no class picked there
+ * are no members to put first, so everyone is in `members` and the register
+ * reads exactly as an ungrouped one.
+ */
+export function splitByClass(
+  names: readonly string[],
+  students: ReadonlyArray<{nameKey: string; scheduleId?: number}>,
+  scheduleId: number | undefined,
+): {members: string[]; others: string[]} {
+  if (scheduleId === undefined) return {members: [...names], others: []};
+
+  const classOf = new Map(students.map((s) => [s.nameKey, s.scheduleId]));
+  const members: string[] = [];
+  const others: string[] = [];
+  for (const name of names) {
+    (classOf.get(nameKey(name)) === scheduleId ? members : others).push(name);
+  }
+  return {members, others};
 }
 
 /**

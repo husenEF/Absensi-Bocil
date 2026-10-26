@@ -1,10 +1,10 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
-import { Check, Eraser, Plus, Save, Search, Trash2, UserMinus, UserPlus, X } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, Eraser, Plus, Save, Search, Trash2, UserPlus, Users, X } from "lucide-react";
 import { useApp } from "../context/AppContext";
 import { formatIndonesianDate } from "../utils/date";
 import { STATUS_CODE, STATUS_LABEL, STATUS_ORDER } from "../styles/palette";
-import { nameKey } from "../roster";
+import { nameKey, parseNameList, splitByClass } from "../roster";
 import { Button } from "../ui/Button";
 import { Field } from "../ui/Field";
 import { StatusPicker } from "../ui/StatusPicker";
@@ -69,17 +69,21 @@ export const AttendanceInput: React.FC = () => {
   const {
     tanggalInput,
     setTanggalInput,
+    waktuInput,
+    setWaktuInput,
     namesInput,
     setNamesInput,
     selectedScheduleId,
     setSelectedScheduleId,
     allRegisteredStudents,
+    students,
     sessionStatusFor,
     setSessionStatus,
     handleMarkAllPresent,
     handleClearSession,
     handleAddStudent,
     handleRemoveStudent,
+    assignStudentToSchedule,
     handleSaveAttendance,
     lastSaved,
     dismissLastSaved,
@@ -96,8 +100,28 @@ export const AttendanceInput: React.FC = () => {
   const [showAdd, setShowAdd] = useState(false);
   const [showManage, setShowManage] = useState(false);
   const [query, setQuery] = useState("");
+  const [showOthers, setShowOthers] = useState(false);
+  /* New santri join the picked class unless the teacher unticks it. */
+  const [joinClass, setJoinClass] = useState(true);
+  /** Names added on this screen, so a new santri never lands out of sight. */
+  const [justAdded, setJustAdded] = useState<Set<string>>(new Set());
 
   const linkedSchedule = schedules.find((s) => s.id === selectedScheduleId);
+
+  /*
+   * Picking a class moves the date to that class's latest day — today when
+   * it is that weekday, otherwise last week's — but only while the date is
+   * still today's default. A date the teacher chose on purpose (a class moved
+   * to another day) is theirs, and is left alone.
+   */
+  const pickClass = (id: number | undefined) => {
+    setSelectedScheduleId(id);
+    const hari = schedules.find((s) => s.id === id)?.hari;
+    const today = formatYMD(new Date());
+    if (!hari || tanggalInput !== today) return;
+    const latest = getWeekdayOccurrences(hari).find((o) => o.dateStr <= today);
+    if (latest) setTanggalInput(latest.dateStr);
+  };
   const occurrences = linkedSchedule?.hari
     ? getWeekdayOccurrences(linkedSchedule.hari)
     : [];
@@ -137,12 +161,79 @@ export const AttendanceInput: React.FC = () => {
   const remaining = tally.total - tally.marked;
   const isFiltered = query.trim().length > 0;
 
+  /*
+   * With a class picked, its members come first and everyone else is folded
+   * below — folded, never removed, for the reasons above. Without a class
+   * there is nothing to put first and the register is one list.
+   */
+  const roster = useMemo(
+    () => splitByClass(allRegisteredStudents, students, selectedScheduleId),
+    [allRegisteredStudents, students, selectedScheduleId],
+  );
+  const shown = useMemo(
+    () => splitByClass(visible, students, selectedScheduleId),
+    [visible, students, selectedScheduleId],
+  );
+  const grouped = linkedSchedule !== undefined;
+  /* "Tandai sisanya hadir" only reaches the class, so it counts the class. */
+  const membersRemaining = roster.members.filter((n) => !sessionStatusFor(n)).length;
+
+  /*
+   * The fold opens by itself whenever keeping it shut would hide something
+   * the teacher needs: a visitor they have already marked, a name they just
+   * added, a search that only matches out there, or a class with nobody in
+   * it yet — an empty register reads as a broken page.
+   */
+  const othersNeeded =
+    grouped &&
+    (roster.members.length === 0 ||
+      roster.others.some((n) => sessionStatusFor(n) || justAdded.has(nameKey(n))) ||
+      (isFiltered && shown.members.length === 0 && shown.others.length > 0));
+
+  useEffect(() => {
+    setShowOthers(false);
+  }, [selectedScheduleId]);
+
+  useEffect(() => {
+    if (othersNeeded) setShowOthers(true);
+  }, [othersNeeded, selectedScheduleId]);
+
+  const addNames = async (input: string): Promise<boolean> => {
+    const ok = await handleAddStudent(
+      input,
+      grouped && joinClass ? selectedScheduleId : undefined,
+    );
+    if (ok) {
+      setJustAdded((prev) => {
+        const next = new Set(prev);
+        for (const name of parseNameList(input)) next.add(nameKey(name));
+        return next;
+      });
+    }
+    return ok;
+  };
+
+  const renderRow = (name: string) => (
+    <li
+      key={name}
+      className={`cs-roster__row${sessionStatusFor(name) ? "" : " is-unmarked"}`}
+    >
+      <span className="cs-roster__name">{name}</span>
+      <StatusPicker
+        personName={name}
+        groupId={nameKey(name)}
+        value={sessionStatusFor(name)}
+        onChange={(status) => setSessionStatus(name, status)}
+      />
+    </li>
+  );
+
   const submitNewName = async () => {
     if (!newName.trim()) {
       setNewNameError("Masukkan nama santri.");
       return;
     }
-    const ok = await handleAddStudent(newName);
+    const ok = await addNames(newName);
     if (ok) {
       setNewName("");
       setNewNameError(undefined);
@@ -208,6 +299,9 @@ export const AttendanceInput: React.FC = () => {
               {linkedSchedule
                 ? `${linkedSchedule.title} · setiap ${linkedSchedule.hari}, ${linkedSchedule.waktu}`
                 : "Tidak terhubung jadwal rutin"}
+              {waktuInput && waktuInput !== linkedSchedule?.waktu
+                ? ` · sesi ini pukul ${waktuInput}`
+                : ""}
             </span>
           </div>
 
@@ -218,7 +312,8 @@ export const AttendanceInput: React.FC = () => {
               </p>
               <p className="cs-field__hint">
                 Memilih kelas mengisi tanggalnya dan mengelompokkan sesi ini di
-                laporan. Daftar santri tetap lengkap.
+                laporan. Anggota kelas tampil paling atas; santri lain tetap
+                ada di bawahnya.
               </p>
               <ul className="cs-groups" aria-labelledby="kelas_label">
                 <li className="cs-group">
@@ -226,7 +321,7 @@ export const AttendanceInput: React.FC = () => {
                     type="button"
                     className="cs-group__btn"
                     aria-pressed={selectedScheduleId === undefined}
-                    onClick={() => setSelectedScheduleId(undefined)}
+                    onClick={() => pickClass(undefined)}
                   >
                     Tanpa jadwal
                     <span className="cs-group__when">Sesi lepas</span>
@@ -238,7 +333,7 @@ export const AttendanceInput: React.FC = () => {
                       type="button"
                       className="cs-group__btn"
                       aria-pressed={selectedScheduleId === s.id}
-                      onClick={() => setSelectedScheduleId(s.id)}
+                      onClick={() => pickClass(s.id)}
                     >
                       {s.title}
                       <span className="cs-group__when">
@@ -251,18 +346,33 @@ export const AttendanceInput: React.FC = () => {
             </div>
           ) : null}
 
-          <Field id="tanggal_kegiatan" label="Tanggal kegiatan">
-            {(p) => (
-              <input
-                {...p}
-                className="cs-input"
-                type="date"
-                required
-                value={tanggalInput}
-                onChange={(e) => setTanggalInput(e.target.value)}
-              />
-            )}
-          </Field>
+          {/* Both stay editable with a class picked: a class moved to
+              another day or hour is still that class's session. */}
+          <div className="cs-grid-2">
+            <Field id="tanggal_kegiatan" label="Tanggal kegiatan">
+              {(p) => (
+                <input
+                  {...p}
+                  className="cs-input"
+                  type="date"
+                  required
+                  value={tanggalInput}
+                  onChange={(e) => setTanggalInput(e.target.value)}
+                />
+              )}
+            </Field>
+            <Field id="waktu_kegiatan" label="Jam">
+              {(p) => (
+                <input
+                  {...p}
+                  className="cs-input"
+                  type="time"
+                  value={waktuInput}
+                  onChange={(e) => setWaktuInput(e.target.value)}
+                />
+              )}
+            </Field>
+          </div>
 
           {occurrences.length > 0 ? (
             <Field
@@ -385,25 +495,57 @@ export const AttendanceInput: React.FC = () => {
                 ))}
               </ul>
 
-              {visible.length > 0 ? (
-                <ul className="cs-roster">
-                  {visible.map((name) => (
-                    <li
-                      key={name}
-                      className={`cs-roster__row${
-                        sessionStatusFor(name) ? "" : " is-unmarked"
-                      }`}
+              {visible.length > 0 && !grouped ? (
+                <ul className="cs-roster">{visible.map(renderRow)}</ul>
+              ) : visible.length > 0 ? (
+                <>
+                  {roster.members.length === 0 ? (
+                    <div className="cs-row">
+                      <p className="cs-muted">
+                        Belum ada santri di {linkedSchedule.title}.
+                      </p>
+                      <Button
+                        variant="ghost"
+                        onClick={() => setActiveTab("jadwal")}
+                      >
+                        Atur di Jadwal
+                      </Button>
+                    </div>
+                  ) : shown.members.length > 0 ? (
+                    <ul
+                      className="cs-roster"
+                      aria-label={`Santri ${linkedSchedule.title}`}
                     >
-                      <span className="cs-roster__name">{name}</span>
-                      <StatusPicker
-                        personName={name}
-                        groupId={nameKey(name)}
-                        value={sessionStatusFor(name)}
-                        onChange={(status) => setSessionStatus(name, status)}
-                      />
-                    </li>
-                  ))}
-                </ul>
+                      {shown.members.map(renderRow)}
+                    </ul>
+                  ) : null}
+
+                  {shown.others.length > 0 ? (
+                    <div>
+                      <Button
+                        variant="ghost"
+                        icon={
+                          showOthers ? (
+                            <ChevronUp className="cs-icon" />
+                          ) : (
+                            <ChevronDown className="cs-icon" />
+                          )
+                        }
+                        aria-expanded={showOthers}
+                        onClick={() => setShowOthers((v) => !v)}
+                      >
+                        Santri lain ({shown.others.length})
+                      </Button>
+                      {showOthers ? (
+                        <div className="cs-fold">
+                          <ul className="cs-roster" aria-label="Santri lain">
+                            {shown.others.map(renderRow)}
+                          </ul>
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </>
               ) : (
                 <div className="cs-empty">
                   <h3 className="cs-empty__title">Tidak ada nama yang cocok</h3>
@@ -436,7 +578,7 @@ export const AttendanceInput: React.FC = () => {
                   variant="secondary"
                   icon={<Check className="cs-icon" />}
                   onClick={handleMarkAllPresent}
-                  disabled={remaining === 0}
+                  disabled={(grouped ? membersRemaining : remaining) === 0}
                 >
                   Tandai sisanya hadir
                 </Button>
@@ -521,6 +663,17 @@ export const AttendanceInput: React.FC = () => {
                 </Button>
               </div>
 
+              {grouped ? (
+                <label className="cs-check">
+                  <input
+                    type="checkbox"
+                    checked={joinClass}
+                    onChange={(e) => setJoinClass(e.target.checked)}
+                  />
+                  Masukkan ke {linkedSchedule.title}
+                </label>
+              ) : null}
+
               <div>
                 <Button
                   variant="ghost"
@@ -549,7 +702,7 @@ export const AttendanceInput: React.FC = () => {
                     </Field>
                     <Button
                       onClick={async () => {
-                        const ok = await handleAddStudent(namesInput);
+                        const ok = await addNames(namesInput);
                         if (ok) setNamesInput("");
                       }}
                     >
@@ -561,18 +714,18 @@ export const AttendanceInput: React.FC = () => {
             </>
           ) : null}
 
-          {/* Taking a name off the list. Folded away like the add form, and
-              below it, because a roster is typed once and pruned far less
-              often than it is added to. */}
+          {/* Placing santri in a class and taking names off the list. Folded
+              away like the add form, and below it, because a roster is typed
+              once and changed far less often than it is added to. */}
           {hasRoster ? (
             <div>
               <Button
                 variant="ghost"
-                icon={<UserMinus className="cs-icon" />}
+                icon={<Users className="cs-icon" />}
                 aria-expanded={showManage}
                 onClick={() => setShowManage((v) => !v)}
               >
-                {showManage ? "Tutup kelola daftar" : "Hapus santri dari daftar"}
+                {showManage ? "Tutup kelola santri" : "Kelola kelas & daftar santri"}
               </Button>
 
               {showManage ? (
@@ -586,6 +739,29 @@ export const AttendanceInput: React.FC = () => {
                     {allRegisteredStudents.map((name) => (
                       <li key={name} className="cs-namelist__row">
                         <span className="cs-namelist__name">{name}</span>
+                        {schedules.length > 0 ? (
+                          <select
+                            className="cs-select cs-namelist__class"
+                            aria-label={`Kelas ${name}`}
+                            value={
+                              students.find((st) => st.nameKey === nameKey(name))
+                                ?.scheduleId ?? ""
+                            }
+                            onChange={(e) =>
+                              void assignStudentToSchedule(
+                                name,
+                                e.target.value ? Number(e.target.value) : undefined,
+                              )
+                            }
+                          >
+                            <option value="">Tanpa kelas</option>
+                            {schedules.map((sc) => (
+                              <option key={sc.id} value={sc.id}>
+                                {sc.title}
+                              </option>
+                            ))}
+                          </select>
+                        ) : null}
                         <Button
                           variant="ghost"
                           icon={<Trash2 className="cs-icon" />}

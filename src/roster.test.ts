@@ -1,6 +1,8 @@
 import {describe, expect, it} from 'vitest';
 import {
   buildStatusMap,
+  classFromHistory,
+  splitByClass,
   participantLine,
   unmarkedNames,
   capitalizeWords,
@@ -230,5 +232,62 @@ describe('participantLine', () => {
 
   it('says so plainly when a session recorded nobody', () => {
     expect(participantLine({peserta: [], statuses: {}})).toBe('-');
+  });
+});
+
+describe('classFromHistory', () => {
+  it('places a santri seen only in one class', () => {
+    const records = [
+      {peserta: ['Budi'], scheduleId: 1},
+      {peserta: [], statuses: {budi: 'sakit' as const}, scheduleId: 1},
+    ];
+    expect(classFromHistory(records, 'budi')).toBe(1);
+  });
+
+  it('leaves a santri seen in two classes for the teacher', () => {
+    const records = [
+      {peserta: ['Budi'], scheduleId: 1},
+      {peserta: ['Budi'], scheduleId: 2},
+    ];
+    expect(classFromHistory(records, 'budi')).toBeUndefined();
+  });
+
+  it('ignores sessions filed under no class', () => {
+    const records = [
+      {peserta: ['Budi']},
+      {peserta: ['Budi'], scheduleId: 3},
+    ];
+    expect(classFromHistory(records, 'budi')).toBe(3);
+  });
+
+  it('does not place a santri the class never marked', () => {
+    const records = [{peserta: ['Siti'], scheduleId: 1}];
+    expect(classFromHistory(records, 'budi')).toBeUndefined();
+  });
+});
+
+describe('splitByClass', () => {
+  const students = [
+    {nameKey: 'aan', scheduleId: 1},
+    {nameKey: 'budi', scheduleId: 2},
+    {nameKey: 'siti'},
+  ];
+
+  it('puts members first and keeps everyone else', () => {
+    expect(splitByClass(['Aan', 'Budi', 'Siti'], students, 1)).toEqual({
+      members: ['Aan'],
+      others: ['Budi', 'Siti'],
+    });
+  });
+
+  it('treats every name as a member when no class is picked', () => {
+    expect(splitByClass(['Aan', 'Budi', 'Siti'], students, undefined)).toEqual({
+      members: ['Aan', 'Budi', 'Siti'],
+      others: [],
+    });
+  });
+
+  it('matches names however they are cased', () => {
+    expect(splitByClass(['AAN'], students, 1).members).toEqual(['AAN']);
   });
 });

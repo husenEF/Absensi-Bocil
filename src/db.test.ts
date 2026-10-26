@@ -153,6 +153,67 @@ describe('v3 -> v4 upgrade', () => {
   });
 });
 
+describe('v4 -> v5 upgrade', () => {
+  beforeEach(async () => {
+    await Dexie.delete(DB_NAME);
+    const mod = await import('./db');
+    if (mod.db.isOpen()) mod.db.close();
+  });
+
+  async function seedV3WithSchedules(
+    scheduleIds: number[],
+    records: Array<Partial<AbsensiRecord>>,
+  ) {
+    await seedV3(records);
+    const old = new Dexie(DB_NAME);
+    old.version(3).stores({
+      absensi: '++id, tanggal, createdAt',
+      schedules: '++id, tanggal, waktu, notified',
+      excelReports: '++id, periodKey',
+    });
+    await old.open();
+    await old.table('schedules').bulkAdd(
+      scheduleIds.map((id) => ({id, title: `Kelas ${id}`, hari: 'Senin', waktu: '07:00', remindMinutesBefore: 0, createdAt: 0})),
+    );
+    old.close();
+  }
+
+  it('places santri whose history points at one class', async () => {
+    await seedV3WithSchedules([1, 2], [
+      {tanggal: '2026-09-07', peserta: ['Aan', 'Budi'], scheduleId: 1},
+      {tanggal: '2026-09-08', peserta: ['Budi'], scheduleId: 2},
+      {tanggal: '2026-09-09', peserta: ['Siti']},
+    ]);
+
+    const db = await openUpgraded();
+    const byKey = Object.fromEntries(
+      (await db.students.toArray()).map((s: StudentRecord) => [s.nameKey, s.scheduleId]),
+    );
+
+    expect(byKey).toEqual({aan: 1, budi: undefined, siti: undefined});
+  });
+
+  it('does not place santri in a class that was deleted', async () => {
+    await seedV3WithSchedules([], [
+      {tanggal: '2026-09-07', peserta: ['Aan'], scheduleId: 9},
+    ]);
+
+    const db = await openUpgraded();
+    const aan = await db.students.where('nameKey').equals('aan').first();
+    expect(aan?.scheduleId).toBeUndefined();
+  });
+
+  it('indexes scheduleId on the roster', async () => {
+    await seedV3WithSchedules([1], [
+      {tanggal: '2026-09-07', peserta: ['Aan'], scheduleId: 1},
+    ]);
+
+    const db = await openUpgraded();
+    const members = await db.students.where('scheduleId').equals(1).toArray();
+    expect(members.map((s: StudentRecord) => s.name)).toEqual(['Aan']);
+  });
+});
+
 describe('upsertStudent', () => {
   beforeEach(async () => {
     await Dexie.delete(DB_NAME);
