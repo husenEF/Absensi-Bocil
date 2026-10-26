@@ -15,9 +15,17 @@ import type {StatusKey} from './styles/palette';
 
 export type {StatusKey};
 
-export const DEFAULT_STATUS: StatusKey = 'hadir';
+/**
+ * There is no default status.
+ *
+ * A register that starts everyone at Hadir records a class the teacher never
+ * looked at: tap Save on an untouched screen and eighteen santri are filed as
+ * present. Nothing is marked until someone marks it, and an unmarked santri is
+ * saved as unmarked rather than guessed at.
+ */
+export const NO_STATUS = undefined;
 
-/** Status per santri name, keyed by the normalised name. */
+/** Status per santri name, keyed by the normalised name. Absent key = unmarked. */
 export type StatusMap = Record<string, StatusKey>;
 
 export type StudentRecord = {
@@ -63,11 +71,11 @@ export function parseNameList(input: string): string[] {
 }
 
 /**
- * The statuses for a session.
+ * The statuses to save for a session.
  *
- * Every student on the roster gets an entry, defaulting to Hadir — the pattern
- * every established register app uses, so the number of taps matches the number
- * of exceptions rather than the size of the class.
+ * Only santri the teacher actually marked appear. Names on the roster that
+ * were left alone are omitted, so the saved record says "we do not know"
+ * rather than inventing a Hadir.
  */
 export function buildStatusMap(
   rosterNames: readonly string[],
@@ -77,12 +85,24 @@ export function buildStatusMap(
   // being on the current roster — they were only ever absent, or they came in
   // with imported data — and dropping those entries here silently erased the
   // absences on the next save.
-  const out: StatusMap = {...(existing ?? {})};
+  const out: StatusMap = {};
+  for (const [key, status] of Object.entries(existing ?? {})) {
+    if (key && status) out[key] = status;
+  }
   for (const name of rosterNames) {
     const key = nameKey(name);
-    out[key] = existing?.[key] ?? DEFAULT_STATUS;
+    const status = existing?.[key];
+    if (status) out[key] = status;
   }
   return out;
+}
+
+/** Roster names the teacher has not marked yet, in roster order. */
+export function unmarkedNames(
+  rosterNames: readonly string[],
+  statuses: StatusMap,
+): string[] {
+  return rosterNames.filter((n) => !statuses[nameKey(n)]);
 }
 
 /** The names marked present, in roster order — what `peserta` must contain. */
@@ -90,7 +110,7 @@ export function presentNames(
   rosterNames: readonly string[],
   statuses: StatusMap,
 ): string[] {
-  return rosterNames.filter((n) => (statuses[nameKey(n)] ?? DEFAULT_STATUS) === 'hadir');
+  return rosterNames.filter((n) => statuses[nameKey(n)] === 'hadir');
 }
 
 export type StatusTally = Record<StatusKey, number>;

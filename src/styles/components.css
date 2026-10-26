@@ -1,9 +1,15 @@
 /*
  * ClassSync components.
  *
- * There are no cards here. Sections are separated by space, and a hairline is
- * drawn only where there is a real boundary — between rows of a register, or
- * above a total. Hierarchy comes from the type scale.
+ * Everything on screen is a box with a drawn edge. A panel is a 2px ink
+ * keyline with a hard offset of the same ink under it; a control is the same
+ * thing one size down, and pressing it moves it into its own shadow. There is
+ * no blur, no gradient and no grey drop shadow anywhere, because a register
+ * gets read on a cheap phone in a bright room.
+ *
+ * Hierarchy comes from three places and nothing else: the weight of the type,
+ * the size of the offset, and the one signal colour on the one action that
+ * matters.
  *
  * Every interactive thing is at least 48px and carries a visible text label.
  */
@@ -25,42 +31,56 @@
 .cs-page {
   display: flex;
   flex-direction: column;
-  gap: var(--cs-space-7);
+  gap: var(--cs-space-4);
   max-width: var(--cs-measure);
-}
-
-/* The column of a page you read down, centred in whatever width it is given. */
-.cs-page {
   margin-inline: auto;
 }
 
-/* A section is space and a heading, not a container. */
+/*
+ * A panel: the keyline and the offset that the whole interface is built from.
+ */
 .cs-card {
   display: flex;
   flex-direction: column;
   gap: var(--cs-space-4);
+  padding: var(--cs-space-5) var(--cs-space-4);
+  background-color: var(--cs-surface);
+  border: var(--cs-keyline) solid var(--cs-edge);
+  border-radius: var(--cs-radius-lg);
+  box-shadow: var(--cs-lift);
 }
 
+@media (min-width: 30rem) {
+  .cs-card {
+    padding: var(--cs-space-5);
+  }
+}
+
+/* An inset tray recedes: same edge, sunk fill, no offset to lift it. */
 .cs-card--inset {
-  padding: var(--cs-space-4);
   background-color: var(--cs-surface-sunken);
+  box-shadow: none;
 }
 
-/* The one place a rule earns its keep outside the register. */
+/*
+ * A destructive or a settled panel keeps the keyline and takes a thick rule
+ * down its leading edge — the one place a mark colour touches the chrome, and
+ * it is always saying something about attendance.
+ */
 .cs-card--danger {
-  padding-left: var(--cs-space-4);
-  border-left: 3px solid var(--cs-alpa-solid);
+  border-left-width: 10px;
+  border-left-color: var(--cs-alpa-solid);
 }
 
 .cs-card--success {
-  padding-left: var(--cs-space-4);
-  border-left: 3px solid var(--cs-hadir-solid);
+  border-left-width: 10px;
+  border-left-color: var(--cs-hadir-solid);
 }
 
 .cs-card__head {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: var(--cs-space-3);
 }
@@ -68,8 +88,8 @@
 .cs-card__title,
 .cs-subtitle {
   font-family: var(--cs-font-display);
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  font-weight: 700;
+  letter-spacing: -0.02em;
   line-height: var(--cs-leading-tight);
   color: var(--cs-text);
 }
@@ -86,6 +106,33 @@
 .cs-card__title .cs-icon,
 .cs-subtitle .cs-icon {
   display: none;
+}
+
+/*
+ * The boxed label above a panel's content, borrowed from the reference: small,
+ * tracked out, and ruled off underneath so it reads as a tab on a file rather
+ * than a heading competing with the content below it.
+ */
+.cs-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--cs-space-3);
+  padding-bottom: var(--cs-space-2);
+  border-bottom: var(--cs-keyline) solid var(--cs-edge);
+  font-size: var(--cs-text-xs);
+  font-weight: 700;
+  letter-spacing: var(--cs-track-label);
+  text-transform: uppercase;
+  color: var(--cs-text);
+}
+
+.cs-label__count {
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--cs-text-muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .cs-icon {
@@ -111,19 +158,49 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--cs-space-4);
+  gap: var(--cs-space-3);
 }
 
 .cs-grid-2 {
   display: grid;
   grid-template-columns: 1fr;
-  gap: var(--cs-space-5);
+  gap: var(--cs-space-4);
 }
 
 @media (min-width: 48rem) {
   .cs-grid-2 {
     grid-template-columns: 1fr 1fr;
   }
+}
+
+/* ------------------------------------------------------------------ focus */
+
+/*
+ * The focus ring is declared here as well as in tokens.css.
+ *
+ * The token rule is written with `:where()`, which carries no specificity on
+ * purpose, and that turned out to mean any stray utility — or a browser's own
+ * `outline: auto` handling — could flatten it to `outline-style: none` on a
+ * control that had been given a class. A keyboard user then had nothing to
+ * follow. Naming the components explicitly puts the ring beyond reach, and the
+ * paired box-shadow keeps it visible where the control is the same ink as the
+ * ring, such as a mark sitting on a filled row.
+ */
+.cs-btn:focus-visible,
+.cs-iconbtn:focus-visible,
+.cs-tab:focus-visible,
+.cs-group__btn:focus-visible,
+.cs-toast__action:focus-visible,
+.cs-input:focus-visible,
+.cs-select:focus-visible,
+.cs-textarea:focus-visible,
+.cs-status__opt:has(:focus-visible),
+.cs-session:has(:focus-visible),
+.cs-check:has(:focus-visible),
+.cs-sheet:focus-visible {
+  outline: 3px solid var(--cs-focus);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 3px var(--cs-bg);
 }
 
 /* ---------------------------------------------------------------- buttons */
@@ -134,24 +211,45 @@
   justify-content: center;
   gap: var(--cs-space-2);
   min-height: var(--cs-tap);
-  padding: var(--cs-space-3) var(--cs-space-5);
-  border: 1px solid transparent;
+  padding: var(--cs-space-2) var(--cs-space-4);
+  background-color: var(--cs-surface);
+  color: var(--cs-text);
+  border: var(--cs-keyline) solid var(--cs-edge);
   border-radius: var(--cs-radius);
+  box-shadow: var(--cs-lift-sm);
   font-family: var(--cs-font-sans);
   font-size: var(--cs-text-base);
-  font-weight: 500;
+  font-weight: 700;
+  letter-spacing: -0.01em;
   line-height: var(--cs-leading-tight);
   cursor: pointer;
-  transition: background-color 0.12s ease, border-color 0.12s ease;
+  transition: translate 0.08s ease, box-shadow 0.08s ease, background-color 0.12s ease;
+}
+
+/*
+ * The one piece of motion in the product: a control drops into its own shadow
+ * when you press it. It answers a tap, so it survives reduced-motion as an
+ * instant state change — the fill and the flattened offset still say "pressed".
+ */
+.cs-btn:active:not(:disabled) {
+  translate: 2px 2px;
+  box-shadow: none;
 }
 
 .cs-btn:disabled {
-  opacity: 0.4;
+  opacity: 0.45;
+  box-shadow: none;
   cursor: not-allowed;
 }
 
 .cs-btn--lg {
   min-height: 56px;
+  font-size: var(--cs-text-lg);
+  box-shadow: var(--cs-lift);
+}
+
+.cs-btn--lg:active:not(:disabled) {
+  translate: 4px 4px;
 }
 
 .cs-btn--block {
@@ -164,40 +262,39 @@
   flex: none;
 }
 
+/* Signal yellow, and only here. The keyline is what gives it its boundary. */
 .cs-btn--primary {
   background-color: var(--cs-brand-solid);
+  border-color: var(--cs-brand-edge);
   color: var(--cs-brand-ink);
 }
 .cs-btn--primary:hover:not(:disabled) {
   background-color: var(--cs-brand-solid-hover);
 }
-/* The ring needs a paper gap to be seen against an ink fill. */
-.cs-btn--primary:focus-visible {
-  outline-color: var(--cs-focus);
-  box-shadow: 0 0 0 3px var(--cs-bg);
-}
 
 .cs-btn--secondary {
-  background-color: transparent;
-  border-color: var(--cs-border-strong);
+  background-color: var(--cs-surface);
   color: var(--cs-text);
 }
 .cs-btn--secondary:hover:not(:disabled) {
   background-color: var(--cs-surface-sunken);
 }
 
-/* A quiet action is a word with a rule under it, not a box. */
+/* A quiet action keeps the edge but gives up the lift, so it sits flat. */
 .cs-btn--ghost {
   align-self: flex-start;
-  min-height: var(--cs-tap);
-  padding: var(--cs-space-2) var(--cs-space-1);
   background-color: transparent;
   color: var(--cs-text);
-  border-bottom: 1px solid var(--cs-border-strong);
-  border-radius: 0;
+  font-weight: 600;
+  box-shadow: none;
+  border-style: dashed;
 }
 .cs-btn--ghost:hover:not(:disabled) {
-  border-bottom-color: var(--cs-text);
+  background-color: var(--cs-surface-sunken);
+  border-style: solid;
+}
+.cs-btn--ghost:active:not(:disabled) {
+  translate: 0 0;
 }
 
 .cs-btn--danger {
@@ -212,7 +309,7 @@
 .cs-btn--warning {
   background-color: var(--cs-danger-solid);
   color: var(--cs-danger-ink);
-  border-bottom: 3px solid var(--cs-alpa-solid);
+  border-bottom: 6px solid var(--cs-alpa-solid);
 }
 .cs-btn--warning:hover:not(:disabled) {
   background-color: var(--cs-danger-solid-hover);
@@ -228,14 +325,18 @@
 
 .cs-field__label {
   font-family: var(--cs-font-sans);
-  font-size: var(--cs-text-sm);
-  font-weight: 600;
+  font-size: var(--cs-text-xs);
+  font-weight: 700;
+  letter-spacing: var(--cs-track-label);
+  text-transform: uppercase;
   color: var(--cs-text);
   line-height: var(--cs-leading-tight);
 }
 
 .cs-field__optional {
-  font-weight: 400;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--cs-text-muted);
 }
 
@@ -247,28 +348,28 @@
 
 .cs-field__error {
   font-size: var(--cs-text-sm);
-  font-weight: 600;
+  font-weight: 700;
   color: var(--cs-text);
   line-height: var(--cs-leading-normal);
-  border-left: 3px solid var(--cs-alpa-solid);
+  border-left: 6px solid var(--cs-alpa-solid);
   padding-left: var(--cs-space-3);
 }
 
-/* Inputs are a ruled line, like a form you write on. */
+/* Inputs are boxes you write in, edged like everything else. */
 .cs-input,
 .cs-select,
 .cs-textarea {
   width: 100%;
   min-height: var(--cs-tap);
-  padding: var(--cs-space-2) 0;
+  padding: var(--cs-space-2) var(--cs-space-3);
   font-family: var(--cs-font-sans);
   font-size: var(--cs-text-base);
+  font-weight: 500;
   line-height: var(--cs-leading-normal);
   color: var(--cs-text);
-  background-color: transparent;
-  border: 0;
-  border-bottom: 1px solid var(--cs-border-strong);
-  border-radius: 0;
+  background-color: var(--cs-surface-sunken);
+  border: var(--cs-keyline) solid var(--cs-edge);
+  border-radius: var(--cs-radius);
 }
 
 .cs-select {
@@ -277,21 +378,150 @@
 
 .cs-textarea {
   min-height: 6rem;
-  padding: var(--cs-space-2);
-  border: 1px solid var(--cs-border-strong);
   resize: vertical;
 }
 
 .cs-input:focus-visible,
 .cs-select:focus-visible,
 .cs-textarea:focus-visible {
-  outline-offset: 2px;
+  background-color: var(--cs-surface);
 }
 
 .cs-field--error :is(.cs-input, .cs-select, .cs-textarea) {
-  border-bottom-width: 2px;
-  border-bottom-color: var(--cs-alpa-solid);
+  border-color: var(--cs-alpa-solid);
 }
+
+/* ------------------------------------------------------- the session head */
+
+/*
+ * The date is the biggest thing on the page, because it is the one fact that,
+ * if wrong, makes everything else wrong.
+ */
+.cs-today {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cs-space-1);
+}
+
+.cs-today__date {
+  font-family: var(--cs-font-display);
+  font-size: var(--cs-text-2xl);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1;
+  color: var(--cs-text);
+}
+
+@media (min-width: 30rem) {
+  .cs-today__date {
+    font-size: var(--cs-text-3xl);
+  }
+}
+
+.cs-today__meta {
+  font-size: var(--cs-text-sm);
+  font-weight: 600;
+  color: var(--cs-text-muted);
+}
+
+/* ------------------------------------------------------------ group chips */
+
+/*
+ * Which class is being marked. The chips scroll sideways on a phone rather
+ * than wrapping into four rows that push the register off the screen.
+ */
+.cs-groups {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cs-tap-gap);
+  list-style: none;
+}
+
+.cs-group {
+  flex: none;
+  max-width: 100%;
+}
+
+.cs-group__btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-height: var(--cs-tap);
+  padding: var(--cs-space-2) var(--cs-space-3);
+  background-color: var(--cs-surface);
+  color: var(--cs-text);
+  border: var(--cs-keyline) solid var(--cs-edge);
+  border-radius: var(--cs-radius);
+  box-shadow: var(--cs-lift-sm);
+  font-family: var(--cs-font-sans);
+  font-size: var(--cs-text-sm);
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+  transition: translate 0.08s ease, box-shadow 0.08s ease, background-color 0.12s ease;
+}
+
+.cs-group__btn:hover {
+  background-color: var(--cs-surface-sunken);
+}
+
+/* The chosen class is pressed in, not lit up: colour stays with the marks. */
+.cs-group__btn[aria-pressed='true'] {
+  background-color: var(--cs-text);
+  color: var(--cs-bg);
+  translate: 2px 2px;
+  box-shadow: none;
+}
+
+.cs-group__when {
+  font-size: var(--cs-text-xs);
+  font-weight: 500;
+  opacity: 0.75;
+}
+
+/* --------------------------------------------------------------- progress */
+
+/*
+ * How much of the register is done. A plain count would do, but the rail shows
+ * at a glance whether this is nearly finished or barely started, which is the
+ * question a teacher asks while the class is still in front of them.
+ */
+.cs-progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cs-space-2);
+}
+
+.cs-progress__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--cs-space-3);
+  font-size: var(--cs-text-sm);
+  font-weight: 600;
+  color: var(--cs-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.cs-progress__rail {
+  display: flex;
+  height: 14px;
+  overflow: hidden;
+  background-color: var(--cs-surface-sunken);
+  border: var(--cs-keyline) solid var(--cs-edge);
+  border-radius: var(--cs-radius-full);
+}
+
+.cs-progress__seg {
+  height: 100%;
+  transition: width 0.2s ease;
+}
+
+.cs-progress__seg--hadir { background-color: var(--cs-hadir-solid); }
+.cs-progress__seg--sakit { background-color: var(--cs-sakit-solid); }
+.cs-progress__seg--izin  { background-color: var(--cs-izin-solid); }
+.cs-progress__seg--alpa  { background-color: var(--cs-alpa-solid); }
 
 /* ---------------------------------------------------------------- register */
 
@@ -299,7 +529,6 @@
   display: flex;
   flex-direction: column;
   list-style: none;
-  border-top: 1px solid var(--cs-border);
 }
 
 /*
@@ -319,34 +548,52 @@
   border-bottom: 1px solid var(--cs-border);
 }
 
+.cs-roster__row:last-child {
+  border-bottom: 0;
+}
+
 @media (min-width: 30rem) {
   .cs-roster__row {
     grid-template-columns: 1fr auto;
     align-items: center;
     gap: var(--cs-space-3);
-    padding: var(--cs-space-2) 0;
   }
 }
 
 .cs-roster__name {
+  display: flex;
+  align-items: center;
+  gap: var(--cs-space-2);
   font-family: var(--cs-font-display);
   font-size: var(--cs-text-lg);
-  font-weight: 400;
+  font-weight: 600;
+  letter-spacing: -0.02em;
   line-height: var(--cs-leading-tight);
   color: var(--cs-text);
 }
 
 /*
- * Four marks per row.
+ * A santri nobody has marked yet is marked by their four empty boxes and
+ * nothing else. A badge on every untouched row — and at the start of a session
+ * that is every row — repeats what the boxes already say twelve times over.
+ * The one place the count is worth words is the panel label and the save bar.
+ */
+.cs-roster__row.is-unmarked .cs-roster__name {
+  color: var(--cs-text-muted);
+}
+
+/*
+ * Four marks per row, and none of them set until someone sets one.
  *
- * The one that is set is a filled block carrying its letter; the rest are just
- * the letter in quiet ink. That turns forty outlined boxes into ten rows with
- * ten blocks of colour, and the register can be read down in one pass.
+ * The one that is chosen is a filled block carrying its letter; the rest are
+ * the letter in quiet ink inside a dashed box. That turns forty outlined boxes
+ * into ten rows with ten blocks of colour, and the register can be read down
+ * in one pass to find the rows still waiting.
  */
 .cs-status {
   display: grid;
   grid-template-columns: repeat(4, minmax(var(--cs-tap), 1fr));
-  gap: 2px;
+  gap: var(--cs-tap-gap);
 }
 
 @media (min-width: 30rem) {
@@ -361,25 +608,24 @@
   align-items: center;
   justify-content: center;
   min-height: var(--cs-tap);
-  border: 1px solid transparent;
+  background-color: var(--cs-surface-sunken);
+  border: var(--cs-keyline) dashed var(--cs-border-strong);
   border-radius: var(--cs-radius-sm);
   color: var(--cs-text-muted);
   cursor: pointer;
+  transition: background-color 0.12s ease, border-color 0.12s ease;
 }
 
 .cs-status__opt:hover {
-  background-color: var(--cs-surface-sunken);
-}
-
-.cs-status__opt:has(:focus-visible) {
-  outline: 2px solid var(--cs-focus);
-  outline-offset: 2px;
+  border-style: solid;
+  border-color: var(--cs-edge);
+  color: var(--cs-text);
 }
 
 .cs-status__code {
   font-family: var(--cs-font-sans);
   font-size: var(--cs-text-base);
-  font-weight: 500;
+  font-weight: 600;
   line-height: 1;
   font-variant-numeric: tabular-nums;
   text-transform: lowercase;
@@ -397,29 +643,31 @@
   white-space: nowrap;
 }
 
+.cs-status__opt.is-selected {
+  border-style: solid;
+  border-color: var(--cs-edge);
+  box-shadow: var(--cs-lift-sm);
+}
+
 .cs-status__opt.is-selected .cs-status__code {
-  font-weight: 700;
+  font-weight: 800;
   text-transform: uppercase;
 }
 
 .cs-status__opt--hadir.is-selected {
   background-color: var(--cs-hadir-solid);
-  border-color: var(--cs-text);
   color: var(--cs-hadir-solid-ink);
 }
 .cs-status__opt--sakit.is-selected {
   background-color: var(--cs-sakit-solid);
-  border-color: var(--cs-text);
   color: var(--cs-sakit-solid-ink);
 }
 .cs-status__opt--izin.is-selected {
   background-color: var(--cs-izin-solid);
-  border-color: var(--cs-text);
   color: var(--cs-izin-solid-ink);
 }
 .cs-status__opt--alpa.is-selected {
   background-color: var(--cs-alpa-solid);
-  border-color: var(--cs-text);
   color: var(--cs-alpa-solid-ink);
 }
 
@@ -427,10 +675,11 @@
 .cs-legend {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--cs-space-4);
+  gap: var(--cs-space-3);
   list-style: none;
   font-family: var(--cs-font-sans);
   font-size: var(--cs-text-xs);
+  font-weight: 600;
   color: var(--cs-text-muted);
 }
 
@@ -444,12 +693,12 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 1.5rem;
-  height: 1.5rem;
-  border: 1px solid var(--cs-text);
+  width: 1.625rem;
+  height: 1.625rem;
+  border: var(--cs-keyline) solid var(--cs-edge);
   border-radius: var(--cs-radius-sm);
-  font-weight: 700;
-  color: #000;
+  font-weight: 800;
+  color: #121212;
 }
 
 /* --------------------------------------------------------------- tallies */
@@ -457,30 +706,33 @@
 .cs-tally {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--cs-space-4);
+  gap: var(--cs-tap-gap);
   list-style: none;
-  padding-top: var(--cs-space-3);
-  border-top: 1px solid var(--cs-text);
   font-family: var(--cs-font-sans);
   font-size: var(--cs-text-sm);
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--cs-text);
 }
 
 .cs-chip {
   display: inline-flex;
-  align-items: baseline;
+  align-items: center;
   gap: var(--cs-space-2);
+  padding: var(--cs-space-1) var(--cs-space-3);
+  background-color: var(--cs-surface-sunken);
+  border: var(--cs-keyline) solid var(--cs-edge);
+  border-radius: var(--cs-radius-full);
   font-variant-numeric: tabular-nums;
 }
 
 .cs-chip::before {
   content: '';
-  width: 0.625rem;
-  height: 0.625rem;
-  border: 1px solid var(--cs-text);
+  width: 0.75rem;
+  height: 0.75rem;
+  border: 1px solid var(--cs-edge);
+  border-radius: 2px;
   flex: none;
-  translate: 0 -1px;
 }
 
 .cs-chip--hadir::before { background-color: var(--cs-hadir-solid); }
@@ -495,8 +747,11 @@
   flex-direction: column;
   align-items: flex-start;
   gap: var(--cs-space-3);
-  padding: var(--cs-space-5) 0;
-  max-width: 36ch;
+  padding: var(--cs-space-5);
+  max-width: 40ch;
+  background-color: var(--cs-surface-sunken);
+  border: var(--cs-keyline) dashed var(--cs-border-strong);
+  border-radius: var(--cs-radius);
 }
 
 /* An empty screen is an invitation, not an illustration. */
@@ -507,7 +762,8 @@
 .cs-empty__title {
   font-family: var(--cs-font-display);
   font-size: var(--cs-text-xl);
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: -0.02em;
   color: var(--cs-text);
   line-height: var(--cs-leading-tight);
 }
@@ -537,10 +793,26 @@
   margin-top: var(--cs-space-3);
 }
 
+/*
+ * The save bar rides above the tab bar so the one action is always a thumb's
+ * reach away, however long the register gets.
+ */
 .cs-save {
+  position: sticky;
+  bottom: calc(var(--cs-tap) + var(--cs-space-4));
+  z-index: 30;
   display: flex;
   flex-direction: column;
-  gap: var(--cs-space-3);
+  gap: var(--cs-space-2);
+  padding: var(--cs-space-3);
+  background-color: var(--cs-bg);
+  border: var(--cs-keyline) solid var(--cs-edge);
+  border-radius: var(--cs-radius-lg);
+  box-shadow: var(--cs-lift);
+}
+
+.cs-save .cs-muted {
+  text-align: center;
 }
 
 /* ---------------------------------------------------- session picker rows */
@@ -550,18 +822,21 @@
   align-items: flex-start;
   gap: var(--cs-space-3);
   min-height: var(--cs-tap);
-  padding: var(--cs-space-3) 0;
-  border-bottom: 1px solid var(--cs-border);
+  padding: var(--cs-space-3);
+  margin-bottom: var(--cs-tap-gap);
+  background-color: var(--cs-surface);
+  border: var(--cs-keyline) solid var(--cs-edge);
+  border-radius: var(--cs-radius);
   cursor: pointer;
 }
 
-.cs-session.is-selected .cs-session__date {
-  font-weight: 600;
+.cs-session.is-selected {
+  background-color: var(--cs-brand-tint);
+  box-shadow: var(--cs-lift-sm);
 }
 
-.cs-session:has(:focus-visible) {
-  outline: 2px solid var(--cs-focus);
-  outline-offset: 2px;
+.cs-session.is-selected .cs-session__date {
+  font-weight: 700;
 }
 
 .cs-session input {
@@ -582,6 +857,8 @@
 .cs-session__date {
   font-family: var(--cs-font-display);
   font-size: var(--cs-text-lg);
+  font-weight: 600;
+  letter-spacing: -0.02em;
   color: var(--cs-text);
 }
 
@@ -597,6 +874,7 @@
   gap: var(--cs-space-2);
   min-height: var(--cs-tap);
   font-size: var(--cs-text-sm);
+  font-weight: 600;
   color: var(--cs-text-muted);
   cursor: pointer;
 }
@@ -617,7 +895,7 @@
   align-items: center;
   justify-content: center;
   padding: var(--cs-space-4);
-  background-color: rgb(0 0 0 / 0.5);
+  background-color: rgb(0 0 0 / 0.55);
 }
 
 .cs-dialog {
@@ -627,15 +905,18 @@
   width: min(30rem, 100%);
   max-height: 90vh;
   overflow-y: auto;
-  padding: var(--cs-space-6);
-  background-color: var(--cs-bg);
-  border-top: 4px solid var(--cs-text);
+  padding: var(--cs-space-5);
+  background-color: var(--cs-surface);
+  border: var(--cs-keyline) solid var(--cs-edge);
+  border-radius: var(--cs-radius-lg);
+  box-shadow: var(--cs-lift-lg);
 }
 
 .cs-dialog__title {
   font-family: var(--cs-font-display);
   font-size: var(--cs-text-xl);
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: -0.02em;
   color: var(--cs-text);
   line-height: var(--cs-leading-tight);
 }
@@ -653,7 +934,7 @@
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: var(--cs-space-6);
+  gap: var(--cs-space-3);
 }
 
 /* ----------------------------------------------------------------- toasts */
@@ -674,15 +955,18 @@
   align-items: center;
   gap: var(--cs-space-3);
   padding: var(--cs-space-3) var(--cs-space-4);
-  box-shadow: 0 6px 24px rgb(0 0 0 / 0.18);
-  font-size: var(--cs-text-sm);
-  line-height: var(--cs-leading-normal);
   background-color: var(--cs-text);
   color: var(--cs-bg);
+  border: var(--cs-keyline) solid var(--cs-edge);
+  border-radius: var(--cs-radius);
+  box-shadow: var(--cs-lift);
+  font-size: var(--cs-text-sm);
+  font-weight: 600;
+  line-height: var(--cs-leading-normal);
 }
 
 .cs-toast--error {
-  border-bottom: 3px solid var(--cs-alpa-solid);
+  border-bottom: 6px solid var(--cs-alpa-solid);
 }
 
 .cs-toast__msg {
@@ -693,13 +977,13 @@
   flex: none;
   min-height: var(--cs-tap);
   padding: 0 var(--cs-space-3);
-  border: 0;
-  border-bottom: 1px solid currentColor;
+  border: var(--cs-keyline) solid currentColor;
+  border-radius: var(--cs-radius-sm);
   background: transparent;
   color: inherit;
   font-family: var(--cs-font-sans);
   font-size: var(--cs-text-sm);
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
 }
 
@@ -707,17 +991,13 @@
 
 .cs-sheet {
   overflow-x: auto;
-  border-top: 1px solid var(--cs-text);
-  border-bottom: 1px solid var(--cs-text);
-}
-
-.cs-sheet:focus-visible {
-  outline: 2px solid var(--cs-focus);
-  outline-offset: 2px;
+  border: var(--cs-keyline) solid var(--cs-edge);
+  border-radius: var(--cs-radius);
 }
 
 .cs-sheet__actions {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--cs-tap-gap);
   justify-content: center;
 }
@@ -744,38 +1024,45 @@
   top: 0;
   z-index: 40;
   background-color: var(--cs-bg);
-  border-bottom: 1px solid var(--cs-text);
+  border-bottom: var(--cs-keyline) solid var(--cs-edge);
 }
 
 .cs-masthead__inner {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
-  gap: var(--cs-space-4);
-  max-width: var(--cs-measure);
+  gap: var(--cs-space-3);
+  max-width: var(--cs-shell);
   margin-inline: auto;
   padding: var(--cs-space-3) var(--cs-space-4);
 }
 
 .cs-wordmark {
   font-family: var(--cs-font-display);
-  font-size: var(--cs-text-lg);
-  font-weight: 600;
-  letter-spacing: -0.015em;
+  font-size: var(--cs-text-xl);
+  font-weight: 800;
+  letter-spacing: -0.04em;
   color: var(--cs-text);
 }
 
 .cs-masthead__sub {
   font-size: var(--cs-text-xs);
+  font-weight: 500;
   color: var(--cs-text-muted);
 }
 
 /* Said only when it is true and useful. */
 .cs-masthead__offline {
+  padding: var(--cs-space-1) var(--cs-space-2);
   font-size: var(--cs-text-xs);
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: var(--cs-track-label);
+  text-transform: uppercase;
   color: var(--cs-text);
-  border-bottom: 2px solid var(--cs-alpa-solid);
+  border: var(--cs-keyline) solid var(--cs-edge);
+  border-bottom-width: 5px;
+  border-bottom-color: var(--cs-alpa-solid);
+  border-radius: var(--cs-radius-sm);
 }
 
 .cs-iconbtn {
@@ -784,30 +1071,38 @@
   justify-content: center;
   width: var(--cs-tap);
   height: var(--cs-tap);
-  border: 0;
-  background: transparent;
+  background-color: var(--cs-surface);
+  border: var(--cs-keyline) solid var(--cs-edge);
+  border-radius: var(--cs-radius);
+  box-shadow: var(--cs-lift-sm);
   color: var(--cs-text);
   cursor: pointer;
+  transition: translate 0.08s ease, box-shadow 0.08s ease;
+}
+
+.cs-iconbtn:active {
+  translate: 2px 2px;
+  box-shadow: none;
 }
 
 .cs-main {
   flex: 1 0 auto;
   width: 100%;
-  padding: var(--cs-space-6) var(--cs-space-4);
+  padding: var(--cs-space-4);
   padding-bottom: calc(var(--cs-tap) + var(--cs-space-7));
 }
 
 .cs-footer {
-  max-width: var(--cs-measure);
+  max-width: var(--cs-shell);
   margin-inline: auto;
   padding: var(--cs-space-5) var(--cs-space-4);
   padding-bottom: calc(var(--cs-tap) + var(--cs-space-6));
-  border-top: 1px solid var(--cs-border);
   font-size: var(--cs-text-xs);
   color: var(--cs-text-muted);
 }
 
-/* Tabs: labels on a rule, with the current one marked by weight and a rule. */
+/* --------------------------------------------------------------- the tabs */
+
 .cs-tabs {
   position: fixed;
   bottom: 0;
@@ -815,20 +1110,68 @@
   z-index: 40;
   display: flex;
   justify-content: center;
-  gap: var(--cs-space-2);
-  padding: 0 var(--cs-space-2);
+  padding: var(--cs-space-2);
   background-color: var(--cs-bg);
-  border-top: 1px solid var(--cs-text);
+  border-top: var(--cs-keyline) solid var(--cs-edge);
+}
+
+.cs-tab {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: var(--cs-tap);
+  padding: var(--cs-space-1);
+  background-color: transparent;
+  border: var(--cs-keyline) solid transparent;
+  border-radius: var(--cs-radius);
+  color: var(--cs-text-muted);
+  font-family: var(--cs-font-sans);
+  font-size: var(--cs-text-xs);
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.cs-tab:hover {
+  color: var(--cs-text);
+}
+
+/*
+ * The current tab is the second and last place signal yellow appears. It is a
+ * filled box inside a keyline — the fill alone is too pale to carry it, and
+ * the weight change means it still reads with colour turned off.
+ */
+.cs-tab[aria-current='page'] {
+  background-color: var(--cs-brand-solid);
+  border-color: var(--cs-brand-edge);
+  color: var(--cs-brand-ink);
+  font-weight: 800;
+}
+
+.cs-tab__label {
+  letter-spacing: -0.01em;
 }
 
 /* A step number in the margin: the guide really is a sequence, so the figure
    is information. It is a numeral, not a badge. */
 .cs-step {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  flex: none;
+  background-color: var(--cs-surface-sunken);
+  border: var(--cs-keyline) solid var(--cs-edge);
+  border-radius: var(--cs-radius-full);
   font-family: var(--cs-font-display);
-  font-size: var(--cs-text-xl);
-  font-weight: 600;
+  font-size: var(--cs-text-base);
+  font-weight: 800;
   line-height: 1;
-  color: var(--cs-text-muted);
+  color: var(--cs-text);
 }
 
 /* Decorative icon tiles carry nothing the heading does not already say. */
@@ -836,7 +1179,45 @@
   display: none;
 }
 
-/* Tab labels must not wrap. */
-.cs-tabs button {
-  white-space: nowrap;
+/* ------------------------------------------------------------ wide screens */
+
+/*
+ * From a tablet up the session controls and the register sit side by side, so
+ * the class list is visible while the date and the group are being chosen
+ * rather than scrolled past.
+ */
+@media (min-width: 64rem) {
+  .cs-main {
+    padding-block: var(--cs-space-6);
+  }
+
+  /* Notices run the full width of the shell so they sit over the columns
+     rather than floating in a narrower column of their own. */
+  .cs-page--wide {
+    max-width: var(--cs-shell);
+  }
+
+  .cs-page--split {
+    display: grid;
+    grid-template-columns: 22rem 1fr;
+    align-items: start;
+    gap: var(--cs-space-5);
+    max-width: var(--cs-shell);
+  }
+
+  .cs-page--split > .cs-col {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cs-space-4);
+    min-width: 0;
+  }
+
+  .cs-page--split > .cs-col--aside {
+    position: sticky;
+    top: calc(var(--cs-space-6) + 4rem);
+  }
+
+  .cs-save {
+    position: static;
+  }
 }

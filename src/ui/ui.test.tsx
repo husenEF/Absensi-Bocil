@@ -90,21 +90,43 @@ describe('Field', () => {
 });
 
 describe('StatusPicker', () => {
-  const setup = (value: 'hadir' | 'sakit' | 'izin' | 'alpa' = 'hadir') => {
+  const setup = (value: 'hadir' | 'sakit' | 'izin' | 'alpa' | undefined) => {
     const onChange = vi.fn();
     render(<StatusPicker personName="Budi" groupId="budi" value={value} onChange={onChange} />);
     return {onChange};
   };
 
+  it('starts with nothing chosen, so an untouched register records nothing', () => {
+    setup(undefined);
+    for (const name of ['Hadir', 'Sakit', 'Izin', 'Alpa']) {
+      expect(screen.getByRole('radio', {name})).not.toBeChecked();
+    }
+  });
+
+  it('says in its accessible name when a santri has not been marked', () => {
+    setup(undefined);
+    expect(
+      screen.getByRole('radiogroup', {name: 'Status kehadiran Budi, belum ditandai'}),
+    ).toBeInTheDocument();
+  });
+
+  it('reports the same status again when the chosen mark is tapped, so it can be cleared', async () => {
+    // A radio fires no change event when it is already checked, which would
+    // otherwise leave a mistapped mark impossible to undo.
+    const {onChange} = setup('sakit');
+    await userEvent.click(screen.getByRole('radio', {name: 'Sakit'}));
+    expect(onChange).toHaveBeenCalledWith('sakit');
+  });
+
   it('names the group after the person it belongs to', () => {
-    setup();
+    setup('hadir');
     expect(
       screen.getByRole('radiogroup', {name: 'Status kehadiran Budi'}),
     ).toBeInTheDocument();
   });
 
   it('offers all four Indonesian statuses as real radios', () => {
-    setup();
+    setup('hadir');
     expect(screen.getByRole('radio', {name: 'Hadir'})).toBeInTheDocument();
     expect(screen.getByRole('radio', {name: 'Sakit'})).toBeInTheDocument();
     expect(screen.getByRole('radio', {name: 'Izin'})).toBeInTheDocument();
@@ -118,13 +140,13 @@ describe('StatusPicker', () => {
   });
 
   it('reports the chosen status', async () => {
-    const {onChange} = setup();
+    const {onChange} = setup('hadir');
     await userEvent.click(screen.getByRole('radio', {name: 'Sakit'}));
     expect(onChange).toHaveBeenCalledWith('sakit');
   });
 
   it('is operable by a single tap — no gesture required', async () => {
-    const {onChange} = setup();
+    const {onChange} = setup('hadir');
     // A plain click on the label reaches the control: no swipe, no long-press,
     // nothing that needs WCAG 2.5.7's drag alternative.
     await userEvent.click(screen.getByText('Alpa'));
@@ -132,7 +154,7 @@ describe('StatusPicker', () => {
   });
 
   it('writes each status as a letter as well as a word, never colour alone', () => {
-    setup();
+    setup('hadir');
     for (const code of ['H', 'S', 'I', 'A']) {
       expect(screen.getByText(code)).toBeInTheDocument();
     }
