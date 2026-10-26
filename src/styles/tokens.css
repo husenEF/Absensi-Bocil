@@ -22,53 +22,53 @@
 
 :root {
   /* paper and ink */
-  --cs-bg: #faf9f5;
-  --cs-surface: #ffffff;
-  --cs-surface-sunken: #f1efe6;
-  --cs-text: #121212;
-  --cs-text-muted: #56534c;
+  --cs-bg: #f5f5f3;
+  --cs-surface: #fdfdfc;
+  --cs-surface-sunken: #e8e8e8;
+  --cs-text: #1a1d1a;
+  --cs-text-muted: #656565;
 
   /* a hairline separates rows; a keyline encloses a surface */
-  --cs-border: #ded9cc;
-  --cs-border-strong: #121212;
+  --cs-border: #d3d3d3;
+  --cs-border-strong: #707070;
 
   /* the one signal colour, always inside a keyline */
-  --cs-brand: #121212;
-  --cs-brand-solid: #ffe14d;
-  --cs-brand-solid-hover: #ffd60a;
-  --cs-brand-ink: #121212;
-  --cs-brand-tint: #fff8d6;
-  --cs-brand-edge: #121212;
+  --cs-brand: #1a1d1a;
+  --cs-brand-solid: #ffd966;
+  --cs-brand-solid-hover: #ffcc33;
+  --cs-brand-ink: #1a1d1a;
+  --cs-brand-tint: #fff6dc;
+  --cs-brand-edge: #1a1d1a;
 
   /* destructive actions are ink: a red here would read as an Alpa mark */
-  --cs-danger: #121212;
-  --cs-danger-solid: #121212;
-  --cs-danger-solid-hover: #2f2f2f;
-  --cs-danger-ink: #ffffff;
-  --cs-danger-tint: #fdeee9;
+  --cs-danger: #1a1d1a;
+  --cs-danger-solid: #1a1d1a;
+  --cs-danger-solid-hover: #2c2c2c;
+  --cs-danger-ink: #fdfdfc;
+  --cs-danger-tint: #fff1e4;
 
-  --cs-focus: #121212;
+  --cs-focus: #1a1d1a;
 
   /* the only other colour in the product */
-  --cs-hadir-tint: #e3f9f1;
-  --cs-hadir-ink: #055c45;
-  --cs-hadir-solid: #06d6a0;
-  --cs-hadir-solid-ink: #121212;
+  --cs-hadir-tint: #e4f8ed;
+  --cs-hadir-ink: #1a6b3c;
+  --cs-hadir-solid: #2ecc71;
+  --cs-hadir-solid-ink: #1a1d1a;
 
-  --cs-sakit-tint: #fff4de;
+  --cs-sakit-tint: #fff6dc;
   --cs-sakit-ink: #6b4a00;
-  --cs-sakit-solid: #ffd166;
-  --cs-sakit-solid-ink: #121212;
+  --cs-sakit-solid: #ffd966;
+  --cs-sakit-solid-ink: #1a1d1a;
 
-  --cs-izin-tint: #e2f1f7;
-  --cs-izin-ink: #0d5e7a;
-  --cs-izin-solid: #118ab2;
-  --cs-izin-solid-ink: #121212;
+  --cs-izin-tint: #e4eefb;
+  --cs-izin-ink: #17508f;
+  --cs-izin-solid: #1f6ed0;
+  --cs-izin-solid-ink: #fdfdfc;
 
-  --cs-alpa-tint: #ffeee7;
-  --cs-alpa-ink: #8c3410;
-  --cs-alpa-solid: #ff7f50;
-  --cs-alpa-solid-ink: #121212;
+  --cs-alpa-tint: #fff1e4;
+  --cs-alpa-ink: #8a4408;
+  --cs-alpa-solid: #ff9f43;
+  --cs-alpa-solid-ink: #1a1d1a;
 
   /* type */
   --cs-font-display: 'Archivo', system-ui, -apple-system, sans-serif;
@@ -110,7 +110,7 @@
 
   /* the structure: a drawn edge and a hard offset in the same ink */
   --cs-keyline: 2px;
-  --cs-edge: #121212;
+  --cs-edge: #1a1d1a;
   --cs-lift: 4px 4px 0 var(--cs-edge);
   --cs-lift-sm: 2px 2px 0 var(--cs-edge);
   --cs-lift-lg: 6px 6px 0 var(--cs-edge);
@@ -129,53 +129,59 @@
 }
 
 html.dark {
-  --cs-bg: #0b0b0a;
-  --cs-surface: #171714;
-  --cs-surface-sunken: #211f1b;
-  --cs-text: #f7f6f1;
-  --cs-text-muted: #a9a69c;
+  /* Soft charcoal, not black: the page recedes without the panels having to
+     glow to be seen against it. */
+  --cs-bg: #2c2c2c;
+  --cs-surface: #3e3e3e;
+  --cs-surface-sunken: #202020;
+  --cs-text: #e8e8e1;
+  --cs-text-muted: #d8d3d8;
 
-  --cs-border: #36342d;
-  --cs-border-strong: #8b887f;
+  --cs-border: #555555;
+  --cs-border-strong: #a0a0a0;
 
-  --cs-brand: #f7f6f1;
-  --cs-brand-solid: #ffe14d;
-  --cs-brand-solid-hover: #ffd60a;
-  --cs-brand-ink: #121212;
-  --cs-brand-tint: #2b2614;
-  --cs-brand-edge: #f7f6f1;
+  --cs-brand: #e8e8e1;
+  /* Signal yellow is dimmed to gold at night; it still carries dark ink. */
+  --cs-brand-solid: #d4af37;
+  --cs-brand-solid-hover: #e2c250;
+  --cs-brand-ink: #1a1d1a;
+  --cs-brand-tint: #3a3016;
+  --cs-brand-edge: #e8e8e1;
 
-  --cs-danger: #f7f6f1;
-  --cs-danger-solid: #f7f6f1;
-  --cs-danger-solid-hover: #e2e0d9;
-  --cs-danger-ink: #121212;
-  --cs-danger-tint: #2d1a14;
+  --cs-danger: #e8e8e1;
+  --cs-danger-solid: #e8e8e1;
+  --cs-danger-solid-hover: #d0d0c9;
+  --cs-danger-ink: #1a1d1a;
+  --cs-danger-tint: #3a2419;
 
-  --cs-focus: #ffe14d;
+  --cs-focus: #d4af37;
 
-  /* The marks do not change between themes: Hadir is one colour, learned once. */
-  --cs-hadir-tint: #0c2a22;
-  --cs-hadir-ink: #5fe3bd;
-  --cs-hadir-solid: #06d6a0;
-  --cs-hadir-solid-ink: #121212;
+  /* The marks keep their hues and lose their glare: Hadir and Izin become deep
+     fills carrying light ink, so a screenful of them does not burn in a dark
+     room. The letter is what is read either way. */
+  --cs-hadir-tint: #15301f;
+  --cs-hadir-ink: #7fd9a0;
+  --cs-hadir-solid: #1e5c31;
+  --cs-hadir-solid-ink: #e8e8e1;
 
-  --cs-sakit-tint: #2b2310;
-  --cs-sakit-ink: #ffd98a;
-  --cs-sakit-solid: #ffd166;
-  --cs-sakit-solid-ink: #121212;
+  --cs-sakit-tint: #332a11;
+  --cs-sakit-ink: #e8c75e;
+  --cs-sakit-solid: #d4af37;
+  --cs-sakit-solid-ink: #1a1d1a;
 
-  --cs-izin-tint: #0d2630;
-  --cs-izin-ink: #6cc2dd;
-  --cs-izin-solid: #118ab2;
-  --cs-izin-solid-ink: #121212;
+  --cs-izin-tint: #17233a;
+  --cs-izin-ink: #8fb4e8;
+  --cs-izin-solid: #1a3b7b;
+  --cs-izin-solid-ink: #e8e8e1;
 
-  --cs-alpa-tint: #3a211a;
-  --cs-alpa-ink: #ff9f7d;
-  --cs-alpa-solid: #ff7f50;
-  --cs-alpa-solid-ink: #121212;
+  --cs-alpa-tint: #33210f;
+  --cs-alpa-ink: #e8a263;
+  --cs-alpa-solid: #cc7722;
+  --cs-alpa-solid-ink: #1a1d1a;
 
-  /* At night the keyline inverts: a black edge on a black page draws nothing. */
-  --cs-edge: #4a473f;
+  /* At night the keyline inverts: a black edge on a charcoal page draws
+     nothing, so the edge and its offset shadow are drawn in light grey. */
+  --cs-edge: #a0a0a0;
 }
 
 /*

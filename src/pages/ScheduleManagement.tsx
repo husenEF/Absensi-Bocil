@@ -1,21 +1,20 @@
 import React from 'react';
-import { motion } from 'motion/react';
-import { useApp } from '../context/AppContext';
-import { buildICalendar } from '../utils/calendar';
-import { Button } from '../ui/Button';
-import { 
-  Clock, 
-  Trash2, 
-  Plus, 
-  Bell, 
-  Settings, 
-  Info, 
-  Check, 
-  Calendar,
-  AlertCircle
-} from 'lucide-react';
+import {motion} from 'motion/react';
+import {Bell, CalendarDays, Clock, Plus, Trash2} from 'lucide-react';
+import {useApp} from '../context/AppContext';
+import {buildICalendar} from '../utils/calendar';
+import {Button} from '../ui/Button';
+import {Field} from '../ui/Field';
 
 const HARI_LIST = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
+
+type Schedule = {
+  id?: number;
+  title: string;
+  hari: string;
+  waktu: string;
+  remindMinutesBefore: number;
+};
 
 export const ScheduleManagement: React.FC = () => {
   /**
@@ -25,9 +24,9 @@ export const ScheduleManagement: React.FC = () => {
    * server cannot do better — so this is the way a teacher actually gets
    * reminded when the app is closed.
    */
-  const handleExportCalendar = (schedules: Array<{ id?: number; title: string; hari: string; waktu: string; remindMinutesBefore: number }>) => {
+  const handleExportCalendar = (schedules: Schedule[]) => {
     const ics = buildICalendar(schedules);
-    const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+    const blob = new Blob([ics], {type: 'text/calendar;charset=utf-8'});
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -51,106 +50,93 @@ export const ScheduleManagement: React.FC = () => {
     handleAddSchedule,
     handleDeleteSchedule,
     requestNotificationPermission,
-    showToast
   } = useApp();
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0 }}
-      className="cs-shell space-y-6"
+      initial={{opacity: 0, y: 10}}
+      animate={{opacity: 1, y: 0}}
+      exit={{opacity: 0}}
+      className="cs-page cs-page--split"
     >
-      {/* Settings / Authorization Header Banner */}
-      <div className="p-6 relative overflow-hidden">
-        {/* Accent Bar */}
-        <div className="absolute top-0 left-0 right-0 h-1.5 bg-red-650" />
-
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mt-1">
-          <div className="space-y-1">
-            <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-50 tracking-tight">Jadwal kelas</h2>
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">
-              Simpan kelas yang berulang setiap pekan, supaya tanggalnya terisi sendiri saat mencatat presensi.
-            </p>
+      <div className="cs-col cs-col--aside">
+        <section className="cs-card">
+          <div className="cs-card__head">
+            <h2 className="cs-card__title">
+              <Clock className="cs-icon" aria-hidden="true" />
+              Jadwal kelas
+            </h2>
           </div>
+          <p className="cs-muted">
+            Simpan kelas yang berulang setiap pekan, supaya tanggalnya terisi sendiri
+            saat mencatat presensi.
+          </p>
+          <div className="cs-row">
+            <Button
+              icon={<Bell className="cs-icon" />}
+              onClick={requestNotificationPermission}
+            >
+              Izinkan notifikasi
+            </Button>
+          </div>
+        </section>
 
-          <button
-            onClick={requestNotificationPermission}
-            className="inline-flex items-center justify-center gap-1.5 px-4.5 py-2.5 bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-850 dark:hover:bg-zinc-750 font-extrabold text-sm transition-all -2xs cursor-pointer"
-          >
-            <Bell className="w-4 h-4 text-red-500 animate-bounce" />
-            <span>Izinkan notifikasi</span>
-          </button>
-        </div>
-      </div>
+        <section className="cs-card">
+          <p className="cs-label">Tambah jadwal</p>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
-        {/* Form Add Schedule (Col left) */}
-        <div className="lg:col-span-5">
-          <div className="p-5 sticky top-24">
-            <div className="flex items-center gap-2 mb-4 border-b pb-3">
-              <Plus className="w-4.5 h-4.5 text-red-650" />
-              <h3 className="text-sm font-black text-zinc-800 dark:text-zinc-200">Tambah jadwal</h3>
-            </div>
-
-            <form onSubmit={handleAddSchedule} className="space-y-4">
-              <div>
-                <label className="block text-sm font-black text-zinc-400 mb-1.5" htmlFor="sch-title">
-                  Nama kelas
-                </label>
+          <form onSubmit={handleAddSchedule} className="cs-stack">
+            <Field id="sch-title" label="Nama kelas" hint="Contoh: Iqra sore">
+              {(p) => (
                 <input
+                  {...p}
+                  className="cs-input"
                   type="text"
-                  id="sch-title"
                   required
-                  placeholder="Contoh: Iqra sore"
                   value={scheduleTitle}
                   onChange={(e) => setScheduleTitle(e.target.value)}
-                  className="w-full text-sm text-zinc-800 dark:text-zinc-100 p-2.5 focus:outline-hidden focus:ring-1 focus:ring-red-650"
                 />
-              </div>
+              )}
+            </Field>
 
-              <div className="grid grid-cols-2 gap-3.5">
-                <div>
-                  <label className="block text-sm font-black text-zinc-400 mb-1.5" htmlFor="sch-day">
-                    Hari
-                  </label>
+            <div className="cs-grid-2">
+              <Field id="sch-day" label="Hari">
+                {(p) => (
                   <select
-                    id="sch-day"
+                    {...p}
+                    className="cs-select"
                     value={scheduleHari}
                     onChange={(e) => setScheduleHari(e.target.value)}
-                    className="w-full text-sm text-zinc-850 dark:text-zinc-100 p-2.5 focus:outline-hidden cursor-pointer font-semibold"
                   >
-                    {HARI_LIST.map(day => (
-                      <option key={day} value={day}>{day}</option>
+                    {HARI_LIST.map((day) => (
+                      <option key={day} value={day}>
+                        {day}
+                      </option>
                     ))}
                   </select>
-                </div>
+                )}
+              </Field>
 
-                <div>
-                  <label className="block text-sm font-black text-zinc-400 mb-1.5" htmlFor="sch-time">
-                    Jam mulai
-                  </label>
+              <Field id="sch-time" label="Jam mulai">
+                {(p) => (
                   <input
+                    {...p}
+                    className="cs-input"
                     type="time"
-                    id="sch-time"
                     required
                     value={scheduleWaktu}
                     onChange={(e) => setScheduleWaktu(e.target.value)}
-                    className="w-full text-sm text-zinc-800 dark:text-zinc-150 p-2.5 focus:outline-hidden"
                   />
-                </div>
-              </div>
+                )}
+              </Field>
+            </div>
 
-              <div>
-                <label className="block text-sm font-black text-zinc-400 mb-1.5" htmlFor="sch-remind">
-                  Ingatkan saya
-                </label>
+            <Field id="sch-remind" label="Ingatkan saya">
+              {(p) => (
                 <select
-                  id="sch-remind"
+                  {...p}
+                  className="cs-select"
                   value={scheduleRemindMinutesBefore}
                   onChange={(e) => setScheduleRemindMinutesBefore(Number(e.target.value))}
-                  className="w-full text-sm text-zinc-850 dark:text-zinc-100 p-2.5 focus:outline-hidden cursor-pointer font-semibold"
                 >
                   <option value={0}>Saat kelas dimulai</option>
                   <option value={5}>5 menit sebelumnya</option>
@@ -159,78 +145,76 @@ export const ScheduleManagement: React.FC = () => {
                   <option value={30}>30 menit sebelumnya</option>
                   <option value={60}>1 jam sebelumnya</option>
                 </select>
-              </div>
+              )}
+            </Field>
 
-              <div className="pt-2">
-                <button
-                  type="submit"
-                  className="w-full inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-red-650 hover:bg-red-750 text-white font-extrabold text-sm transition-all cursor-pointer -2xs border-transparent"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Simpan jadwal</span>
-                </button>
-              </div>
-            </form>
+            <Button type="submit" variant="primary" block icon={<Plus className="cs-icon" />}>
+              Simpan jadwal
+            </Button>
+          </form>
+        </section>
 
-            <div className="p-3.5 text-sm text-zinc-500 dark:text-zinc-400 leading-normal mt-4 space-y-1 font-medium select-none">
-              <p className="font-extrabold text-zinc-700 dark:text-zinc-300 tracking-wide">Tentang pengingat</p>
-              <p>Pengingat hanya berbunyi selama aplikasi ini terbuka. Agar tetap diingatkan saat aplikasi tertutup, simpan jadwalnya ke kalender HP Anda dengan tombol di setiap jadwal.</p>
-            </div>
+        <section className="cs-card cs-card--inset">
+          <h3 className="cs-subtitle">Tentang pengingat</h3>
+          <p className="cs-muted">
+            Pengingat hanya berbunyi selama aplikasi ini terbuka. Agar tetap diingatkan
+            saat aplikasi tertutup, simpan jadwalnya ke kalender HP Anda dengan tombol di
+            daftar jadwal.
+          </p>
+        </section>
+      </div>
+
+      <div className="cs-col">
+        <section className="cs-card">
+          <div className="cs-card__head">
+            <h2 className="cs-card__title">
+              <CalendarDays className="cs-icon" aria-hidden="true" />
+              Jadwal tersimpan ({schedules.length})
+            </h2>
+            {schedules.length > 0 ? (
+              <Button
+                icon={<CalendarDays className="cs-icon" />}
+                onClick={() => handleExportCalendar(schedules)}
+              >
+                Simpan ke kalender HP
+              </Button>
+            ) : null}
           </div>
-        </div>
 
-        {/* Schedule Lists View (Col right) */}
-        <div className="lg:col-span-7">
-          <div className="p-5 space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-2.5 mb-2">
-              <h3 className="text-sm font-black text-zinc-800 dark:text-zinc-200">Jadwal tersimpan ({schedules.length})</h3>
-              {schedules.length > 0 ? (
-                <Button onClick={() => handleExportCalendar(schedules)}>
-                  Simpan ke kalender HP
-                </Button>
-              ) : null}
+          {schedules.length === 0 ? (
+            <div className="cs-empty">
+              <CalendarDays className="cs-empty__icon" aria-hidden="true" />
+              <h3 className="cs-empty__title">Belum ada jadwal</h3>
+              <p className="cs-empty__body">
+                Anda tetap bisa mencatat presensi tanpa jadwal. Jadwal hanya mengisi
+                tanggalnya untuk Anda.
+              </p>
             </div>
-
-            {schedules.length === 0 ? (
-              <div className="py-12 text-center text-sm italic text-zinc-400">
-                Belum ada jadwal. Anda tetap bisa mencatat presensi tanpa jadwal.
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {schedules.map((s) => (
-                  <div 
-                    key={s.id} 
-                    className="p-4 hover: dark:hover: transition-all flex items-start justify-between gap-4"
-                  >
-                    <div className="space-y-1.5 min-w-0">
-                      <h4 className="text-sm font-black text-zinc-900 dark:text-zinc-100 truncate">{s.title}</h4>
-                      
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <span className="inline-flex items-center gap-1.5 text-sm font-extrabold text-red-650 dark:text-red-400 px-2 py-0.5">
-                          <Clock className="w-3.5 h-3.5 shrink-0" />
-                          <span>Setiap {s.hari}, pukul {s.waktu}</span>
-                        </span>
-
-                        <span className="inline-flex items-center text-sm font-bold text-zinc-500 px-2.5 py-0.5">
-                          {s.remindMinutesBefore === 0 ? 'Diingatkan saat mulai' : `Diingatkan ${s.remindMinutesBefore} menit sebelumnya`}
-                        </span>
-                      </div>
-                    </div>
-
+          ) : (
+            <ul className="cs-stack" aria-label="Jadwal tersimpan">
+              {schedules.map((s) => (
+                <li key={s.id} className="cs-card cs-card--inset">
+                  <div className="cs-card__head">
+                    <h3 className="cs-subtitle">{s.title}</h3>
                     <Button
                       variant="ghost"
+                      icon={<Trash2 className="cs-icon" />}
                       onClick={() => s.id && handleDeleteSchedule(s.id, s.title)}
-                      className="shrink-0"
                     >
                       Hapus
                     </Button>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
+                  <p className="cs-muted">
+                    Setiap {s.hari}, pukul {s.waktu} ·{' '}
+                    {s.remindMinutesBefore === 0
+                      ? 'diingatkan saat mulai'
+                      : `diingatkan ${s.remindMinutesBefore} menit sebelumnya`}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
       </div>
     </motion.div>
   );
