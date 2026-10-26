@@ -1205,16 +1205,34 @@
 
 /* --------------------------------------------------------------- the tabs */
 
+/*
+ * The bar itself spans the viewport, so its fill and keyline reach both edges
+ * of the screen the way a fixed bottom bar should. Its contents sit in the
+ * same container as the masthead, so on a laptop the tabs line up under the
+ * wordmark instead of stretching the full width of the window.
+ *
+ * The width has to be set on an inner element: `.cs-tabs` is fixed, which
+ * takes it out of the flow, so any max-width put on a wrapper around it is
+ * ignored.
+ */
 .cs-tabs {
   position: fixed;
   bottom: 0;
   inset-inline: 0;
   z-index: 40;
   display: flex;
-  justify-content: center;
-  padding: var(--cs-space-2);
+  padding-block: var(--cs-space-2);
   background-color: var(--cs-bg);
   border-top: var(--cs-keyline) solid var(--cs-edge);
+}
+
+.cs-tabs__inner {
+  display: flex;
+  width: 100%;
+  max-width: var(--cs-shell);
+  margin-inline: auto;
+  /* Matches .cs-masthead__inner, so the two line up on the same gutter. */
+  padding-inline: var(--cs-space-4);
 }
 
 .cs-tab {

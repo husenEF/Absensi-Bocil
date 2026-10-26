@@ -1,13 +1,13 @@
-import React from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { AppProvider, useApp } from './context/AppContext';
-import { ConfirmDialog } from './ui/ConfirmDialog';
-import { Button } from './ui/Button';
-import { AttendanceInput } from './pages/AttendanceInput';
-import { AttendanceHistory } from './pages/AttendanceHistory';
-import { ReportGenerator } from './pages/ReportGenerator';
-import { ScheduleManagement } from './pages/ScheduleManagement';
-import { SyncManagement } from './pages/SyncManagement';
+import React from "react";
+import { motion, AnimatePresence } from "motion/react";
+import { AppProvider, useApp } from "./context/AppContext";
+import { ConfirmDialog } from "./ui/ConfirmDialog";
+import { Button } from "./ui/Button";
+import { AttendanceInput } from "./pages/AttendanceInput";
+import { AttendanceHistory } from "./pages/AttendanceHistory";
+import { ReportGenerator } from "./pages/ReportGenerator";
+import { ScheduleManagement } from "./pages/ScheduleManagement";
+import { SyncManagement } from "./pages/SyncManagement";
 
 import {
   PlusCircle,
@@ -19,18 +19,22 @@ import {
   AlertCircle,
   Info,
   X,
-  ArrowRightLeft
-} from 'lucide-react';
+  ArrowRightLeft,
+} from "lucide-react";
 
-type TabId = 'input' | 'riwayat' | 'laporan' | 'jadwal' | 'sinkronisasi';
+type TabId = "input" | "riwayat" | "laporan" | "jadwal" | "sinkronisasi";
 
 /** The five places the app goes, in the order a teacher meets them. */
-const TABS: Array<{ id: TabId; label: string; icon: React.ComponentType<{ className?: string }> }> = [
-  { id: 'input', label: 'Presensi', icon: PlusCircle },
-  { id: 'riwayat', label: 'Riwayat', icon: History },
-  { id: 'laporan', label: 'Laporan', icon: FileText },
-  { id: 'jadwal', label: 'Jadwal', icon: Clock },
-  { id: 'sinkronisasi', label: 'Sinkron', icon: ArrowRightLeft }
+const TABS: Array<{
+  id: TabId;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+}> = [
+  { id: "input", label: "Presensi", icon: PlusCircle },
+  { id: "riwayat", label: "Riwayat", icon: History },
+  { id: "laporan", label: "Laporan", icon: FileText },
+  { id: "jadwal", label: "Jadwal", icon: Clock },
+  { id: "sinkronisasi", label: "Sinkron", icon: ArrowRightLeft },
 ];
 
 const MainAppContent: React.FC = () => {
@@ -48,18 +52,18 @@ const MainAppContent: React.FC = () => {
     deferredPrompt,
     executePWAPrompt,
     hideDbNotice,
-    handleDismissDbNotice
+    handleDismissDbNotice,
   } = useApp();
 
   const renderActivePage = () => {
     switch (activeTab) {
-      case 'riwayat':
+      case "riwayat":
         return <AttendanceHistory key="riwayat" />;
-      case 'laporan':
+      case "laporan":
         return <ReportGenerator key="laporan" />;
-      case 'jadwal':
+      case "jadwal":
         return <ScheduleManagement key="jadwal" />;
-      case 'sinkronisasi':
+      case "sinkronisasi":
         return <SyncManagement key="sinkronisasi" />;
       default:
         return <AttendanceInput key="input" />;
@@ -68,7 +72,6 @@ const MainAppContent: React.FC = () => {
 
   return (
     <div className="cs-app">
-
       {/* Incoming data waits for an answer here rather than on the Sinkron
           page: a sync link opens the app on whatever tab was last used, and
           the link is stripped from the URL straight away, so a dialog that
@@ -79,12 +82,12 @@ const MainAppContent: React.FC = () => {
         body={
           <>
             <p>
-              Data yang masuk berisi {pendingImport?.sessions ?? 0} sesi presensi dan{' '}
-              {pendingImport?.schedules ?? 0} jadwal.
+              Data yang masuk berisi {pendingImport?.sessions ?? 0} sesi
+              presensi dan {pendingImport?.schedules ?? 0} jadwal.
             </p>
             <p>
-              Data ini akan digabungkan dengan yang sudah ada di HP ini. Presensi pada
-              tanggal yang sama akan disatukan, bukan ditimpa.
+              Data ini akan digabungkan dengan yang sudah ada di HP ini.
+              Presensi pada tanggal yang sama akan disatukan, bukan ditimpa.
             </p>
           </>
         }
@@ -107,8 +110,12 @@ const MainAppContent: React.FC = () => {
               exit={{ opacity: 0, y: -12 }}
               className={`cs-toast cs-toast--${toast.type}`}
             >
-              {toast.type === 'error' && <AlertCircle className="cs-icon" aria-hidden="true" />}
-              {toast.type === 'info' && <Info className="cs-icon" aria-hidden="true" />}
+              {toast.type === "error" && (
+                <AlertCircle className="cs-icon" aria-hidden="true" />
+              )}
+              {toast.type === "info" && (
+                <Info className="cs-icon" aria-hidden="true" />
+              )}
               <span className="cs-toast__msg">{toast.message}</span>
               {toast.action && (
                 <button
@@ -141,11 +148,17 @@ const MainAppContent: React.FC = () => {
 
             <button
               type="button"
-              onClick={() => setDarkMode(prev => !prev)}
+              onClick={() => setDarkMode((prev) => !prev)}
               className="cs-iconbtn"
-              aria-label={darkMode ? 'Ganti ke tema terang' : 'Ganti ke tema gelap'}
+              aria-label={
+                darkMode ? "Ganti ke tema terang" : "Ganti ke tema gelap"
+              }
             >
-              {darkMode ? <Sun className="cs-icon" /> : <Moon className="cs-icon" />}
+              {darkMode ? (
+                <Sun className="cs-icon" />
+              ) : (
+                <Moon className="cs-icon" />
+              )}
             </button>
           </div>
         </div>
@@ -159,7 +172,8 @@ const MainAppContent: React.FC = () => {
             {deferredPrompt && (
               <section className="cs-card cs-card--bar">
                 <p className="cs-muted">
-                  Pasang ClassSync di layar utama untuk membukanya seperti aplikasi biasa.
+                  Pasang ClassSync di layar utama untuk membukanya seperti
+                  aplikasi biasa.
                 </p>
                 <Button variant="primary" onClick={executePWAPrompt}>
                   Pasang
@@ -170,8 +184,8 @@ const MainAppContent: React.FC = () => {
             {!hideDbNotice && (
               <section className="cs-card cs-card--bar cs-card--inset">
                 <p className="cs-muted">
-                  Presensi tersimpan di ponsel ini saja dan tidak dikirim ke mana pun.
-                  Ingat untuk mengunduh cadangan sesekali.
+                  Presensi tersimpan di ponsel ini saja dan tidak dikirim ke
+                  mana pun. Ingat untuk mengunduh cadangan sesekali.
                 </p>
                 <button
                   type="button"
@@ -186,9 +200,7 @@ const MainAppContent: React.FC = () => {
           </div>
         )}
 
-        <AnimatePresence mode="wait">
-          {renderActivePage()}
-        </AnimatePresence>
+        <AnimatePresence mode="wait">{renderActivePage()}</AnimatePresence>
       </main>
 
       <footer className="cs-footer">
@@ -197,20 +209,21 @@ const MainAppContent: React.FC = () => {
       </footer>
 
       <nav aria-label="Menu utama" className="cs-tabs">
-        {TABS.map(({ id, label, icon: Icon }) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => setActiveTab(id)}
-            aria-current={activeTab === id ? 'page' : undefined}
-            className="cs-tab"
-          >
-            <Icon className="cs-icon" aria-hidden="true" />
-            <span className="cs-tab__label">{label}</span>
-          </button>
-        ))}
+        <div className="cs-tabs__inner">
+          {TABS.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setActiveTab(id)}
+              aria-current={activeTab === id ? "page" : undefined}
+              className="cs-tab"
+            >
+              <Icon className="cs-icon" aria-hidden="true" />
+              <span className="cs-tab__label">{label}</span>
+            </button>
+          ))}
+        </div>
       </nav>
-
     </div>
   );
 };
