@@ -1,6 +1,6 @@
 import React, {useMemo, useState} from 'react';
 import {motion} from 'motion/react';
-import {Check, Eraser, Plus, Save, UserPlus} from 'lucide-react';
+import {Check, Eraser, Plus, Save, Search, UserPlus, X} from 'lucide-react';
 import {useApp} from '../context/AppContext';
 import {formatIndonesianDate} from '../utils/date';
 import {STATUS_CODE, STATUS_LABEL, STATUS_ORDER} from '../styles/palette';
@@ -50,9 +50,6 @@ const getWeekdayOccurrences = (hariName: string, countPast = 8, countFuture = 1)
   return list;
 };
 
-/** Which set of santri is on screen. A number is a schedule's id. */
-type GroupFilter = 'semua' | 'lainnya' | number;
-
 export const AttendanceInput: React.FC = () => {
   const {
     tanggalInput,
@@ -62,7 +59,6 @@ export const AttendanceInput: React.FC = () => {
     selectedScheduleId,
     setSelectedScheduleId,
     allRegisteredStudents,
-    scheduleGroups,
     sessionStatusFor,
     setSessionStatus,
     handleMarkAllPresent,
@@ -81,49 +77,46 @@ export const AttendanceInput: React.FC = () => {
   const [newName, setNewName] = useState('');
   const [newNameError, setNewNameError] = useState<string | undefined>();
   const [showBulk, setShowBulk] = useState(false);
-  const [group, setGroup] = useState<GroupFilter>('semua');
+  const [showAdd, setShowAdd] = useState(false);
+  const [query, setQuery] = useState('');
 
   const linkedSchedule = schedules.find((s) => s.id === selectedScheduleId);
   const occurrences = linkedSchedule?.hari ? getWeekdayOccurrences(linkedSchedule.hari) : [];
   const hasRoster = allRegisteredStudents.length > 0;
 
-  const ungrouped = scheduleGroups.find((g) => g.id === undefined);
-  const classGroups = scheduleGroups.filter((g) => g.id !== undefined);
-
-  /** The santri on screen right now. */
+  /*
+   * The whole roster, always.
+   *
+   * Picking a class used to hide every santri outside it, which meant a
+   * teacher who taught five groups could not mark a santri who turned up to
+   * the wrong one, and a new name added mid-session vanished from the screen.
+   * The class now only fills in the date; the search below is the one thing
+   * that narrows the list, and it is the teacher's choice rather than a side
+   * effect of something else.
+   */
   const visible = useMemo(() => {
-    if (group === 'semua') return allRegisteredStudents;
-    if (group === 'lainnya') return ungrouped?.names ?? [];
-    return scheduleGroups.find((g) => g.id === group)?.names ?? [];
-  }, [group, allRegisteredStudents, scheduleGroups, ungrouped]);
+    const q = query.trim().toLowerCase();
+    if (!q) return allRegisteredStudents;
+    return allRegisteredStudents.filter((n) => n.toLowerCase().includes(q));
+  }, [allRegisteredStudents, query]);
 
-  /* Counts follow what is on screen, so the number under the Save button and
-     the rows the teacher can see always agree. */
-  const visibleTally = useMemo(() => {
+  /* Counts cover every santri, not just the ones the search left on screen:
+     filtering is a way of looking, not a change to what gets saved. */
+  const tally = useMemo(() => {
     const counts = {hadir: 0, sakit: 0, izin: 0, alpa: 0};
     let marked = 0;
-    for (const name of visible) {
+    for (const name of allRegisteredStudents) {
       const status = sessionStatusFor(name);
       if (status) {
         counts[status] += 1;
         marked += 1;
       }
     }
-    return {counts, marked, total: visible.length};
-  }, [visible, sessionStatusFor]);
+    return {counts, marked, total: allRegisteredStudents.length};
+  }, [allRegisteredStudents, sessionStatusFor]);
 
-  const remaining = visibleTally.total - visibleTally.marked;
-
-  /**
-   * Choosing a class both filters the register and links the session to that
-   * schedule, because they are the same decision: this is the class I am
-   * marking. Keeping them as two controls meant a teacher could file Tahfidz
-   * attendance under the morning class without noticing.
-   */
-  const chooseGroup = (next: GroupFilter) => {
-    setGroup(next);
-    setSelectedScheduleId(typeof next === 'number' ? next : undefined);
-  };
+  const remaining = tally.total - tally.marked;
+  const isFiltered = query.trim().length > 0;
 
   const submitNewName = async () => {
     if (!newName.trim()) {
@@ -136,13 +129,6 @@ export const AttendanceInput: React.FC = () => {
       setNewNameError(undefined);
     }
   };
-
-  const groupLabel =
-    group === 'semua'
-      ? 'Semua santri'
-      : group === 'lainnya'
-        ? 'Belum masuk kelompok'
-        : (classGroups.find((g) => g.id === group)?.title ?? 'Kelompok');
 
   return (
     <motion.div
@@ -181,6 +167,8 @@ export const AttendanceInput: React.FC = () => {
           </section>
         ) : null}
 
+        {/* One card for the one question: which session is this? The class,
+            the date and the catch-up jump all answer it together. */}
         <section className="cs-card">
           <p className="cs-label">Sesi yang dicatat</p>
 
@@ -194,6 +182,46 @@ export const AttendanceInput: React.FC = () => {
                 : 'Tidak terhubung jadwal rutin'}
             </span>
           </div>
+
+          {schedules.length > 0 ? (
+            <div className="cs-field">
+              <p className="cs-field__label" id="kelas_label">
+                Kelas
+              </p>
+              <p className="cs-field__hint">
+                Memilih kelas mengisi tanggalnya dan mengelompokkan sesi ini di laporan.
+                Daftar santri tetap lengkap.
+              </p>
+              <ul className="cs-groups" aria-labelledby="kelas_label">
+                <li className="cs-group">
+                  <button
+                    type="button"
+                    className="cs-group__btn"
+                    aria-pressed={selectedScheduleId === undefined}
+                    onClick={() => setSelectedScheduleId(undefined)}
+                  >
+                    Tanpa jadwal
+                    <span className="cs-group__when">Sesi lepas</span>
+                  </button>
+                </li>
+                {schedules.map((s) => (
+                  <li key={s.id} className="cs-group">
+                    <button
+                      type="button"
+                      className="cs-group__btn"
+                      aria-pressed={selectedScheduleId === s.id}
+                      onClick={() => setSelectedScheduleId(s.id)}
+                    >
+                      {s.title}
+                      <span className="cs-group__when">
+                        {s.hari}, {s.waktu}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
 
           <Field id="tanggal_kegiatan" label="Tanggal kegiatan">
             {(p) => (
@@ -234,79 +262,18 @@ export const AttendanceInput: React.FC = () => {
             </Field>
           ) : null}
         </section>
-
-        {/* Kelompok. Only worth showing once there is more than one class to
-            choose between — a single chip is a label pretending to be a
-            control. */}
-        {classGroups.length > 0 || (ungrouped?.names.length ?? 0) > 0 ? (
-          <section className="cs-card">
-            <p className="cs-label">
-              Kelompok kelas
-              <span className="cs-label__count">{visible.length} santri</span>
-            </p>
-
-            <ul className="cs-groups">
-              <li className="cs-group">
-                <button
-                  type="button"
-                  className="cs-group__btn"
-                  aria-pressed={group === 'semua'}
-                  onClick={() => chooseGroup('semua')}
-                >
-                  Semua santri
-                  <span className="cs-group__when">{allRegisteredStudents.length} nama</span>
-                </button>
-              </li>
-
-              {classGroups.map((g) => (
-                <li key={g.id} className="cs-group">
-                  <button
-                    type="button"
-                    className="cs-group__btn"
-                    aria-pressed={group === g.id}
-                    onClick={() => chooseGroup(g.id as number)}
-                  >
-                    {g.title}
-                    <span className="cs-group__when">
-                      {g.hari}, {g.waktu} · {g.names.length} nama
-                    </span>
-                  </button>
-                </li>
-              ))}
-
-              {(ungrouped?.names.length ?? 0) > 0 ? (
-                <li className="cs-group">
-                  <button
-                    type="button"
-                    className="cs-group__btn"
-                    aria-pressed={group === 'lainnya'}
-                    onClick={() => chooseGroup('lainnya')}
-                  >
-                    Belum masuk kelompok
-                    <span className="cs-group__when">{ungrouped?.names.length} nama</span>
-                  </button>
-                </li>
-              ) : null}
-            </ul>
-
-            <p className="cs-muted">
-              Kelompok tersusun dari sesi yang sudah tercatat. Seorang santri masuk ke
-              sebuah kelas setelah pertama kali ditandai di sana.
-            </p>
-          </section>
-        ) : null}
       </div>
 
       <form onSubmit={handleSaveAttendance} className="cs-col">
         <section className="cs-card">
           <p className="cs-label">
-            {groupLabel}
+            Daftar santri
             <span className="cs-label__count">
-              {visibleTally.marked}/{visibleTally.total} ditandai
+              {tally.marked}/{tally.total} ditandai
             </span>
           </p>
 
-          {hasRoster && visible.length > 0 ? (
+          {hasRoster ? (
             <>
               <div className="cs-progress">
                 <div className="cs-progress__head">
@@ -319,9 +286,9 @@ export const AttendanceInput: React.FC = () => {
                 <div
                   className="cs-progress__rail"
                   role="progressbar"
-                  aria-valuenow={visibleTally.marked}
+                  aria-valuenow={tally.marked}
                   aria-valuemin={0}
-                  aria-valuemax={visibleTally.total}
+                  aria-valuemax={tally.total}
                   aria-label="Santri yang sudah ditandai"
                 >
                   {STATUS_ORDER.map((key) => (
@@ -329,12 +296,44 @@ export const AttendanceInput: React.FC = () => {
                       key={key}
                       className={`cs-progress__seg cs-progress__seg--${key}`}
                       style={{
-                        width: `${(visibleTally.counts[key] / Math.max(visibleTally.total, 1)) * 100}%`,
+                        width: `${(tally.counts[key] / Math.max(tally.total, 1)) * 100}%`,
                       }}
                     />
                   ))}
                 </div>
               </div>
+
+              {/* Worth its space once a roster outgrows one screen. */}
+              {allRegisteredStudents.length > 8 ? (
+                <div className="cs-search">
+                  <Search className="cs-icon cs-search__icon" aria-hidden="true" />
+                  <input
+                    type="search"
+                    className="cs-input cs-search__input"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    aria-label="Cari nama santri"
+                    placeholder="Cari nama santri"
+                  />
+                  {isFiltered ? (
+                    <button
+                      type="button"
+                      className="cs-iconbtn cs-search__clear"
+                      onClick={() => setQuery('')}
+                      aria-label="Hapus pencarian"
+                    >
+                      <X className="cs-icon" />
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {isFiltered ? (
+                <p className="cs-muted" aria-live="polite">
+                  Menampilkan {visible.length} dari {tally.total} santri. Tanda yang sudah
+                  Anda beri tetap tersimpan.
+                </p>
+              ) : null}
 
               <ul className="cs-legend" aria-hidden="true">
                 {STATUS_ORDER.map((k) => (
@@ -347,30 +346,41 @@ export const AttendanceInput: React.FC = () => {
                 ))}
               </ul>
 
-              <ul className="cs-roster">
-                {visible.map((name) => (
-                  <li
-                    key={name}
-                    className={`cs-roster__row${
-                      sessionStatusFor(name) ? '' : ' is-unmarked'
-                    }`}
-                  >
-                    <span className="cs-roster__name">{name}</span>
-                    <StatusPicker
-                      personName={name}
-                      groupId={nameKey(name)}
-                      value={sessionStatusFor(name)}
-                      onChange={(status) => setSessionStatus(name, status)}
-                    />
-                  </li>
-                ))}
-              </ul>
+              {visible.length > 0 ? (
+                <ul className="cs-roster">
+                  {visible.map((name) => (
+                    <li
+                      key={name}
+                      className={`cs-roster__row${
+                        sessionStatusFor(name) ? '' : ' is-unmarked'
+                      }`}
+                    >
+                      <span className="cs-roster__name">{name}</span>
+                      <StatusPicker
+                        personName={name}
+                        groupId={nameKey(name)}
+                        value={sessionStatusFor(name)}
+                        onChange={(status) => setSessionStatus(name, status)}
+                      />
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <div className="cs-empty">
+                  <h3 className="cs-empty__title">Tidak ada nama yang cocok</h3>
+                  <p className="cs-empty__body">
+                    Tidak ada santri bernama “{query.trim()}”. Coba kata lain, atau
+                    tambahkan namanya ke daftar.
+                  </p>
+                  <Button onClick={() => setQuery('')}>Tampilkan semua santri</Button>
+                </div>
+              )}
 
-              {visibleTally.marked > 0 ? (
+              {tally.marked > 0 ? (
                 <ul className="cs-tally" aria-live="polite" aria-label="Ringkasan kehadiran">
-                  {STATUS_ORDER.filter((k) => visibleTally.counts[k] > 0).map((k) => (
+                  {STATUS_ORDER.filter((k) => tally.counts[k] > 0).map((k) => (
                     <li key={k} className={`cs-chip cs-chip--${k}`}>
-                      {STATUS_LABEL[k]} {visibleTally.counts[k]}
+                      {STATUS_LABEL[k]} {tally.counts[k]}
                     </li>
                   ))}
                 </ul>
@@ -389,22 +399,12 @@ export const AttendanceInput: React.FC = () => {
                   variant="ghost"
                   icon={<Eraser className="cs-icon" />}
                   onClick={handleClearSession}
-                  disabled={visibleTally.marked === 0}
+                  disabled={tally.marked === 0}
                 >
                   Kosongkan tanda
                 </Button>
               </div>
             </>
-          ) : hasRoster ? (
-            /* The roster has names, but none of them belong to this class yet. */
-            <div className="cs-empty">
-              <h3 className="cs-empty__title">Kelompok ini masih kosong</h3>
-              <p className="cs-empty__body">
-                Pilih Semua santri untuk menandai siapa pun. Santri yang Anda tandai di
-                sesi ini akan masuk ke kelompok {groupLabel} berikutnya.
-              </p>
-              <Button onClick={() => chooseGroup('semua')}>Tampilkan semua santri</Button>
-            </div>
           ) : (
             /* A real empty state. This screen used to show six invented
                students here, which a new teacher would save as real data. */
@@ -414,76 +414,93 @@ export const AttendanceInput: React.FC = () => {
                 Tambahkan nama santri di bawah. Daftar ini tersimpan, jadi Anda cukup
                 mengetiknya sekali.
               </p>
+              <Button icon={<UserPlus className="cs-icon" />} onClick={() => setShowAdd(true)}>
+                Tambah santri pertama
+              </Button>
             </div>
           )}
         </section>
 
+        {/* Folded away by default: a roster is typed once and marked every
+            week, so the form sat above the Save button taking room from the
+            thing teachers actually come back for. */}
         <section className="cs-card">
-          <p className="cs-label">Tambah santri</p>
+          <Button
+            variant="ghost"
+            icon={<Plus className="cs-icon" />}
+            aria-expanded={showAdd}
+            onClick={() => setShowAdd((v) => !v)}
+          >
+            {showAdd ? 'Tutup tambah santri' : 'Tambah santri'}
+          </Button>
 
-          <div className="cs-addrow">
-            <Field id="quick_add_name" label="Nama santri" error={newNameError}>
-              {(p) => (
-                <input
-                  {...p}
-                  className="cs-input"
-                  type="text"
-                  value={newName}
-                  onChange={(e) => {
-                    setNewName(e.target.value);
-                    if (newNameError) setNewNameError(undefined);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      void submitNewName();
-                    }
-                  }}
-                />
-              )}
-            </Field>
-            <Button icon={<UserPlus className="cs-icon" />} onClick={submitNewName}>
-              Tambah
-            </Button>
-          </div>
-
-          <div>
-            <Button
-              variant="ghost"
-              icon={<Plus className="cs-icon" />}
-              aria-expanded={showBulk}
-              onClick={() => setShowBulk((v) => !v)}
-            >
-              Tambah beberapa nama sekaligus
-            </Button>
-            {showBulk ? (
-              <div className="cs-bulk">
-                <Field
-                  id="daftar_peserta"
-                  label="Nama santri"
-                  hint="Pisahkan dengan koma. Contoh: Husen, Budi, Ahmad"
-                >
+          {showAdd ? (
+            <>
+              <div className="cs-addrow">
+                <Field id="quick_add_name" label="Nama santri" error={newNameError}>
                   {(p) => (
-                    <textarea
+                    <input
                       {...p}
-                      className="cs-textarea"
-                      rows={3}
-                      value={namesInput}
-                      onChange={(e) => setNamesInput(e.target.value)}
+                      className="cs-input"
+                      type="text"
+                      value={newName}
+                      onChange={(e) => {
+                        setNewName(e.target.value);
+                        if (newNameError) setNewNameError(undefined);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          void submitNewName();
+                        }
+                      }}
                     />
                   )}
                 </Field>
-                <Button
-                  onClick={async () => {
-                    const ok = await handleAddStudent(namesInput);
-                    if (ok) setNamesInput('');
-                  }}
-                >
-                  Tambahkan ke daftar
+                <Button icon={<UserPlus className="cs-icon" />} onClick={submitNewName}>
+                  Tambah
                 </Button>
               </div>
-            ) : null}
-          </div>
+
+              <div>
+                <Button
+                  variant="ghost"
+                  icon={<Plus className="cs-icon" />}
+                  aria-expanded={showBulk}
+                  onClick={() => setShowBulk((v) => !v)}
+                >
+                  Tambah beberapa nama sekaligus
+                </Button>
+                {showBulk ? (
+                  <div className="cs-bulk">
+                    <Field
+                      id="daftar_peserta"
+                      label="Nama santri"
+                      hint="Pisahkan dengan koma. Contoh: Husen, Budi, Ahmad"
+                    >
+                      {(p) => (
+                        <textarea
+                          {...p}
+                          className="cs-textarea"
+                          rows={3}
+                          value={namesInput}
+                          onChange={(e) => setNamesInput(e.target.value)}
+                        />
+                      )}
+                    </Field>
+                    <Button
+                      onClick={async () => {
+                        const ok = await handleAddStudent(namesInput);
+                        if (ok) setNamesInput('');
+                      }}
+                    >
+                      Tambahkan ke daftar
+                    </Button>
+                  </div>
+                ) : null}
+              </div>
+            </>
+          ) : null}
         </section>
 
         {/* The bar rides over the register, so it stays the one action and one
@@ -495,17 +512,17 @@ export const AttendanceInput: React.FC = () => {
             size="lg"
             block
             icon={<Save className="cs-icon" />}
-            disabled={visibleTally.marked === 0}
+            disabled={tally.marked === 0}
           >
             Simpan presensi
           </Button>
 
           <p className="cs-muted" aria-live="polite">
-            {visibleTally.marked === 0
+            {tally.marked === 0
               ? 'Tandai kehadiran santri untuk menyimpan.'
               : remaining > 0
-                ? `${visibleTally.marked} ditandai · ${remaining} belum ikut tersimpan`
-                : `Semua ${visibleTally.total} santri sudah ditandai`}
+                ? `${tally.marked} ditandai · ${remaining} belum ikut tersimpan`
+                : `Semua ${tally.total} santri sudah ditandai`}
           </p>
         </div>
       </form>
