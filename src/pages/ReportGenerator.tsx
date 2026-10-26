@@ -523,86 +523,79 @@ export const ReportGenerator: React.FC = () => {
     >
       {/* Week 3 Sticky Alert / Announcement */}
       {todayIsThirdWeek && !hideWeekReminder && (
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.95 }}
+        <motion.section
+          initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="bg-red-500/10 dark:bg-red-950/20 border-red-500/20 p-4 flex items-start gap-3 relative"
+          className="cs-card cs-card--danger"
         >
-          <AlertCircle className="w-5 h-5 text-red-650 dark:text-red-400 mt-0.5 shrink-0" />
-          <div className="flex-1 space-y-1">
-            <h4 className="text-sm font-black text-red-650 dark:text-red-400">Pengingat pekan ketiga</h4>
-            <p className="text-sm text-zinc-650 dark:text-zinc-350 leading-relaxed font-semibold">
-              Sudah tanggal 15-21. Waktunya menyusun laporan dua bulanan dan mengirimkannya ke koordinator.
-            </p>
+          <div className="cs-card__head">
+            <p className="cs-label">Pengingat pekan ketiga</p>
+            <button
+              onClick={handleDismissWeekReminder}
+              className="cs-iconbtn"
+              aria-label="Sembunyikan pengingat"
+            >
+              <X className="cs-icon" />
+            </button>
           </div>
-          <button
-            onClick={handleDismissWeekReminder}
-            className="p-1 hover: dark:hover:bg-zinc-805 text-zinc-400 dark:text-zinc-500 transition-colors cursor-pointer"
-            title="Sembunyikan Pengingat"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </motion.div>
+          <p className="cs-muted">
+            Sudah tanggal 15-21. Waktunya menyusun laporan dua bulanan dan mengirimkannya ke koordinator.
+          </p>
+        </motion.section>
       )}
 
       {/* Main Filter & Control Area */}
-      <div className="p-6 relative overflow-hidden">
-        {/* Accent Bar */}
-        <div className="absolute top-0 left-0 right-0 h-1.5 bg-red-650" />
+      <section className="cs-card">
+        <div className="cs-card__head">
+          <p className="cs-label">Laporan</p>
 
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5 mt-1">
-          <div className="flex items-center gap-2.5">
-            <FileText className="w-5 h-5 text-red-650" />
-            <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-50 tracking-tight">Laporan</h2>
-          </div>
-
-          {/* Sub-tab Selection */}
-          <div className="flex p-1 self-start sm:self-auto">
-            <button
-              onClick={() => setReportMode('whatsapp')}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-sm font-extrabold transition-all cursor-pointer ${
-                reportMode === 'whatsapp'
-                  ? 'bg-white dark:bg-zinc-900 text-red-650 dark:text-red-400 shadow-xs'
-                  : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300'
-              }`}
-            >
-              <Smartphone className="w-3.5 h-3.5" />
-              <span>📱 Laporan WA</span>
-            </button>
-            <button
-              onClick={() => setReportMode('excel')}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-sm font-extrabold transition-all cursor-pointer ${
-                reportMode === 'excel'
-                  ? 'bg-white dark:bg-zinc-900 text-red-650 dark:text-red-400 shadow-xs'
-                  : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300'
-              }`}
-            >
-              <FileSpreadsheet className="w-3.5 h-3.5" />
-              <span>📊 Format Excel</span>
-            </button>
-          </div>
+          {/* Which report is being made. Same pressed-in chips as the class
+              picker on the register, so the two read as one control type. */}
+          <ul className="cs-groups">
+            <li className="cs-group">
+              <button
+                type="button"
+                className="cs-group__btn"
+                aria-pressed={reportMode === 'whatsapp'}
+                onClick={() => setReportMode('whatsapp')}
+              >
+                Laporan WA
+                <span className="cs-group__when">Teks siap kirim</span>
+              </button>
+            </li>
+            <li className="cs-group">
+              <button
+                type="button"
+                className="cs-group__btn"
+                aria-pressed={reportMode === 'excel'}
+                onClick={() => setReportMode('excel')}
+              >
+                Format Excel
+                <span className="cs-group__when">Lembar resmi</span>
+              </button>
+            </li>
+          </ul>
         </div>
 
-        {/* Filters Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-bold text-zinc-500 dark:text-zinc-400 mb-2" htmlFor="report_period">
+        <div className="cs-grid-2">
+          <div className="cs-field">
+            <label className="cs-field__label" htmlFor="report_period">
               Periode laporan (dua bulan)
             </label>
             <select
               id="report_period"
               value={selectedPeriodKey}
               onChange={(e) => setSelectedPeriodKey(e.target.value)}
-              className="w-full px-3 py-2.5 text-sm text-zinc-800 dark:text-white focus:outline-hidden font-bold cursor-pointer"
+              className="cs-select"
             >
               {availablePeriods.map(p => (
-                <option key={p.key} value={p.key} className="dark:text-white">{p.label}</option>
+                <option key={p.key} value={p.key}>{p.label}</option>
               ))}
             </select>
           </div>
 
-          <div>
-            <label className="block text-sm font-bold text-zinc-500 dark:text-zinc-400 mb-2" htmlFor="report_schedule_filter">
+          <div className="cs-field">
+            <label className="cs-field__label" htmlFor="report_schedule_filter">
               Kelompok kelas (khusus laporan WhatsApp)
             </label>
             <select
@@ -610,41 +603,36 @@ export const ReportGenerator: React.FC = () => {
               disabled={reportMode === 'excel'}
               value={reportScheduleFilter}
               onChange={(e) => setReportScheduleFilter(e.target.value)}
-              className="w-full px-3 py-2.5 text-sm text-zinc-800 dark:text-white focus:outline-hidden font-bold cursor-pointer disabled:opacity-40"
+              className="cs-select"
             >
-              <option value="all" className="dark:text-white">Semua kelas</option>
-              <option value="unlinked" className="dark:text-white">Hanya sesi tanpa jadwal</option>
+              <option value="all">Semua kelas</option>
+              <option value="unlinked">Hanya sesi tanpa jadwal</option>
               {schedules.map(s => (
-                <option key={s.id} value={s.id} className="dark:text-white">{s.title} ({s.hari})</option>
+                <option key={s.id} value={s.id}>{s.title} ({s.hari})</option>
               ))}
             </select>
           </div>
         </div>
 
-        <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-3 flex items-center gap-1.5 font-medium">
-          <Info className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
-          <span>
-            {reportMode === 'whatsapp' 
-              ? 'Laporan disusun dalam format teks siap kirim ke koordinator.'
-              : 'Isi lembar laporan resmi, lalu unduh sebagai Excel.'}
-          </span>
+        <p className="cs-muted">
+          {reportMode === 'whatsapp'
+            ? 'Laporan disusun dalam format teks siap kirim ke koordinator.'
+            : 'Isi lembar laporan resmi, lalu unduh sebagai Excel.'}
         </p>
-      </div>
+      </section>
 
       {records.length === 0 ? (
-        <div className="p-8 text-center">
-          <h3 className="text-sm font-extrabold text-zinc-900 dark:text-zinc-250">Belum ada presensi untuk dilaporkan.</h3>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-2">
-            Catat presensi terlebih dahulu, atau muat data contoh untuk mencoba.
-          </p>
-          <button
-            onClick={handleLoadSampleData}
-            className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 bg-red-650 hover:bg-red-750 text-white text-sm font-black cursor-pointer"
-          >
-            <Play className="w-3" />
-            <span>Muat data contoh</span>
-          </button>
-        </div>
+        <section className="cs-card">
+          <div className="cs-empty">
+            <h3 className="cs-empty__title">Belum ada presensi untuk dilaporkan</h3>
+            <p className="cs-empty__body">
+              Catat presensi terlebih dahulu, atau muat data contoh untuk mencoba.
+            </p>
+            <Button icon={<Play className="cs-icon" />} onClick={handleLoadSampleData}>
+              Muat data contoh
+            </Button>
+          </div>
+        </section>
       ) : (
         <AnimatePresence mode="wait">
           {reportMode === 'whatsapp' ? (
@@ -659,23 +647,25 @@ export const ReportGenerator: React.FC = () => {
               className="grid grid-cols-1 lg:grid-cols-12 gap-6"
             >
               {/* List Sesi (Col left) */}
-              <div className="lg:col-span-7 space-y-4">
-                <div className="p-5">
-                  <div className="flex items-center justify-between mb-3.5 border-b pb-2.5">
-                    <h3 className="text-sm font-black text-zinc-800 dark:text-zinc-200">
-                      Sesi pada periode ini ({filteredRecordsForReport.length})
-                    </h3>
-                    <span className="cs-muted">
+              <div className="lg:col-span-7">
+                <section className="cs-card">
+                  <p className="cs-label">
+                    Sesi pada periode ini ({filteredRecordsForReport.length})
+                    <span className="cs-label__count">
                       {currentPeriod ? currentPeriod.label : '-'}
                     </span>
-                  </div>
+                  </p>
 
                   {filteredRecordsForReport.length === 0 ? (
-                    <div className="py-6 text-center text-sm italic text-zinc-400">
-                      Tidak ada catatan presensi yang terdaftar di filter periode &amp; kelas ini pada DB.
+                    <div className="cs-empty">
+                      <h3 className="cs-empty__title">Tidak ada sesi di periode ini</h3>
+                      <p className="cs-empty__body">
+                        Belum ada presensi tersimpan yang cocok dengan periode dan kelas
+                        yang dipilih. Coba periode lain, atau ubah kelompok kelasnya.
+                      </p>
                     </div>
                   ) : (
-                    <div className="space-y-2.5 max-h-96 overflow-y-auto pr-1">
+                    <div className="cs-scroll">
                       {filteredRecordsForReport.map((rec) => {
                         const isSelected = reportSelectedRecordIds.includes(rec.id!);
                         return (
@@ -711,35 +701,35 @@ export const ReportGenerator: React.FC = () => {
                     </div>
                   )}
 
-                  {/* Action Compile */}
-                  <div className="pt-4 border-t flex justify-end">
-                    <button
-                      type="button"
+                  <div className="cs-row cs-row--end">
+                    <Button
+                      variant="primary"
+                      icon={<RefreshCw className="cs-icon" />}
                       onClick={handleGenerateReport}
-                      className="px-5 py-2.5 bg-red-650 hover:bg-red-755 text-white text-sm font-black transition-colors shrink-0 cursor-pointer inline-flex items-center gap-1.5"
+                      disabled={filteredRecordsForReport.length === 0}
                     >
-                      <RefreshCw className="w-3.5 h-3.5" />
-                      <span>Susun laporan</span>
-                    </button>
+                      Susun laporan
+                    </Button>
                   </div>
-                </div>
+                </section>
               </div>
 
               {/* compiled Output Display (Col right) */}
               <div className="lg:col-span-5">
-                <div className="p-5 space-y-4 sticky top-24">
-                  <div className="border-b pb-3 flex items-center justify-between">
-                    <h3 className="text-sm font-black text-zinc-800 dark:text-zinc-200">Hasil laporan WhatsApp</h3>
-                    <span className="text-sm dark:bg-zinc-800 text-zinc-650 dark:text-zinc-3 font-bold px-2 py-0.5 font-mono">Template WA</span>
-                  </div>
+                <section className="cs-card cs-card--sticky">
+                  <p className="cs-label">
+                    Hasil laporan WhatsApp
+                    <span className="cs-label__count">Template WA</span>
+                  </p>
 
                   {reportGenerated ? (
-                    <div className="space-y-4">
+                    <>
                       <textarea
                         ref={reportTextareaRef}
-                        className="w-full p-3 text-sm font-mono text-zinc-800 dark:text-zinc-200 leading-normal focus:outline-hidden"
+                        className="cs-textarea cs-textarea--report"
                         rows={12}
                         readOnly
+                        aria-label="Teks laporan WhatsApp"
                         value={reportText}
                       />
 
@@ -762,19 +752,16 @@ export const ReportGenerator: React.FC = () => {
                         WhatsApp akan terbuka dengan teks ini sudah terisi. Anda yang
                         menekan kirim.
                       </p>
-                    </div>
+                    </>
                   ) : (
-                    <div className="py-12 flex flex-col items-center justify-center text-center px-4 space-y-3">
-                      <div className="p-3 text-zinc-400">
-                        <FileText className="w-8 h-8" />
-                      </div>
-                      <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Laporan belum disusun.</p>
-                      <p className="text-sm text-zinc-400 max-w-xs leading-normal">
+                    <div className="cs-empty">
+                      <h3 className="cs-empty__title">Laporan belum disusun</h3>
+                      <p className="cs-empty__body">
                         Pilih periode dan sesi di samping, lalu tekan <b>Susun laporan</b>.
                       </p>
                     </div>
                   )}
-                </div>
+                </section>
               </div>
             </motion.div>
           ) : (
@@ -789,21 +776,18 @@ export const ReportGenerator: React.FC = () => {
               className="space-y-6"
             >
               {/* Informational Banner */}
-              <div className="bg-amber-500/10 dark:bg-amber-950/20 border-amber-500/20 p-4 flex items-start gap-3">
-                <Sliders className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
-                <div className="space-y-1">
-                  <h4 className="text-sm font-black text-amber-700 dark:text-amber-400">Lembar laporan Excel</h4>
-                  <p className="text-sm text-zinc-650 dark:text-zinc-350 leading-relaxed font-semibold">
+              <section className="cs-card cs-card--inset">
+                <p className="cs-label">Lembar laporan Excel</p>
+                <div>
+                  <p className="cs-muted">
                     Atur data presensi, lengkapi status SPP, catatan hafalan, serta pengiriman buletin. Data akan otomatis tersimpan dalam database lokal per periode ketika mengklik <b>Simpan draf</b>. Ekspor langsung menghasilkan format resmi Excel berwarna!
                   </p>
                 </div>
-              </div>
+              </section>
 
               {/* Metadata Inputs Section */}
-              <div className="p-5 space-y-4">
-                <h3 className="text-sm font-black text-zinc-800 dark:text-zinc-200 border-b pb-2">
-                  Keterangan laporan
-                </h3>
+              <section className="cs-card">
+                <p className="cs-label">Keterangan laporan</p>
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
@@ -871,27 +855,22 @@ export const ReportGenerator: React.FC = () => {
                     ))}
                   </div>
                 </div>
-              </div>
+              </section>
 
               {/* Main Spreadsheet Grid (Desktop viewport with overflow, mobile with single-row quick modal triggers) */}
-              <div className="p-4 space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3">
-                  <div>
-                    <h3 className="text-sm font-black text-zinc-800 dark:text-zinc-200 flex items-center gap-1.5">
-                      <BookOpen className="w-4 h-4 text-red-650" />
-                      <span>Daftar santri ({studentsData.length})</span>
-                    </h3>
-                    <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
-                      Terisi otomatis dari presensi yang sudah Anda catat.
-                    </p>
-                  </div>
-                  <button
+              <section className="cs-card">
+                <p className="cs-label">
+                  Daftar santri ({studentsData.length})
+                  <span className="cs-label__count">Terisi dari presensi tercatat</span>
+                </p>
+
+                <div className="cs-row cs-row--end">
+                  <Button
+                    icon={<UserPlus className="cs-icon" />}
                     onClick={handleAddStudentRow}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 hover:bg-zinc-200 dark:hover:bg-zinc-850 text-zinc-850 dark:text-zinc-200 text-sm font-extrabold cursor-pointer transition-colors"
                   >
-                    <UserPlus className="w-3.5 h-3.5" />
-                    <span>Tambah santri</span>
-                  </button>
+                    Tambah santri
+                  </Button>
                 </div>
 
                 {/* The sheet is 17 columns wide, so on a phone it has to scroll
@@ -1245,7 +1224,7 @@ export const ReportGenerator: React.FC = () => {
                     </button>
                   </div>
                 </div>
-              </div>
+              </section>
 
               {/* Mobile Quick Row Editor Dialog / Modal (Ensures stellar mobile editing ergonomics!) */}
               <AnimatePresence>
