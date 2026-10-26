@@ -1,40 +1,51 @@
 /**
  * ClassSync palette — a register drawn in heavy keylines.
  *
+ * This file is the single source of truth for colour. `tokens.css` mirrors it
+ * into CSS custom properties, `index.css` repoints the legacy Tailwind scales
+ * at the same values, and `palette.test.ts` / `tokens.test.ts` assert that the
+ * three stay in step and that every pair is readable. Change a colour here and
+ * the tests will tell you what else has to move.
+ *
+ * The values are the ClassSync design-system palette, which arrives as three
+ * Tailwind sketches — a numbered scale, a semantic `app.*` map and a flat
+ * `classsync.light/dark` map. They describe the same eighteen colours, so they
+ * are folded together here once, by role rather than by shade number.
+ *
  * Two rules hold the whole product together.
  *
- * **One signal colour.** Signal yellow marks the single thing the teacher came
- * here to do: save the register. It appears on the primary action, the active
- * tab and nowhere else. It is never load-bearing on its own — every yellow
- * surface sits inside an ink keyline, which is what carries the 3:1 boundary a
- * pale fill cannot.
+ * **One signal colour.** Signal yellow — #ffd966 by day, the dimmer gold
+ * #d4af37 at night — marks the single thing the teacher came here to do: save
+ * the register. It appears on the primary action, the active tab and nowhere
+ * else. It is never load-bearing on its own; every yellow surface sits inside
+ * an ink keyline, which is what carries the 3:1 boundary a pale fill cannot.
  *
  * **Four marks, and nothing else wears them.** Hadir, Sakit, Izin and Alpa own
  * the only other colours on screen, so a colour always answers one question:
  * was this santri here? Buttons, headings, rules and destructive actions are
- * all ink, which is also why a red "delete" never gets confused with a coral
- * Alpa.
+ * all ink, which is also why a red "delete" never gets confused with an orange
+ * Alpa. The one deliberate overlap is Sakit, which the palette paints in the
+ * same yellow as the primary action — see `palette.test.ts`, which pins that
+ * down as the only exception rather than letting it spread.
  *
- * Structure is drawn rather than shaded: a 2px ink keyline and a hard offset
+ * Structure is drawn rather than shaded: a 2px keyline and a hard offset
  * shadow in the same ink. There is no blur and no gradient anywhere, so the
- * interface stays legible in sunlight on a phone held at arm's length.
+ * interface stays legible in sunlight on a phone held at arm's length. At
+ * night the keyline inverts to a light grey, because a black edge drawn on a
+ * charcoal page draws nothing.
  *
- * The four marks are the user's palette (colorhunt.co/palette/ff7f50ffd16606d6a0118ab2).
- * Measured, they can only be used one way: as solid fills carrying ink. As text
- * on white they reach 2.50, 1.44, 1.89 and 3.96 — all failing 4.5:1 — while as
- * fills under ink they reach 11.13, 14.56, 5.30 and 8.40. So a mark is a filled
- * block with a letter in it, never a coloured word and never a coloured hairline.
- *
- * `palette.test.ts` asserts every pair, so a colour cannot be changed into an
- * unreadable one without a test failing.
+ * Measured, the marks can only be used one way: as solid fills carrying ink.
+ * As words on paper they fall well under 4.5:1; as fills they clear it
+ * comfortably. So a mark is a filled block with a letter in it, never a
+ * coloured word and never a coloured hairline.
  */
 
 export type ThemeColors = {
   /** The page. */
   bg: string;
-  /** Same as the page: there are no cards to raise. */
+  /** A panel lifted off the page. */
   surface: string;
-  /** The few inset areas that genuinely recede. */
+  /** Inset areas that recede: input fills, trays. */
   surfaceSunken: string;
   /** Body text, headings, buttons. */
   text: string;
@@ -57,9 +68,11 @@ export type ThemeColors = {
   dangerSolid: string;
   dangerSolidHover: string;
   dangerInk: string;
-  /** The one place coral appears outside a mark: flagging a destructive area. */
+  /** The one place a warm wash appears outside a mark: flagging a destructive area. */
   dangerTint: string;
   focus: string;
+  /** The drawn edge every panel, control and offset shadow is made of. */
+  edge: string;
 };
 
 export type StatusKey = 'hadir' | 'sakit' | 'izin' | 'alpa';
@@ -76,73 +89,92 @@ export type StatusColors = {
 };
 
 export const light: ThemeColors = {
-  bg: '#faf9f5',
-  surface: '#ffffff',
-  surfaceSunken: '#f1efe6',
-  text: '#121212',
-  textMuted: '#56534c',
-  border: '#ded9cc',
-  borderStrong: '#121212',
-  brand: '#121212',
-  brandSolid: '#ffe14d',
-  brandSolidHover: '#ffd60a',
-  brandInk: '#121212',
-  brandTint: '#fff8d6',
-  brandEdge: '#121212',
-  danger: '#121212',
-  dangerSolid: '#121212',
-  dangerSolidHover: '#2f2f2f',
-  dangerInk: '#ffffff',
-  dangerTint: '#fdeee9',
-  focus: '#121212',
+  bg: '#f5f5f3',
+  surface: '#fdfdfc',
+  surfaceSunken: '#e8e8e8',
+  text: '#1a1d1a',
+  // The palette's one grey, #707070, is specified for "sub-text & borders".
+  // It clears 4.5:1 on the page but only reaches 4.04:1 inside an inset tray,
+  // so running text drops two steps and #707070 stays on the borders, where
+  // the bar is 3:1.
+  textMuted: '#656565',
+  border: '#d3d3d3',
+  borderStrong: '#707070',
+  brand: '#1a1d1a',
+  brandSolid: '#ffd966',
+  brandSolidHover: '#ffcc33',
+  brandInk: '#1a1d1a',
+  brandTint: '#fff6dc',
+  brandEdge: '#1a1d1a',
+  danger: '#1a1d1a',
+  dangerSolid: '#1a1d1a',
+  dangerSolidHover: '#2c2c2c',
+  dangerInk: '#fdfdfc',
+  dangerTint: '#fff1e4',
+  focus: '#1a1d1a',
+  edge: '#1a1d1a',
 };
 
 export const dark: ThemeColors = {
-  bg: '#0b0b0a',
-  surface: '#171714',
-  surfaceSunken: '#211f1b',
-  text: '#f7f6f1',
-  textMuted: '#a9a69c',
-  border: '#36342d',
-  borderStrong: '#8b887f',
-  brand: '#f7f6f1',
-  brandSolid: '#ffe14d',
-  brandSolidHover: '#ffd60a',
-  brandInk: '#121212',
-  brandTint: '#2b2614',
-  brandEdge: '#f7f6f1',
-  danger: '#f7f6f1',
-  dangerSolid: '#f7f6f1',
-  dangerSolidHover: '#e2e0d9',
-  dangerInk: '#121212',
-  dangerTint: '#2d1a14',
-  focus: '#ffe14d',
+  bg: '#2c2c2c',
+  surface: '#3e3e3e',
+  surfaceSunken: '#202020',
+  text: '#e8e8e1',
+  textMuted: '#d8d3d8',
+  border: '#555555',
+  borderStrong: '#a0a0a0',
+  brand: '#e8e8e1',
+  brandSolid: '#d4af37',
+  brandSolidHover: '#e2c250',
+  brandInk: '#1a1d1a',
+  brandTint: '#3a3016',
+  brandEdge: '#e8e8e1',
+  danger: '#e8e8e1',
+  dangerSolid: '#e8e8e1',
+  dangerSolidHover: '#d0d0c9',
+  dangerInk: '#1a1d1a',
+  dangerTint: '#3a2419',
+  focus: '#d4af37',
+  // Light enough to read as a drawn edge on charcoal, and to clear 3:1 against
+  // both the page and a panel — the dark theme's whole structure rests on it.
+  edge: '#a0a0a0',
 };
 
 /**
- * The marks. Identical in both themes — a bright fill carrying dark ink reads
- * the same on paper and at night, so Hadir is one colour the teacher learns
- * once.
+ * The marks.
+ *
+ * By day they are bright fills carrying dark ink. At night the palette dims
+ * Hadir and Izin into deep fills that carry light ink instead, so a wall of
+ * marks does not glare in a dark room. The letter inside the block is what the
+ * teacher reads either way, and it is always the readable half of the pair.
  */
-const MARK = {
-  hadir: '#06d6a0',
-  sakit: '#ffd166',
-  izin: '#118ab2',
-  alpa: '#ff7f50',
+const MARK_LIGHT = {
+  hadir: '#2ecc71',
+  sakit: '#ffd966',
+  izin: '#1f6ed0',
+  alpa: '#ff9f43',
+} as const;
+
+const MARK_DARK = {
+  hadir: '#1e5c31',
+  sakit: '#d4af37',
+  izin: '#1a3b7b',
+  alpa: '#cc7722',
 } as const;
 
 export const statusLight: Record<StatusKey, StatusColors> = {
-  hadir: {tint: '#e3f9f1', ink: '#055c45', solid: MARK.hadir, solidInk: '#121212'},
-  sakit: {tint: '#fff4de', ink: '#6b4a00', solid: MARK.sakit, solidInk: '#121212'},
-  izin: {tint: '#e2f1f7', ink: '#0d5e7a', solid: MARK.izin, solidInk: '#121212'},
-  alpa: {tint: '#ffeee7', ink: '#8c3410', solid: MARK.alpa, solidInk: '#121212'},
+  hadir: {tint: '#e4f8ed', ink: '#1a6b3c', solid: MARK_LIGHT.hadir, solidInk: '#1a1d1a'},
+  sakit: {tint: '#fff6dc', ink: '#6b4a00', solid: MARK_LIGHT.sakit, solidInk: '#1a1d1a'},
+  // Blue is the one mark too dark for black type; its block carries paper.
+  izin: {tint: '#e4eefb', ink: '#17508f', solid: MARK_LIGHT.izin, solidInk: '#fdfdfc'},
+  alpa: {tint: '#fff1e4', ink: '#8a4408', solid: MARK_LIGHT.alpa, solidInk: '#1a1d1a'},
 };
 
 export const statusDark: Record<StatusKey, StatusColors> = {
-  hadir: {tint: '#0c2a22', ink: '#5fe3bd', solid: MARK.hadir, solidInk: '#121212'},
-  sakit: {tint: '#2b2310', ink: '#ffd98a', solid: MARK.sakit, solidInk: '#121212'},
-  izin: {tint: '#0d2630', ink: '#6cc2dd', solid: MARK.izin, solidInk: '#121212'},
-  alpa: {tint: '#3a211a', ink: '#ff9f7d', solid: MARK.alpa, solidInk: '#121212'},
+  hadir: {tint: '#15301f', ink: '#7fd9a0', solid: MARK_DARK.hadir, solidInk: '#e8e8e1'},
+  sakit: {tint: '#332a11', ink: '#e8c75e', solid: MARK_DARK.sakit, solidInk: '#1a1d1a'},
+  izin: {tint: '#17233a', ink: '#8fb4e8', solid: MARK_DARK.izin, solidInk: '#e8e8e1'},
+  alpa: {tint: '#33210f', ink: '#e8a263', solid: MARK_DARK.alpa, solidInk: '#1a1d1a'},
 };
 
 /** Teacher-facing labels. */

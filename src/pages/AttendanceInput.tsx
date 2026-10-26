@@ -424,7 +424,7 @@ export const AttendanceInput: React.FC = () => {
         {/* Folded away by default: a roster is typed once and marked every
             week, so the form sat above the Save button taking room from the
             thing teachers actually come back for. */}
-        <section className="cs-card">
+        <section className={`cs-card${showAdd ? '' : ' cs-card--action'}`}>
           <Button
             variant="ghost"
             icon={<Plus className="cs-icon" />}

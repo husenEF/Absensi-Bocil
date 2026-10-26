@@ -14,24 +14,29 @@
  * explicitly with a `--cs-*` token.
  */
 
+/*
+ * These mirror the `--cs-*` tokens in styles/tokens.css, which mirror
+ * styles/palette.ts. They exist only so the legacy Tailwind utilities below
+ * land on the same colours; nothing new should be written against them.
+ */
 :root {
-  --paper: #ffffff;
-  --paper-sunken: #f1efe6;
-  --rule: #ded9cc;
-  --rule-strong: #8c8880;
-  --ink: #121212;
-  --ink-muted: #56534c;
-  --ink-soft: #6b685f;
+  --paper: #fdfdfc;
+  --paper-sunken: #e8e8e8;
+  --rule: #d3d3d3;
+  --rule-strong: #707070;
+  --ink: #1a1d1a;
+  --ink-muted: #656565;
+  --ink-soft: #656565;
 }
 
 html.dark {
-  --paper: #171714;
-  --paper-sunken: #211f1b;
-  --rule: #36342d;
-  --rule-strong: #8b887f;
-  --ink: #f7f6f1;
-  --ink-muted: #a9a69c;
-  --ink-soft: #8b887f;
+  --paper: #3e3e3e;
+  --paper-sunken: #202020;
+  --rule: #555555;
+  --rule-strong: #a0a0a0;
+  --ink: #e8e8e1;
+  --ink-muted: #d8d3d8;
+  --ink-soft: #b0b0ab;
 }
 
 @theme {
