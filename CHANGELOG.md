@@ -17,6 +17,46 @@ release will refuse to run on an empty one.
 
 ## Unreleased
 
+### Added
+
+- **Santri can be placed in a class.** One class per santri; placing them
+  elsewhere moves them, and every picker says "pindah dari …" first.
+  - **When the class is created:** the Jadwal form lists the santri to tick.
+  - **Afterwards, on Jadwal:** each class card lists its santri, with a picker
+    to add more and a button to take one out.
+  - **On Presensi:** *Kelola kelas & daftar santri* gives each santri a class
+    picker, and a santri added while a class is picked joins it (a ticked
+    *Masukkan ke …* box).
+- **Picking a class on Presensi lists its members first** and folds everyone
+  else under *Santri lain* — folded, never hidden, so a santri who turns up to
+  the wrong class can still be marked. The fold opens by itself when it holds a
+  mark, a name just added, the only search match, or when the class has no
+  members yet. *Tandai sisanya hadir* fills the class only.
+- **Picking a class moves the date to that class's day** — today when it is
+  that weekday, otherwise last week's — as long as the date is still today's
+  default. The hint already said it did; it never had. A date the teacher
+  picked on purpose is left alone.
+- **A session has a time.** Presensi has a *Jam* field next to the date,
+  filled with the class's own time and editable, so a class moved to another
+  day or hour is still recorded as that class. Riwayat shows the time when it
+  differs from the class's usual one.
+- **Exporting every class groups the WhatsApp report by class.** One header,
+  then a `*Kelas*` section per class with the usual weekly blocks inside, and
+  *Tanpa kelas* last for sessions filed under none. A session moved to another
+  day stays in its class's section. Exporting one class, or a period with only
+  one, reads exactly as before.
+  Inside each section empty weeks still read "Tgl Kursus : -", so every
+  class's section has exactly the coordinator's format.
+- **The Excel sheet follows the class too.** *Kelompok kelas* now applies in
+  Excel mode: the sheet fills from that class's sessions, gives every member a
+  row even before their first session, and keeps a draft per class. The
+  all-classes draft stays under the period's existing key, so drafts saved
+  before this release still open.
+- Existing santri whose every session was filed under one class are placed in
+  it on upgrade; anyone seen in two classes is left for the teacher. The class
+  travels with Sinkron and is matched to the class of the same name, day and
+  time on the other phone, without overwriting a class already set there.
+
 ### Changed
 
 - **The app is served from `husenef.github.io/classsync/`.** The repository is

@@ -62,6 +62,46 @@ test.describe('Jadwal', () => {
     await openTab(page, 'Presensi');
     await expect(page.locator('.cs-group__btn').filter({hasText: 'Tahsin malam'})).toBeVisible();
   });
+
+  test('santri can be placed in a class as it is created', async ({page}) => {
+    await openTab(page, 'Jadwal');
+    await page.getByLabel('Nama kelas').fill('Iqra sore');
+    await page.getByLabel('Hari').selectOption('Kamis');
+    await page.getByLabel('Jam mulai').fill('16:30');
+    const pick = page.getByRole('list', {name: 'Pilih santri untuk kelas baru'});
+    await pick.getByLabel('Ahmad Fauzi').check();
+    await pick.getByLabel('Dewi Lestari').check();
+    await page.getByRole('button', {name: 'Simpan jadwal'}).click();
+
+    const added = page.locator('li.cs-card').filter({has: page.getByRole('heading', {name: 'Iqra sore'})});
+    await expect(added.getByRole('list', {name: 'Santri Iqra sore'})).toContainText('Ahmad Fauzi');
+    await expect(added.getByRole('list', {name: 'Santri Iqra sore'})).toContainText('Dewi Lestari');
+    // The form is ready for the next class.
+    await expect(pick.getByLabel('Ahmad Fauzi')).not.toBeChecked();
+  });
+
+  test('santri placed in a class come first on its register', async ({page}) => {
+    await openTab(page, 'Jadwal');
+    const pagi = page.locator('li.cs-card').filter({hasText: 'Ngaji Pagi'});
+    await pagi.getByLabel('Tambah santri').selectOption('Budi Santoso');
+    await pagi.getByRole('button', {name: 'Tambah', exact: true}).click();
+    await expect(pagi.getByRole('list', {name: 'Santri Ngaji Pagi'})).toContainText('Budi Santoso');
+
+    // One class per santri: the other class offers him as a move.
+    const sore = page.locator('li.cs-card').filter({hasText: 'Tahfidz Sore'});
+    await expect(sore.getByLabel('Tambah santri')).toContainText('Budi Santoso — pindah dari Ngaji Pagi');
+
+    await openTab(page, 'Presensi');
+    await page.locator('.cs-group__btn').filter({hasText: 'Ngaji Pagi'}).click();
+
+    const members = page.getByRole('list', {name: 'Santri Ngaji Pagi'});
+    await expect(members).toContainText('Budi Santoso');
+    await expect(page.getByText('Ahmad Fauzi')).toBeHidden();
+
+    // Everyone else is folded, not gone.
+    await page.getByRole('button', {name: /Santri lain/}).click();
+    await expect(page.getByText('Ahmad Fauzi')).toBeVisible();
+  });
 });
 
 test.describe('Sinkron', () => {

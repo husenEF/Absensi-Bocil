@@ -59,7 +59,6 @@ export const ReportGenerator: React.FC = () => {
     availablePeriods,
     currentPeriod,
     filteredRecordsForReport,
-    recordsInSelectedPeriod,
     handleGenerateReport,
     handleCopyReport,
     reportTextareaRef,
@@ -69,8 +68,27 @@ export const ReportGenerator: React.FC = () => {
     handleDismissWeekReminder,
     handleLoadSampleData,
     records,
+    students,
     showToast,
   } = useApp();
+
+  /*
+   * The Excel sheet follows the class picked under "Kelompok kelas" as the
+   * WhatsApp report does: its dates, its santri, and a draft of its own. The
+   * all-classes draft keeps the period key it has always been saved under, so
+   * a draft saved before classes existed still opens.
+   */
+  const excelRecords = filteredRecordsForReport;
+  const excelKey =
+    reportScheduleFilter === "all"
+      ? selectedPeriodKey
+      : `${selectedPeriodKey}|${reportScheduleFilter}`;
+  const excelClassId = Number(reportScheduleFilter);
+  const excelClassMembers = Number.isFinite(excelClassId)
+    ? students
+        .filter((st) => st.active && st.scheduleId === excelClassId)
+        .map((st) => st.name)
+    : [];
 
   // Sub-tabs state: 'whatsapp' (original) or 'excel' (new)
   const [reportMode, setReportMode] = useState<"whatsapp" | "excel">(
@@ -158,7 +176,7 @@ export const ReportGenerator: React.FC = () => {
 
   // Function: Scan and generate default spreadsheet data based on actual database records
   const handleAutoFillFromDB = () => {
-    if (recordsInSelectedPeriod.length === 0) {
+    if (excelRecords.length === 0 && excelClassMembers.length === 0) {
       // Return 15 empty rows if no records
       const emptyRows: StudentRow[] = Array.from({ length: 15 }, () => ({
         name: "",
@@ -180,7 +198,7 @@ export const ReportGenerator: React.FC = () => {
 
     // 1. Extract unique class dates in this period (up to 5)
     const uniqueDates = Array.from(
-      new Set(recordsInSelectedPeriod.map((r) => r.tanggal as string)),
+      new Set(excelRecords.map((r) => r.tanggal as string)),
     ).sort() as string[];
     const defaultWeeks = [
       "Pekan 1",
@@ -202,9 +220,17 @@ export const ReportGenerator: React.FC = () => {
     setTanggalAktif(autoRange);
 
     // 2. Extract unique student names present in this period
-    const uniqueStudents = Array.from(
-      new Set(recordsInSelectedPeriod.flatMap((r) => r.peserta as string[])),
-    ).sort((a, b) =>
+    // Everyone in the class has a row even before their first session; a
+    // visitor who was present at one of its sessions has one too.
+    const byKey = new Map<string, string>();
+    for (const name of [
+      ...excelClassMembers,
+      ...excelRecords.flatMap((r) => r.peserta as string[]),
+    ]) {
+      const key = name.trim().toLowerCase();
+      if (key && !byKey.has(key)) byKey.set(key, name);
+    }
+    const uniqueStudents = Array.from(byKey.values()).sort((a, b) =>
       (a as string).localeCompare(b as string, "id", { sensitivity: "base" }),
     ) as string[];
 
@@ -215,7 +241,7 @@ export const ReportGenerator: React.FC = () => {
       const attendance = activeWeeks.map((_, idx) => {
         const dateStr = uniqueDates[idx];
         if (!dateStr) return "";
-        const wasPresent = recordsInSelectedPeriod.some(
+        const wasPresent = excelRecords.some(
           (r) =>
             r.tanggal === dateStr &&
             (r.peserta as string[]).some(
@@ -268,7 +294,7 @@ export const ReportGenerator: React.FC = () => {
 
     db.excelReports
       .where("periodKey")
-      .equals(selectedPeriodKey)
+      .equals(excelKey)
       .first()
       .then((savedReport) => {
         if (savedReport) {
@@ -312,13 +338,15 @@ export const ReportGenerator: React.FC = () => {
         console.error("[Load Excel report from DB error]", err);
         handleAutoFillFromDB();
       });
-  }, [selectedPeriodKey, recordsInSelectedPeriod]);
+    // Members as a string: a roster reload that changes nothing for this
+    // class must not refill the sheet over the teacher's unsaved edits.
+  }, [excelKey, excelRecords, excelClassMembers.join("|")]);
 
   // Function: Save current Excel sheet data to IndexedDB
   const handleSaveExcelReport = async () => {
     try {
       const payload: ExcelReportRecord = {
-        periodKey: selectedPeriodKey,
+        periodKey: excelKey,
         guruName,
         kitabName,
         tanggalAktif,
@@ -333,7 +361,7 @@ export const ReportGenerator: React.FC = () => {
 
       const existing = await db.excelReports
         .where("periodKey")
-        .equals(selectedPeriodKey)
+        .equals(excelKey)
         .first();
       if (existing && existing.id) {
         await db.excelReports.put({ ...payload, id: existing.id });
@@ -695,11 +723,10 @@ export const ReportGenerator: React.FC = () => {
 
           <div className="cs-field">
             <label className="cs-field__label" htmlFor="report_schedule_filter">
-              Kelompok kelas (khusus laporan WhatsApp)
+              Kelompok kelas
             </label>
             <select
               id="report_schedule_filter"
-              disabled={reportMode === "excel"}
               value={reportScheduleFilter}
               onChange={(e) => setReportScheduleFilter(e.target.value)}
               className="cs-select"

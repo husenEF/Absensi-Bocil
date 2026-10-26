@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie';
-import { nameKey, rosterFromRecords, statusesFromPeserta, type StatusMap, type StudentRecord } from './roster';
+import { classFromHistory, nameKey, rosterFromRecords, statusesFromPeserta, type StatusMap, type StudentRecord } from './roster';
 
 export type { StudentRecord };
 
@@ -8,6 +8,11 @@ export interface AbsensiRecord {
   tanggal: string; // "YYYY-MM-DD"
   peserta: string[]; // Names of those present. Still authoritative - see below.
   scheduleId?: number; // Optional reference to connected weekly schedule
+  /**
+   * "HH:MM" the session actually ran at, when it was not the class's usual
+   * time or there was no class. Not indexed, so no schema change.
+   */
+  waktu?: string;
   createdAt: number;
   /**
    * Per-santri status, keyed by lower-cased name: hadir | sakit | izin | alpa.
@@ -114,6 +119,38 @@ class AttendanceDatabase extends Dexie {
           await absensi.update(record.id, {
             statuses: statusesFromPeserta(record.peserta ?? [])
           });
+        }
+      });
+
+    /**
+     * v5 lets a santri belong to one weekly class.
+     *
+     * Additive again: an older build simply ignores the new field. Santri
+     * whose history points at a single class are placed in it, so a teacher
+     * who has been picking the class all along does not start from nothing;
+     * anyone seen in two classes, or in none, is left for the teacher.
+     */
+    this.version(5)
+      .stores({
+        absensi: '++id, tanggal, createdAt, scheduleId',
+        schedules: '++id, tanggal, waktu, notified',
+        excelReports: '++id, periodKey',
+        students: '++id, &nameKey, name, active, scheduleId'
+      })
+      .upgrade(async (tx) => {
+        const records = await tx.table<AbsensiRecord>('absensi').toArray();
+        const students = tx.table<StudentRecord>('students');
+        // Sessions outlive the class they were filed under when it is deleted.
+        const live = new Set(
+          (await tx.table<ScheduleRecord>('schedules').toArray()).map(s => s.id)
+        );
+
+        for (const student of await students.toArray()) {
+          if (student.id === undefined || student.scheduleId !== undefined) continue;
+          const scheduleId = classFromHistory(records, student.nameKey);
+          if (scheduleId !== undefined && live.has(scheduleId)) {
+            await students.update(student.id, { scheduleId });
+          }
         }
       });
   }

@@ -1002,6 +1002,7 @@
 }
 
 .cs-namelist__name {
+  flex: 1;
   min-width: 0;
   font-family: var(--cs-font-display);
   font-size: var(--cs-text-base);
@@ -1009,6 +1010,22 @@
   line-height: var(--cs-leading-tight);
   color: var(--cs-text);
   overflow-wrap: anywhere;
+}
+
+/* A santri's class, picked in place. Shrinks before the name does, and the
+   row wraps rather than scrolling sideways on a 320px phone. */
+.cs-namelist__row:has(.cs-namelist__class) {
+  flex-wrap: wrap;
+}
+
+/* Wide enough for a name to read as one, so the controls wrap instead. */
+.cs-namelist__row:has(.cs-namelist__class) .cs-namelist__name {
+  flex: 1 1 9rem;
+}
+
+.cs-namelist__class {
+  width: auto;
+  max-width: 11rem;
 }
 
 /*
@@ -1118,6 +1135,14 @@
   font-size: var(--cs-text-sm);
   color: var(--cs-text-muted);
   line-height: var(--cs-leading-normal);
+}
+
+/* A group of checkboxes under one label, without the browser's frame. */
+fieldset.cs-stack {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
 }
 
 .cs-check {

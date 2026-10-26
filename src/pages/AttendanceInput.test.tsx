@@ -152,6 +152,32 @@ describe('choosing a class', () => {
     expect(await screen.findByLabelText(/Pindah ke sesi hari Senin/)).toBeInTheDocument();
   });
 
+  it("moves today's date to the class's latest day", async () => {
+    renderPage();
+    await rosterNames();
+
+    await userEvent.click(screen.getByRole('button', {name: /Tahfidz Sore/}));
+
+    const value = (screen.getByLabelText('Tanggal kegiatan') as HTMLInputElement).value;
+    const [y, m, d] = value.split('-').map(Number);
+    expect(new Date(y, m - 1, d).getDay()).toBe(3); // Rabu
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    expect(value <= today).toBe(true);
+  });
+
+  it('leaves a date the teacher chose alone', async () => {
+    renderPage();
+    await rosterNames();
+
+    const date = screen.getByLabelText('Tanggal kegiatan');
+    await userEvent.clear(date);
+    await userEvent.type(date, '2026-09-08');
+    await userEvent.click(screen.getByRole('button', {name: /Tahfidz Sore/}));
+
+    expect(date).toHaveValue('2026-09-08');
+  });
+
   it('marks itself as the chosen class, and only one at a time', async () => {
     renderPage();
     await rosterNames();
@@ -260,7 +286,7 @@ describe('adding santri', () => {
 describe('removing santri', () => {
   const openManageList = async () => {
     await userEvent.click(
-      screen.getByRole('button', {name: 'Hapus santri dari daftar'}),
+      screen.getByRole('button', {name: 'Kelola kelas & daftar santri'}),
     );
     return screen.findByRole('list', {name: 'Daftar santri tersimpan'});
   };
@@ -427,6 +453,151 @@ describe('saving', () => {
 
     // The one absence already recorded is not swept away by the shortcut.
     expect(marksFor('Dewi Lestari').getByRole('radio', {name: 'Alpa'})).toBeChecked();
+    expect(marksFor('Ahmad Fauzi').getByRole('radio', {name: 'Hadir'})).toBeChecked();
+  });
+});
+
+describe('a class with members', () => {
+  /** Put Ahmad and Aisyah in Ngaji Pagi; everyone else has no class. */
+  async function placeInPagi() {
+    const pagi = (await db.schedules.toArray()).find((s) => s.title === 'Ngaji Pagi');
+    await db.students
+      .where('nameKey')
+      .anyOf('ahmad fauzi', 'aisyah putri')
+      .modify({scheduleId: pagi!.id});
+  }
+
+  async function pickPagi() {
+    renderPage();
+    await rosterNames();
+    await userEvent.click(await screen.findByRole('button', {name: /Ngaji Pagi/}));
+  }
+
+  beforeEach(placeInPagi);
+
+  it('lists the members and folds everyone else away', async () => {
+    await pickPagi();
+
+    const members = await screen.findByRole('list', {name: 'Santri Ngaji Pagi'});
+    expect(within(members).getByText('Ahmad Fauzi')).toBeInTheDocument();
+    expect(within(members).getByText('Aisyah Putri')).toBeInTheDocument();
+    expect(screen.queryByText('Budi Santoso')).not.toBeInTheDocument();
+
+    const fold = screen.getByRole('button', {name: `Santri lain (${ROSTER.length - 2})`});
+    expect(fold).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('still lets a visitor from outside the class be marked', async () => {
+    await pickPagi();
+
+    await userEvent.click(screen.getByRole('button', {name: /Santri lain/}));
+    await userEvent.click(marksFor('Budi Santoso').getByRole('radio', {name: 'Hadir'}));
+
+    expect(screen.getByText(`1/${ROSTER.length} ditandai`)).toBeInTheDocument();
+  });
+
+  it('opens the fold on a saved session that marked a visitor', async () => {
+    await pickPagi();
+
+    await userEvent.click(screen.getByRole('button', {name: /Santri lain/}));
+    await userEvent.click(marksFor('Budi Santoso').getByRole('radio', {name: 'Sakit'}));
+    await userEvent.click(screen.getByRole('button', {name: /Simpan presensi/}));
+    await waitFor(async () => expect(await db.absensi.count()).toBe(1));
+
+    // Saving clears the class; picking it again reopens the same session.
+    await userEvent.click(await screen.findByRole('button', {name: /Ngaji Pagi/}));
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', {name: /Santri lain/})).toHaveAttribute('aria-expanded', 'true'),
+    );
+    expect(marksFor('Budi Santoso').getByRole('radio', {name: 'Sakit'})).toBeChecked();
+  });
+
+  it('opens the fold when a search only matches outside the class', async () => {
+    await pickPagi();
+
+    await userEvent.type(screen.getByLabelText('Cari nama santri'), 'budi');
+
+    expect(await screen.findByText('Budi Santoso')).toBeInTheDocument();
+  });
+
+  it('shows a santri added mid-session even though they have no class', async () => {
+    await pickPagi();
+
+    await userEvent.click(screen.getByRole('button', {name: 'Tambah santri'}));
+    await userEvent.type(screen.getByLabelText('Nama santri'), 'zulfa amira');
+    await userEvent.click(screen.getByRole('button', {name: 'Tambah'}));
+
+    expect(await screen.findByText('Zulfa Amira')).toBeInTheDocument();
+  });
+
+  it("fills the class's time, and saves the time actually used", async () => {
+    await pickPagi();
+
+    const jam = screen.getByLabelText('Jam') as HTMLInputElement;
+    await waitFor(() => expect(jam.value).toBe('07:00'));
+
+    // The class ran late this week.
+    await userEvent.clear(jam);
+    await userEvent.type(jam, '09:30');
+    await userEvent.click(marksFor('Ahmad Fauzi').getByRole('radio', {name: 'Hadir'}));
+    await userEvent.click(screen.getByRole('button', {name: /Simpan presensi/}));
+
+    await waitFor(async () => expect(await db.absensi.count()).toBe(1));
+    expect((await db.absensi.toArray())[0].waktu).toBe('09:30');
+  });
+
+  it('keeps a time typed straight after moving the date', async () => {
+    await pickPagi();
+
+    // A new date starts a read of that session; the time typed while it is
+    // in flight must survive it landing.
+    const date = screen.getByLabelText('Tanggal kegiatan');
+    await userEvent.clear(date);
+    await userEvent.type(date, '2026-09-12');
+    const jam = screen.getByLabelText('Jam');
+    await userEvent.clear(jam);
+    await userEvent.type(jam, '10:00');
+    await new Promise((r) => setTimeout(r, 200));
+    expect(jam).toHaveValue('10:00');
+
+    await userEvent.click(marksFor('Ahmad Fauzi').getByRole('radio', {name: 'Hadir'}));
+    await userEvent.click(screen.getByRole('button', {name: /Simpan presensi/}));
+    await waitFor(async () => expect(await db.absensi.count()).toBe(1));
+    expect((await db.absensi.toArray())[0]).toMatchObject({tanggal: '2026-09-12', waktu: '10:00'});
+  });
+
+  it('puts a santri added with the class picked into that class', async () => {
+    await pickPagi();
+
+    await userEvent.click(screen.getByRole('button', {name: 'Tambah santri'}));
+    expect(screen.getByLabelText('Masukkan ke Ngaji Pagi')).toBeChecked();
+    await userEvent.type(screen.getByLabelText('Nama santri'), 'zulfa amira');
+    await userEvent.click(screen.getByRole('button', {name: 'Tambah'}));
+
+    const members = await screen.findByRole('list', {name: 'Santri Ngaji Pagi'});
+    await waitFor(() => expect(within(members).getByText('Zulfa Amira')).toBeInTheDocument());
+  });
+
+  it('places a santri in a class from the roster list', async () => {
+    renderPage();
+    await rosterNames();
+
+    await userEvent.click(screen.getByRole('button', {name: 'Kelola kelas & daftar santri'}));
+    await userEvent.selectOptions(screen.getByLabelText('Kelas Budi Santoso'), 'Tahfidz Sore');
+
+    const sore = (await db.schedules.toArray()).find((s) => s.title === 'Tahfidz Sore');
+    await waitFor(async () =>
+      expect((await db.students.where('nameKey').equals('budi santoso').first())?.scheduleId).toBe(sore?.id),
+    );
+  });
+
+  it('fills only the class when the shortcut is used', async () => {
+    await pickPagi();
+
+    await userEvent.click(screen.getByRole('button', {name: /Tandai sisanya hadir/}));
+
+    await waitFor(() => expect(screen.getByText(`2/${ROSTER.length} ditandai`)).toBeInTheDocument());
     expect(marksFor('Ahmad Fauzi').getByRole('radio', {name: 'Hadir'})).toBeChecked();
   });
 });

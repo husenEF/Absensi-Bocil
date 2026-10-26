@@ -2,8 +2,9 @@ import React, { createContext, useContext, useState, useEffect, useMemo, useRef 
 import QRCode from 'qrcode';
 import jsQR from 'jsqr';
 import { db, upsertStudent, AbsensiRecord, ScheduleRecord, StudentRecord, checkForAndMigratePreviousDatabases } from '../db';
-import { buildStatusMap, nameKey, parseNameList, presentNames, rosterFromRecords, participantLine, statusesFromPeserta, tally, unmarkedNames, type StatusKey, type StatusMap, type StatusTally } from '../roster';
-import { formatIndonesianDate, formatDateShort } from '../utils/date';
+import { buildStatusMap, nameKey, splitByClass, parseNameList, presentNames, rosterFromRecords, statusesFromPeserta, tally, unmarkedNames, type StatusKey, type StatusMap, type StatusTally } from '../roster';
+import { formatIndonesianDate } from '../utils/date';
+import { buildWhatsAppReport } from '../utils/report';
 import { biMonthlyWeeks, getBiMonthlyLabel, getRecordBiMonth, todayYMD } from '../utils/period';
 
 interface BiMonthlyPeriod {
@@ -43,6 +44,9 @@ interface AppContextType {
   // Input States & Handlers
   tanggalInput: string;
   setTanggalInput: (val: string) => void;
+  /** Time of the session being recorded; the class's own time by default. */
+  waktuInput: string;
+  setWaktuInput: (val: string) => void;
   namesInput: string;
   setNamesInput: (val: string) => void;
   selectedScheduleId: number | undefined;
@@ -59,8 +63,11 @@ interface AppContextType {
   /** Roster santri nobody has marked yet. */
   untouchedCount: number;
   markedCount: number;
-  handleAddStudent: (rawName: string) => Promise<boolean>;
+  /** Add santri to the roster, and to a class when one is given. */
+  handleAddStudent: (rawName: string, scheduleId?: number) => Promise<boolean>;
   handleRemoveStudent: (name: string) => Promise<void>;
+  /** Put a santri in one class, or take them out of any with undefined. */
+  assignStudentToSchedule: (name: string, scheduleId: number | undefined) => Promise<void>;
   lastSaved: { tanggal: string; tally: StatusTally } | null;
   dismissLastSaved: () => void;
   handleToggleStudent: (studentName: string) => void;
@@ -91,7 +98,8 @@ interface AppContextType {
   setScheduleWaktu: (val: string) => void;
   scheduleRemindMinutesBefore: number;
   setScheduleRemindMinutesBefore: (val: number) => void;
-  handleAddSchedule: (e: React.FormEvent) => Promise<void>;
+  /** Save a class, placing the named santri in it at the same time. */
+  handleAddSchedule: (e: React.FormEvent, memberNames?: string[]) => Promise<boolean>;
   handleDeleteSchedule: (id: number, title: string) => Promise<void>;
   requestNotificationPermission: () => void;
 
@@ -174,6 +182,7 @@ export type PendingOverwrite = {
   peserta: string[];
   statuses: StatusMap;
   scheduleId?: number;
+  waktu?: string;
 };
 
 export type ToastState = {
@@ -198,6 +207,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Today's date, in local time. toISOString() is UTC, which gave the wrong
   // day to anyone west of UTC and to WIB users before 07:00.
   const [tanggalInput, setTanggalInput] = useState<string>(() => todayYMD());
+  const [waktuInput, setWaktuInput] = useState<string>('');
   const [namesInput, setNamesInput] = useState<string>('');
 
   // Linked Schedule
@@ -220,6 +230,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
    */
   const sessionKeyRef = useRef<string | null>(null);
   const sessionDirtyRef = useRef(false);
+  /** The teacher has typed a time for this session; a load must not undo it. */
+  const waktuTouchedRef = useRef(false);
   const [lastSaved, setLastSaved] = useState<{ tanggal: string; tally: StatusTally } | null>(null);
   const [schedules, setSchedules] = useState<ScheduleRecord[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -461,24 +473,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const applySmartMergeImport = async (jsonData: any) => {
-    // Bring the roster across first, so santri who were absent in every
-    // session still exist on the receiving phone.
-    if (Array.isArray(jsonData.students)) {
-      for (const incoming of jsonData.students) {
-        const key = incoming?.nameKey ?? nameKey(incoming?.name ?? '');
-        if (!key) continue;
-        const found = await db.students.where('nameKey').equals(key).first();
-        if (!found) {
-          await db.students.add({
-            name: incoming.name ?? key,
-            nameKey: key,
-            active: incoming.active !== false,
-            createdAt: incoming.createdAt ?? Date.now()
-          });
-        }
-      }
-    }
-
     try {
       if (!jsonData || jsonData.app !== 'ClassSync') {
         showToast('Berkas ini bukan cadangan ClassSync.', 'error');
@@ -531,7 +525,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       }
 
-      // 2. Process Absensi Records
+      // 2. Bring the roster across, so santri who were absent in every
+      // session still exist on the receiving phone. This waits for the
+      // schedule map because a santri's class id means nothing on another
+      // phone until it is translated. A class already set here is the
+      // teacher's own decision, and is never overwritten by the other phone.
+      if (Array.isArray(jsonData.students)) {
+        for (const incoming of jsonData.students) {
+          const key = incoming?.nameKey ?? nameKey(incoming?.name ?? '');
+          if (!key) continue;
+          const scheduleId = incoming.scheduleId !== undefined
+            ? scheduleIdMap.get(incoming.scheduleId)
+            : undefined;
+          const found = await db.students.where('nameKey').equals(key).first();
+          if (!found) {
+            await db.students.add({
+              name: incoming.name ?? key,
+              nameKey: key,
+              active: incoming.active !== false,
+              ...(scheduleId !== undefined ? { scheduleId } : {}),
+              createdAt: incoming.createdAt ?? Date.now()
+            });
+          } else if (found.id !== undefined && found.scheduleId === undefined && scheduleId !== undefined) {
+            await db.students.update(found.id, { scheduleId });
+          }
+        }
+      }
+
+      // 3. Process Absensi Records
       if (Array.isArray(jsonData.absensi)) {
         for (const r of jsonData.absensi) {
           const localScheduleId = r.scheduleId ? scheduleIdMap.get(r.scheduleId) : undefined;
@@ -913,6 +934,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (sessionKeyRef.current !== sessionKey) {
       sessionKeyRef.current = sessionKey;
       sessionDirtyRef.current = false;
+      waktuTouchedRef.current = false;
     }
 
     const load = async () => {
@@ -928,6 +950,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         // Checked again after the await: a mark made while the read was in
         // flight is exactly the case this guard exists for.
         if (sessionKeyRef.current !== sessionKey || sessionDirtyRef.current) return;
+
+        // A saved session keeps the time it was saved with; otherwise the
+        // class's usual time, which the teacher can still change.
+        // Changing the date starts this read, and the teacher may well type
+        // the time before it lands — so a typed time wins over the default.
+        if (!waktuTouchedRef.current) {
+          const usual = schedules.find(s => s.id === linkedId)?.waktu ?? '';
+          setWaktuInput(existing?.waktu ?? usual);
+        }
 
         if (existing?.statuses && Object.keys(existing.statuses).length > 0) {
           setSessionStatuses(existing.statuses);
@@ -947,7 +978,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     load();
     return () => { cancelled = true; };
-  }, [tanggalInput, selectedScheduleId, records]);
+  }, [tanggalInput, selectedScheduleId, records, schedules]);
 
   /** The mark on this santri for the session being edited, or nothing yet. */
   const sessionStatusFor = (studentName: string): StatusKey | undefined => {
@@ -972,7 +1003,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const next: StatusMap = { ...sessionStatuses };
     // Only the santri still waiting for a mark. Marks the teacher has already
     // set — the two who are ill today — are not swept away by this shortcut.
-    const filled = allRegisteredStudents.filter(name => !next[nameKey(name)]);
+    // With a class picked, only its members: santri of other classes are on
+    // the register so a visitor can be marked, not so the shortcut can file
+    // the whole pesantren as present at one class.
+    const { members } = splitByClass(allRegisteredStudents, students, selectedScheduleId);
+    const filled = members.filter(name => !next[nameKey(name)]);
     filled.forEach(name => { next[nameKey(name)] = 'hadir'; });
     setSessionStatuses(next);
     setTouchedStudents(new Set(Object.keys(next)));
@@ -1004,7 +1039,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const dismissLastSaved = () => setLastSaved(null);
 
-  const handleAddStudent = async (rawName: string): Promise<boolean> => {
+  const handleAddStudent = async (rawName: string, scheduleId?: number): Promise<boolean> => {
     const names = parseNameList(rawName);
     if (names.length === 0) {
       showToast('Masukkan nama santri terlebih dahulu.', 'error');
@@ -1013,7 +1048,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     try {
       for (const name of names) {
-        await upsertStudent(name);
+        const student = await upsertStudent(name);
+        if (scheduleId !== undefined && student?.id !== undefined) {
+          await db.students.update(student.id, { scheduleId });
+        }
       }
       await loadStudents();
       showToast(
@@ -1105,6 +1143,43 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const assignStudentToSchedule = async (name: string, scheduleId: number | undefined): Promise<void> => {
+    const key = nameKey(name);
+    if (!key) return;
+
+    try {
+      const student = await db.students.where('nameKey').equals(key).first();
+      if (!student?.id) return;
+      const previous = student.scheduleId;
+      if (previous === scheduleId) return;
+
+      // Dexie's update treats an undefined value as "remove this field".
+      await db.students.update(student.id, { scheduleId });
+      await loadStudents();
+
+      const titleOf = (id: number | undefined) => schedules.find(s => s.id === id)?.title;
+      const message = scheduleId === undefined
+        ? `${student.name} dikeluarkan dari ${titleOf(previous) ?? 'kelasnya'}.`
+        : `${student.name} masuk ${titleOf(scheduleId) ?? 'kelas'}.`;
+
+      showToast(message, 'success', {
+        label: 'Urungkan',
+        onAction: async () => {
+          try {
+            await db.students.update(student.id!, { scheduleId: previous });
+            await loadStudents();
+          } catch (err) {
+            console.error('[Restore class error]', err);
+            showToast('Tidak dapat mengembalikan kelas santri.', 'error');
+          }
+        }
+      });
+    } catch (err) {
+      console.error('[Assign class error]', err);
+      showToast('Gagal mengubah kelas santri.', 'error');
+    }
+  };
+
   // Create or Update Attendance Record
   const handleSaveAttendance = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1148,7 +1223,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           existingCount: existing.peserta?.length ?? 0,
           peserta: parsedPeserta,
           statuses,
-          scheduleId: selectedScheduleId
+          scheduleId: selectedScheduleId,
+          waktu: waktuInput || undefined
         });
         return;
       }
@@ -1158,6 +1234,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         peserta: parsedPeserta,
         statuses,
         scheduleId: selectedScheduleId,
+        ...(waktuInput ? { waktu: waktuInput } : {}),
         createdAt: Date.now()
       });
       showToast('Presensi tersimpan.', 'success');
@@ -1202,6 +1279,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         peserta: staged.peserta,
         statuses: staged.statuses,
         scheduleId: staged.scheduleId,
+        waktu: staged.waktu,
         createdAt: Date.now()
       });
       showToast(`Presensi ${formatIndonesianDate(staged.tanggal)} diperbarui.`, 'success');
@@ -1410,23 +1488,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Form schedules add/delete
-  const handleAddSchedule = async (e: React.FormEvent) => {
+  const handleAddSchedule = async (e: React.FormEvent, memberNames: string[] = []): Promise<boolean> => {
     e.preventDefault();
     if (!scheduleTitle.trim()) {
       showToast('Isi nama kelas.', 'error');
-      return;
+      return false;
     }
     if (!scheduleHari) {
       showToast('Pilih hari kelas.', 'error');
-      return;
+      return false;
     }
     if (!scheduleWaktu) {
       showToast('Isi jam mulai kelas.', 'error');
-      return;
+      return false;
     }
 
     try {
-      await db.schedules.add({
+      const newId = await db.schedules.add({
         title: scheduleTitle.trim(),
         hari: scheduleHari,
         waktu: scheduleWaktu,
@@ -1435,12 +1513,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         createdAt: Date.now()
       });
 
-      showToast(`Jadwal "${scheduleTitle}" berhasil didaftarkan!`, 'success');
+      // One class per santri, so anyone picked here leaves the class they
+      // were in — the form says so next to their name before saving.
+      const keys = memberNames.map(nameKey).filter(Boolean);
+      if (keys.length > 0) {
+        await db.students.where('nameKey').anyOf(keys).modify({ scheduleId: newId as number });
+      }
+
+      showToast(
+        keys.length > 0
+          ? `Jadwal "${scheduleTitle}" tersimpan dengan ${keys.length} santri.`
+          : `Jadwal "${scheduleTitle}" berhasil didaftarkan!`,
+        'success'
+      );
       setScheduleTitle('');
       loadSchedules();
+      loadStudents();
+      return true;
     } catch (err) {
       console.error("Failed to add schedule:", err);
       showToast('Tidak dapat menyimpan jadwal.', 'error');
+      return false;
     }
   };
 
@@ -1450,8 +1543,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     try {
       await db.schedules.delete(id);
+      // Its santri stay on the roster, now without a class, rather than
+      // pointing at a class that no longer exists.
+      await db.students.where('scheduleId').equals(id).modify(s => { delete s.scheduleId; });
       showToast(`Jadwal "${title}" berhasil dihapus.`, 'success');
       loadSchedules();
+      loadStudents();
     } catch (err) {
       console.error("Failed to delete schedule:", err);
       showToast('Tidak dapat menghapus jadwal.', 'error');
@@ -1745,45 +1842,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return;
     }
 
-    const label = currentPeriod ? currentPeriod.label : "Mei-Juni 2026";
-    const lines = [
-      // Verbatim: this is the report the coordinator reads, and its wording
-      // is a contract with them, not UI copy. Do not 'improve' it.
-      `Mohon untuk dikirimkan Laporan Kursus periode ${label}`,
-      ""
-    ];
-
-    bimonthlyWeeks.forEach((period) => {
-      const matchRecords = records.filter(r =>
-        r.id &&
-        reportSelectedRecordIds.includes(r.id) &&
-        r.tanggal >= period.start &&
-        r.tanggal <= period.end
-      );
-
-      matchRecords.sort((a, b) => a.tanggal.localeCompare(b.tanggal));
-
-      lines.push(period.title);
-
-      if (matchRecords.length === 0) {
-        lines.push(`* Tgl Kursus : -`);
-        lines.push(`* Peserta : -`);
-      } else {
-        matchRecords.forEach((rec, idx) => {
-          const dateToken = formatDateShort(rec.tanggal);
-          const namesJoined = participantLine(rec);
-          
-          // Add trailing comma to the date token if there is another session scheduled after it in the same week
-          const trailingComma = idx < matchRecords.length - 1 ? ',' : '';
-
-          lines.push(`* Tgl Kursus : ${dateToken}${trailingComma}`);
-          lines.push(`* Peserta : ${namesJoined}`);
-        });
-      }
-      lines.push("");
+    const compiledReport = buildWhatsAppReport({
+      periodLabel: currentPeriod ? currentPeriod.label : "Mei-Juni 2026",
+      weeks: bimonthlyWeeks,
+      records: records.filter(r => r.id && reportSelectedRecordIds.includes(r.id)),
+      classes: schedules
     });
-
-    const compiledReport = lines.join('\n').trim() + "\n";
     setReportText(compiledReport);
     setReportGenerated(true);
     showToast('Laporan berhasil diproses!', 'success');
@@ -1892,6 +1956,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       tanggalInput,
       setTanggalInput,
+      waktuInput,
+      setWaktuInput: (val: string) => {
+        waktuTouchedRef.current = true;
+        setWaktuInput(val);
+      },
       namesInput,
       setNamesInput,
       selectedScheduleId,
@@ -1909,6 +1978,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       markedCount,
       handleAddStudent,
       handleRemoveStudent,
+      assignStudentToSchedule,
       lastSaved,
       dismissLastSaved,
       handleToggleStudent,
