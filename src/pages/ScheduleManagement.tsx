@@ -1,6 +1,6 @@
 import React, {useState} from 'react';
 import {motion} from 'motion/react';
-import {Bell, CalendarDays, Clock, Plus, Trash2, UserMinus, UserPlus} from 'lucide-react';
+import {Bell, CalendarDays, Check, Clock, Pencil, Plus, Trash2, UserMinus, UserPlus} from 'lucide-react';
 import {useApp} from '../context/AppContext';
 import {buildICalendar} from '../utils/calendar';
 import {Button} from '../ui/Button';
@@ -15,6 +15,71 @@ type Schedule = {
   hari: string;
   waktu: string;
   remindMinutesBefore: number;
+  guru?: string;
+};
+
+/**
+ * The teacher's name on a saved class, editable in place. Classes saved
+ * before the field existed have none, so this is how they get one.
+ */
+const GuruEditor: React.FC<{
+  schedule: Schedule;
+  onSave: (id: number, guru: string) => Promise<void>;
+}> = ({schedule, onSave}) => {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(schedule.guru ?? '');
+
+  if (!editing) {
+    return (
+      <div className="cs-row">
+        <p className="cs-muted">
+          Guru: {schedule.guru ? <strong>{schedule.guru}</strong> : 'belum diisi'}
+        </p>
+        <Button
+          variant="ghost"
+          icon={<Pencil className="cs-icon" />}
+          aria-label={`Ubah guru ${schedule.title}`}
+          onClick={() => {
+            setDraft(schedule.guru ?? '');
+            setEditing(true);
+          }}
+        >
+          Ubah guru
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <form
+      className="cs-addrow"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        if (schedule.id === undefined) return;
+        await onSave(schedule.id, draft);
+        setEditing(false);
+      }}
+    >
+      <Field id={`sch-guru-${schedule.id}`} label="Nama guru" optional>
+        {(p) => (
+          <input
+            {...p}
+            className="cs-input"
+            type="text"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            autoFocus
+          />
+        )}
+      </Field>
+      <Button type="submit" icon={<Check className="cs-icon" />}>
+        Simpan
+      </Button>
+      <Button variant="ghost" onClick={() => setEditing(false)}>
+        Batal
+      </Button>
+    </form>
+  );
 };
 
 /**
@@ -133,6 +198,9 @@ export const ScheduleManagement: React.FC = () => {
     setScheduleWaktu,
     scheduleRemindMinutesBefore,
     setScheduleRemindMinutesBefore,
+    scheduleGuru,
+    setScheduleGuru,
+    updateScheduleGuru,
     handleAddSchedule,
     handleDeleteSchedule,
     requestNotificationPermission,
@@ -200,6 +268,18 @@ export const ScheduleManagement: React.FC = () => {
                   required
                   value={scheduleTitle}
                   onChange={(e) => setScheduleTitle(e.target.value)}
+                />
+              )}
+            </Field>
+
+            <Field id="sch-guru" label="Nama guru" hint="Contoh: Ust. Ahmad" optional>
+              {(p) => (
+                <input
+                  {...p}
+                  className="cs-input"
+                  type="text"
+                  value={scheduleGuru}
+                  onChange={(e) => setScheduleGuru(e.target.value)}
                 />
               )}
             </Field>
@@ -351,6 +431,7 @@ export const ScheduleManagement: React.FC = () => {
                       ? 'diingatkan saat mulai'
                       : `diingatkan ${s.remindMinutesBefore} menit sebelumnya`}
                   </p>
+                  <GuruEditor key={s.guru ?? ''} schedule={s} onSave={updateScheduleGuru} />
                   <ClassMembers
                     schedule={s}
                     schedules={schedules}

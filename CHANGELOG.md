@@ -17,6 +17,37 @@ release will refuse to run on an empty one.
 
 ## Unreleased
 
+### Added
+
+- **A fifth mark, Lainnya (E), with a reason.** For anything Sakit, Izin and
+  Alpa do not cover. Marking a santri Lainnya opens a text field under their
+  row for the reason; only santri still on Lainnya when the session is saved
+  keep theirs. Riwayat lists them as *Nama — alasan*.
+- **Classes have a teacher.** *Nama guru* on the Jadwal form, and *Ubah guru*
+  on every saved class so classes made before this can get one.
+- **The teacher is marked too.** Picking a class on Presensi shows
+  *Kehadiran guru* with the same five marks, and a reason for Lainnya. It is
+  saved with the session but never counted among the santri. Riwayat shows it
+  above the tally.
+- **A second WhatsApp layout, *Format rapi*.** Under *Bentuk laporan* on
+  Laporan: a heading, the class and its teacher, each session as one line per
+  mark with its count, the teacher's mark next to the date, and a weekly
+  total. The choice is remembered. *Format klasik* stays the default and is
+  unchanged, except that a Lainnya mark carries its reason: `Aan (E: alasan)`.
+- **The theme follows the phone.** The masthead button now goes *ikuti
+  perangkat* → the opposite theme → the phone's own theme held fixed → back,
+  and while following the phone it switches live when the phone does. A theme
+  chosen in an earlier version is kept.
+
+### Changed
+
+- A report longer than WhatsApp's 4096 characters is flagged as soon as it is
+  put together, not only when sending.
+- The Excel sheet's *Nama Guru* starts from the class's teacher when the class
+  has no draft yet.
+- Sync between phones brings a class's teacher across when this phone has
+  none, and a session's teacher mark and Lainnya reasons with it.
+
 ## 2.4.0 — 2026-10-26
 
 ### Added

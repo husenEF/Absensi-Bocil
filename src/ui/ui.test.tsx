@@ -98,7 +98,7 @@ describe('StatusPicker', () => {
 
   it('starts with nothing chosen, so an untouched register records nothing', () => {
     setup(undefined);
-    for (const name of ['Hadir', 'Sakit', 'Izin', 'Alpa']) {
+    for (const name of ['Hadir', 'Sakit', 'Izin', 'Alpa', 'Lainnya']) {
       expect(screen.getByRole('radio', {name})).not.toBeChecked();
     }
   });
@@ -125,12 +125,14 @@ describe('StatusPicker', () => {
     ).toBeInTheDocument();
   });
 
-  it('offers all four Indonesian statuses as real radios', () => {
+  it('offers all five Indonesian statuses as real radios', () => {
     setup('hadir');
+    expect(screen.getAllByRole('radio')).toHaveLength(5);
     expect(screen.getByRole('radio', {name: 'Hadir'})).toBeInTheDocument();
     expect(screen.getByRole('radio', {name: 'Sakit'})).toBeInTheDocument();
     expect(screen.getByRole('radio', {name: 'Izin'})).toBeInTheDocument();
     expect(screen.getByRole('radio', {name: 'Alpa'})).toBeInTheDocument();
+    expect(screen.getByRole('radio', {name: 'Lainnya'})).toBeInTheDocument();
   });
 
   it('shows which status is set', () => {
@@ -155,7 +157,7 @@ describe('StatusPicker', () => {
 
   it('writes each status as a letter as well as a word, never colour alone', () => {
     setup('hadir');
-    for (const code of ['H', 'S', 'I', 'A']) {
+    for (const code of ['H', 'S', 'I', 'A', 'E']) {
       expect(screen.getByText(code)).toBeInTheDocument();
     }
   });

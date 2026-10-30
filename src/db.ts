@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie';
-import { classFromHistory, nameKey, rosterFromRecords, statusesFromPeserta, type StatusMap, type StudentRecord } from './roster';
+import { classFromHistory, nameKey, rosterFromRecords, statusesFromPeserta, type StatusKey, type StatusMap, type StudentRecord } from './roster';
 
 export type { StudentRecord };
 
@@ -15,7 +15,7 @@ export interface AbsensiRecord {
   waktu?: string;
   createdAt: number;
   /**
-   * Per-santri status, keyed by lower-cased name: hadir | sakit | izin | alpa.
+   * Per-santri status, keyed by lower-cased name: hadir | sakit | izin | alpa | etc.
    *
    * Added in v4 alongside `peserta`, never instead of it, so that an older
    * build opening the same database still reads attendance correctly and every
@@ -23,6 +23,15 @@ export interface AbsensiRecord {
    * names whose status is 'hadir'.
    */
   statuses?: StatusMap;
+  /**
+   * Free-text reason per santri marked Lainnya (etc), keyed like `statuses`.
+   * Only santri whose status is 'etc' have an entry. Not indexed.
+   */
+  keterangan?: Record<string, string>;
+  /** The teacher's own attendance for this session, when a class was picked. */
+  guruStatus?: StatusKey;
+  /** Reason for the teacher's Lainnya mark. */
+  guruKeterangan?: string;
 }
 
 export interface ScheduleRecord {
@@ -35,6 +44,7 @@ export interface ScheduleRecord {
   remindMinutesBefore: number; // minutes before start to remind: 0, 5, 10, 15, 30, etc.
   notified?: boolean; // track if reminder was triggered
   lastNotifiedDate?: string; // "YYYY-MM-DD" to avoid double triggers in the same week
+  guru?: string; // teacher's name; not indexed, so no schema change
   createdAt: number;
 }
 

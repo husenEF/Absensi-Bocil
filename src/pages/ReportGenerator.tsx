@@ -70,6 +70,8 @@ export const ReportGenerator: React.FC = () => {
     records,
     students,
     showToast,
+    waFormat,
+    setWaFormat,
   } = useApp();
 
   /*
@@ -331,6 +333,8 @@ export const ReportGenerator: React.FC = () => {
           setStudentsData(rows);
         } else {
           // No saved report: auto-fill from attendance logs
+          const classGuru = schedules.find((s) => s.id === excelClassId)?.guru;
+          if (classGuru) setGuruName(classGuru);
           handleAutoFillFromDB();
         }
       })
@@ -842,6 +846,36 @@ export const ReportGenerator: React.FC = () => {
                       })}
                     </div>
                   )}
+
+                  <div className="cs-field">
+                    <p className="cs-field__label" id="wa_format_label">
+                      Bentuk laporan
+                    </p>
+                    <ul className="cs-groups" aria-labelledby="wa_format_label">
+                      <li className="cs-group">
+                        <button
+                          type="button"
+                          className="cs-group__btn"
+                          aria-pressed={waFormat === "klasik"}
+                          onClick={() => setWaFormat("klasik")}
+                        >
+                          Format klasik
+                          <span className="cs-group__when">Format koordinator</span>
+                        </button>
+                      </li>
+                      <li className="cs-group">
+                        <button
+                          type="button"
+                          className="cs-group__btn"
+                          aria-pressed={waFormat === "rapi"}
+                          onClick={() => setWaFormat("rapi")}
+                        >
+                          Format rapi
+                          <span className="cs-group__when">Per status, ada guru &amp; total</span>
+                        </button>
+                      </li>
+                    </ul>
+                  </div>
 
                   <div className="cs-row cs-row--end">
                     <Button

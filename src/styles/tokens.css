@@ -76,6 +76,10 @@
   --cs-alpa-ink: #8a4408;
   --cs-alpa-solid: #ff9f43;
   --cs-alpa-solid-ink: #1a1d1a;
+  --cs-etc-tint: #f2e8fb;
+  --cs-etc-ink: #6b2d8b;
+  --cs-etc-solid: #b07ad6;
+  --cs-etc-solid-ink: #1a1d1a;
 
   /* type */
   --cs-font-display: 'Archivo', system-ui, -apple-system, sans-serif;
@@ -188,6 +192,10 @@ html.dark {
   --cs-alpa-ink: #e8a263;
   --cs-alpa-solid: #d98943;
   --cs-alpa-solid-ink: #1e1e24;
+  --cs-etc-tint: #2c2139;
+  --cs-etc-ink: #c9aee8;
+  --cs-etc-solid: #a884cf;
+  --cs-etc-solid-ink: #1e1e24;
 
   /* At night the keyline inverts: a black edge on a charcoal page draws
      nothing, so the edge and its offset shadow are drawn in the ramp's grey. */

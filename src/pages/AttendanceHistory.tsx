@@ -11,7 +11,7 @@ import {
 import {useApp} from '../context/AppContext';
 import {formatIndonesianDate} from '../utils/date';
 import {STATUS_LABEL, STATUS_ORDER, type StatusKey} from '../styles/palette';
-import {nameKey, tally} from '../roster';
+import {nameKey, reasonFor, tally} from '../roster';
 import {Button} from '../ui/Button';
 import {Field} from '../ui/Field';
 import {ConfirmDialog} from '../ui/ConfirmDialog';
@@ -22,7 +22,7 @@ const summarise = (record: {peserta: string[]; statuses?: Record<string, StatusK
     return tally(record.statuses);
   }
   // Saved before statuses existed: everyone listed was present.
-  return {hadir: record.peserta.length, sakit: 0, izin: 0, alpa: 0};
+  return {hadir: record.peserta.length, sakit: 0, izin: 0, alpa: 0, etc: 0};
 };
 
 export const AttendanceHistory: React.FC = () => {
@@ -249,6 +249,16 @@ export const AttendanceHistory: React.FC = () => {
                     </p>
                   ) : null}
 
+                  {record.guruStatus ? (
+                    <p className="cs-muted">
+                      <strong>Guru{linked?.guru ? ` (${linked.guru})` : ''}:</strong>{' '}
+                      {STATUS_LABEL[record.guruStatus]}
+                      {record.guruStatus === 'etc' && record.guruKeterangan
+                        ? ` — ${record.guruKeterangan}`
+                        : ''}
+                    </p>
+                  ) : null}
+
                   <ul className="cs-tally" aria-label="Ringkasan kehadiran">
                     {STATUS_ORDER.filter((k) => counts[k] > 0).map((k) => (
                       <li key={k} className={`cs-chip cs-chip--${k}`}>
@@ -272,7 +282,9 @@ export const AttendanceHistory: React.FC = () => {
                           .map(([key]) => {
                             const student = students.find((st) => st.nameKey === key);
                             const inRecord = record.peserta.find((n) => nameKey(n) === key);
-                            return student?.name ?? inRecord ?? key;
+                            const name = student?.name ?? inRecord ?? key;
+                            const reason = k === 'etc' ? reasonFor(record.keterangan, key) : '';
+                            return reason ? `${name} — ${reason}` : name;
                           });
                         if (names.length === 0) return null;
                         return (

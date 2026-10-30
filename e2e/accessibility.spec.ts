@@ -75,8 +75,8 @@ test('an attendance mark is operable from the keyboard', async ({page}) => {
 test('each mark carries a letter, so colour is never the only channel', async ({page}) => {
   const options = page.locator('.cs-roster__row').first().locator('label.cs-status__opt');
 
-  await expect(options).toHaveCount(4);
-  for (const [index, code] of ['h', 's', 'i', 'a'].entries()) {
+  await expect(options).toHaveCount(5);
+  for (const [index, code] of ['h', 's', 'i', 'a', 'e'].entries()) {
     await expect(options.nth(index).locator('.cs-status__code')).toHaveText(
       new RegExp(`^${code}$`, 'i'),
     );
@@ -119,4 +119,31 @@ test('the interface works in both themes', async ({page}) => {
 
   const dark = await body.evaluate((el) => getComputedStyle(el).backgroundColor);
   expect(dark).not.toBe(light);
+});
+
+test('the theme follows the device until the teacher picks one', async ({page}) => {
+  const html = page.locator('html');
+
+  await page.emulateMedia({colorScheme: 'dark'});
+  await expect(html).toHaveClass(/dark/);
+
+  // Following the device, live.
+  await page.emulateMedia({colorScheme: 'light'});
+  await expect(html).not.toHaveClass(/dark/);
+  await page.emulateMedia({colorScheme: 'dark'});
+  await expect(html).toHaveClass(/dark/);
+
+  // A choice holds against the device, and survives a reload.
+  await page.getByRole('button', {name: /tema terang/i}).click();
+  await expect(html).not.toHaveClass(/dark/);
+  await page.reload();
+  await expect(html).not.toHaveClass(/dark/);
+
+  await page.getByRole('button', {name: /tema gelap/i}).click();
+  await expect(html).toHaveClass(/dark/);
+
+  // Back to following the device.
+  await page.getByRole('button', {name: /ikuti tema perangkat/i}).click();
+  await page.emulateMedia({colorScheme: 'light'});
+  await expect(html).not.toHaveClass(/dark/);
 });

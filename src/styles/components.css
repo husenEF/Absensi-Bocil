@@ -693,6 +693,7 @@
 .cs-progress__seg--sakit { background-color: var(--cs-sakit-solid); }
 .cs-progress__seg--izin  { background-color: var(--cs-izin-solid); }
 .cs-progress__seg--alpa  { background-color: var(--cs-alpa-solid); }
+.cs-progress__seg--etc   { background-color: var(--cs-etc-solid); }
 
 /* ---------------------------------------------------------------- register */
 
@@ -753,8 +754,20 @@
   color: var(--cs-text-muted);
 }
 
+/* The reason under a Lainnya mark spans the whole row. */
+.cs-roster__note {
+  grid-column: 1 / -1;
+}
+
+/* The teacher's own row: name above the marks, since it sits in the narrow
+   column beside the register. */
+.cs-guru {
+  display: grid;
+  gap: var(--cs-space-2);
+}
+
 /*
- * Four marks per row, and none of them set until someone sets one.
+ * Five marks per row, and none of them set until someone sets one.
  *
  * The one that is chosen is a filled block carrying its letter; the rest are
  * the letter in quiet ink inside a dashed box. That turns forty outlined boxes
@@ -763,13 +776,13 @@
  */
 .cs-status {
   display: grid;
-  grid-template-columns: repeat(4, minmax(var(--cs-tap), 1fr));
+  grid-template-columns: repeat(5, minmax(var(--cs-tap), 1fr));
   gap: var(--cs-tap-gap);
 }
 
 @media (min-width: 30rem) {
   .cs-status {
-    grid-template-columns: repeat(4, var(--cs-tap));
+    grid-template-columns: repeat(5, var(--cs-tap));
   }
 }
 
@@ -840,6 +853,10 @@
 .cs-status__opt--alpa.is-selected {
   background-color: var(--cs-alpa-solid);
   color: var(--cs-alpa-solid-ink);
+}
+.cs-status__opt--etc.is-selected {
+  background-color: var(--cs-etc-solid);
+  color: var(--cs-etc-solid-ink);
 }
 
 /* A legend, printed once, so the single letters are never a guess. */
@@ -918,6 +935,7 @@
 .cs-chip--sakit::before { background-color: var(--cs-sakit-solid); }
 .cs-chip--izin::before { background-color: var(--cs-izin-solid); }
 .cs-chip--alpa::before { background-color: var(--cs-alpa-solid); }
+.cs-chip--etc::before { background-color: var(--cs-etc-solid); }
 
 /* ------------------------------------------------------------ empty state */
 
@@ -1293,6 +1311,7 @@ fieldset.cs-stack {
 .cs-legend__mark--sakit { background-color: var(--cs-sakit-solid); color: var(--cs-sakit-solid-ink); }
 .cs-legend__mark--izin  { background-color: var(--cs-izin-solid);  color: var(--cs-izin-solid-ink); }
 .cs-legend__mark--alpa  { background-color: var(--cs-alpa-solid);  color: var(--cs-alpa-solid-ink); }
+.cs-legend__mark--etc   { background-color: var(--cs-etc-solid);   color: var(--cs-etc-solid-ink); }
 
 /* The stack of notices above the page content. */
 .cs-notices {
