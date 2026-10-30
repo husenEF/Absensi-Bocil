@@ -17,6 +17,8 @@ release will refuse to run on an empty one.
 
 ## Unreleased
 
+## 2.5.0 — 2026-10-30
+
 ### Added
 
 - **A fifth mark, Lainnya (E), with a reason.** For anything Sakit, Izin and
