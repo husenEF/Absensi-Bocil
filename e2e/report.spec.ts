@@ -122,3 +122,52 @@ test('the Excel sheet follows the class, with a draft of its own', async ({page}
   await page.locator('#report_schedule_filter').selectOption({label: 'Ngaji Pagi (Senin)'});
   await expect(guru).toHaveValue('Ustadz Pagi');
 });
+
+test("the teacher, and a reason for Lainnya, reach both report formats", async ({page}) => {
+  await seed(page, {roster: ['Ubin', 'Aan']});
+
+  // A class saved before teachers had names gets one from its card.
+  await page.getByRole('button', {name: /Jadwal/}).click();
+  await page.getByRole('button', {name: 'Ubah guru Ngaji Pagi'}).click();
+  // The class card's editor comes after the new-class form, which has its own.
+  await page.getByRole('textbox', {name: /Nama guru/}).last().fill('Ust. Ahmad');
+  await page.getByRole('button', {name: 'Simpan', exact: true}).click();
+  await expect(page.getByText('Ust. Ahmad').first()).toBeVisible();
+
+  await page.getByRole('button', {name: /Presensi/}).click();
+  await page.locator('.cs-group__btn').filter({hasText: 'Ngaji Pagi'}).click();
+
+  const guru = page.getByRole('radiogroup', {name: /guru Ust\. Ahmad/});
+  await guru.locator('label.cs-status__opt').filter({hasText: 'Sakit'}).click();
+  await mark(page, 'Ubin', 'Hadir');
+  await mark(page, 'Aan', 'Lainnya');
+  await page.getByRole('textbox', {name: 'Keterangan Aan'}).fill('jemputan telat');
+  await page.getByRole('button', {name: /Simpan presensi/}).click();
+  await expect(savedConfirmation(page)).toBeVisible();
+
+  await page.getByRole('button', {name: /Riwayat/}).click();
+  await expect(page.getByText('Aan — jemputan telat')).toBeVisible();
+  await expect(page.getByText('Guru (Ust. Ahmad):')).toBeVisible();
+
+  await page.getByRole('button', {name: /Laporan/}).click();
+  for (const box of await page.getByRole('checkbox').all()) {
+    if (!(await box.isChecked())) await box.check();
+  }
+  await page.getByRole('button', {name: /Susun laporan/}).click();
+
+  // The coordinator's format only gains the reason inside the bracket.
+  const klasik = await page.locator('textarea').first().inputValue();
+  expect(klasik).toContain('* Peserta : Ubin (H), Aan (E: jemputan telat)');
+  expect(klasik).not.toContain('Guru');
+
+  await page.getByRole('button', {name: /Format rapi/}).click();
+  await page.getByRole('button', {name: /Susun laporan/}).click();
+  const rapi = await page.locator('textarea').first().inputValue();
+  expect(rapi).toContain('*LAPORAN KURSUS*');
+  expect(rapi).toContain('Kelas: Ngaji Pagi');
+  expect(rapi).toContain('Guru: Ust. Ahmad');
+  expect(rapi).toMatch(/Tgl \d+\/\d+ - Guru: Sakit/);
+  expect(rapi).toContain('Hadir (1): Ubin');
+  expect(rapi).toContain('Lainnya (1): Aan - jemputan telat');
+  expect(rapi).toContain('Total pekan ini: 1H / 0S / 0I / 0A / 1E');
+});

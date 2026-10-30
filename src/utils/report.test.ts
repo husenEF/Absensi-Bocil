@@ -1,5 +1,5 @@
 import {describe, expect, it} from 'vitest';
-import {buildWhatsAppReport} from './report';
+import {buildWhatsAppReport, buildWhatsAppReportCompact} from './report';
 
 const weeks = [
   {title: '26 Oktober-1 November 2026', start: '2026-10-26', end: '2026-11-01'},
@@ -58,5 +58,103 @@ describe('buildWhatsAppReport', () => {
     const text = build([pagi, {...sore, scheduleId: 9}]);
     expect(text).toContain('*Tanpa kelas*');
     expect(text).not.toContain('*Tahfidz Sore*');
+  });
+});
+
+describe('buildWhatsAppReport with the newer fields', () => {
+  it('is unchanged by a teacher mark or a teacher name', () => {
+    const plain = build([pagi, pagiMoved]);
+    const withGuru = buildWhatsAppReport({
+      periodLabel: 'September - Oktober 2026',
+      weeks,
+      records: [{...pagi, guruStatus: 'sakit', guruKeterangan: 'x'}, pagiMoved],
+      classes: [{id: 1, title: 'Ngaji Pagi', guru: 'Ust. Ahmad'}, classes[1]],
+    });
+    expect(withGuru).toBe(plain);
+  });
+
+  it('adds a Lainnya reason inside the bracket', () => {
+    const text = build([
+      {...pagi, statuses: {...pagi.statuses, fajar: 'etc' as const}, keterangan: {fajar: 'jemputan telat'}},
+    ]);
+    expect(text).toContain('* Peserta : Budi (H), Aisyah (S), Fajar (E: jemputan telat)');
+  });
+});
+
+describe('buildWhatsAppReportCompact', () => {
+  const guruClasses = [
+    {id: 1, title: 'Ngaji Pagi', guru: 'Ust. Ahmad'},
+    {id: 2, title: 'Tahfidz Sore'},
+  ];
+  const compact = (records: Parameters<typeof buildWhatsAppReportCompact>[0]['records']) =>
+    buildWhatsAppReportCompact({
+      periodLabel: 'September - Oktober 2026',
+      weeks,
+      records,
+      classes: guruClasses,
+    });
+
+  it('lays one class out by status, with the teacher and a weekly total', () => {
+    const first = {
+      tanggal: '2026-10-26',
+      peserta: ['Ubin', 'Budi'],
+      statuses: {ubin: 'hadir', budi: 'hadir', aan: 'sakit', fajar: 'etc'} as const,
+      keterangan: {fajar: 'terlambat jemputan'},
+      guruStatus: 'hadir' as const,
+      scheduleId: 1,
+    };
+    const second = {
+      tanggal: '2026-10-28',
+      peserta: ['Ubin'],
+      statuses: {ubin: 'hadir', dewi: 'alpa'} as const,
+      guruStatus: 'etc' as const,
+      guruKeterangan: 'rapat',
+      scheduleId: 1,
+    };
+
+    expect(compact([second, first])).toBe(
+      [
+        '*LAPORAN KURSUS*',
+        'Periode: September - Oktober 2026',
+        'Kelas: Ngaji Pagi',
+        'Guru: Ust. Ahmad',
+        '',
+        '*26 Oktober-1 November 2026*',
+        'Tgl 26/10 - Guru: Hadir',
+        'Hadir (2): Budi, Ubin',
+        'Sakit (1): Aan',
+        'Lainnya (1): Fajar - terlambat jemputan',
+        '',
+        'Tgl 28/10 - Guru: Lainnya (rapat)',
+        'Hadir (1): Ubin',
+        'Tanpa keterangan (1): Dewi',
+        '',
+        'Total pekan ini: 3H / 1S / 0I / 1A / 1E',
+        '',
+        '*2-8 November 2026*',
+        '-',
+        '',
+      ].join('\n'),
+    );
+  });
+
+  it('leaves the teacher out when nobody recorded them', () => {
+    const text = compact([sore]);
+    expect(text).toContain('Kelas: Tahfidz Sore');
+    expect(text).not.toContain('Guru');
+    expect(text).toContain('Tgl 28/10\nHadir (1): Dewi');
+  });
+
+  it('gives each class a section, classless last', () => {
+    const text = compact([sore, pagi, lepas]);
+    const headings = text.split('\n').filter((l) => l.startsWith('*Kelas:'));
+    expect(headings).toEqual(['*Kelas: Ngaji Pagi*', '*Kelas: Tahfidz Sore*', '*Kelas: Tanpa kelas*']);
+    expect(text.match(/^\*LAPORAN KURSUS\*/gm)).toHaveLength(1);
+  });
+
+  it('omits the class line for classless sessions alone', () => {
+    const text = compact([lepas]);
+    expect(text).not.toContain('Kelas:');
+    expect(text).toContain('Hadir (1): Nabila');
   });
 });

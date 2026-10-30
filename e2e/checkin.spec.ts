@@ -45,7 +45,7 @@ test('a teacher marks a class and saves only what they marked', async ({page}) =
 test('nothing is marked until the teacher marks it', async ({page}) => {
   const radios = page.getByRole('radio');
   const count = await radios.count();
-  expect(count).toBe(ROSTER.length * 4);
+  expect(count).toBe(ROSTER.length * 5);
 
   for (let i = 0; i < count; i++) {
     await expect(radios.nth(i)).not.toBeChecked();

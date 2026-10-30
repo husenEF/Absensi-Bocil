@@ -114,7 +114,7 @@ export function rowFor(page: Page, name: string): Locator {
 }
 
 /**
- * One of the four marks in a row.
+ * One of the five marks in a row.
  *
  * The radio itself is visually hidden — the label carries the letter and the
  * 48px target — so this returns the label, which is what a finger or a mouse
@@ -124,7 +124,7 @@ export function markFor(page: Page, name: string, status: Status): Locator {
   return rowFor(page, name).locator('label.cs-status__opt').filter({hasText: status});
 }
 
-export type Status = 'Hadir' | 'Sakit' | 'Izin' | 'Alpa';
+export type Status = 'Hadir' | 'Sakit' | 'Izin' | 'Alpa' | 'Lainnya';
 
 /** Give one santri a mark. */
 export async function mark(page: Page, name: string, status: Status) {

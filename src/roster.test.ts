@@ -10,6 +10,7 @@ import {
   nameKey,
   parseNameList,
   presentNames,
+  pruneKeterangan,
   rosterFromRecords,
   statusesFromPeserta,
   tally,
@@ -112,12 +113,12 @@ describe('presentNames', () => {
 describe('tally', () => {
   it('counts each status', () => {
     expect(
-      tally({a: 'hadir', b: 'hadir', c: 'sakit', d: 'alpa'}),
-    ).toEqual({hadir: 2, sakit: 1, izin: 0, alpa: 1});
+      tally({a: 'hadir', b: 'hadir', c: 'sakit', d: 'alpa', e: 'etc'}),
+    ).toEqual({hadir: 2, sakit: 1, izin: 0, alpa: 1, etc: 1});
   });
 
   it('returns zeroes for an empty session', () => {
-    expect(tally({})).toEqual({hadir: 0, sakit: 0, izin: 0, alpa: 0});
+    expect(tally({})).toEqual({hadir: 0, sakit: 0, izin: 0, alpa: 0, etc: 0});
   });
 });
 
@@ -232,6 +233,44 @@ describe('participantLine', () => {
 
   it('says so plainly when a session recorded nobody', () => {
     expect(participantLine({peserta: [], statuses: {}})).toBe('-');
+  });
+
+  it('puts Lainnya last and carries its reason', () => {
+    const line = participantLine({
+      peserta: ['Ubin'],
+      statuses: {ubin: 'hadir', fajar: 'etc', aan: 'alpa'},
+      keterangan: {fajar: '  terlambat jemputan '},
+    });
+    expect(line).toBe('Ubin (H), Aan (A), Fajar (E: terlambat jemputan)');
+  });
+
+  it('prints a bare E when no reason was written', () => {
+    expect(participantLine({peserta: [], statuses: {fajar: 'etc'}})).toBe('Fajar (E)');
+  });
+
+  it('never prints a reason next to any other mark', () => {
+    const line = participantLine({
+      peserta: [],
+      statuses: {aan: 'sakit'},
+      keterangan: {aan: 'stale'},
+    });
+    expect(line).toBe('Aan (S)');
+  });
+});
+
+describe('pruneKeterangan', () => {
+  it('keeps only trimmed reasons whose santri is still Lainnya', () => {
+    expect(
+      pruneKeterangan(
+        {fajar: ' rapat ', aan: 'old', budi: '   '},
+        {fajar: 'etc', aan: 'hadir', budi: 'etc'},
+      ),
+    ).toEqual({fajar: 'rapat'});
+  });
+
+  it('returns undefined when nothing is left', () => {
+    expect(pruneKeterangan({aan: 'x'}, {aan: 'sakit'})).toBeUndefined();
+    expect(pruneKeterangan(undefined, {})).toBeUndefined();
   });
 });
 

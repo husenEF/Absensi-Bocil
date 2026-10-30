@@ -2,9 +2,10 @@ import React, { createContext, useContext, useState, useEffect, useMemo, useRef 
 import QRCode from 'qrcode';
 import jsQR from 'jsqr';
 import { db, upsertStudent, AbsensiRecord, ScheduleRecord, StudentRecord, checkForAndMigratePreviousDatabases } from '../db';
-import { buildStatusMap, nameKey, splitByClass, parseNameList, presentNames, rosterFromRecords, statusesFromPeserta, tally, unmarkedNames, type StatusKey, type StatusMap, type StatusTally } from '../roster';
+import { buildStatusMap, nameKey, splitByClass, parseNameList, presentNames, pruneKeterangan, rosterFromRecords, statusesFromPeserta, tally, unmarkedNames, type StatusKey, type StatusMap, type StatusTally } from '../roster';
 import { formatIndonesianDate } from '../utils/date';
-import { buildWhatsAppReport } from '../utils/report';
+import { isTooLongForWhatsApp, WHATSAPP_MAX_CHARS } from '../utils/share';
+import { buildWhatsAppReport, buildWhatsAppReportCompact, type WaReportFormat } from '../utils/report';
 import { biMonthlyWeeks, getBiMonthlyLabel, getRecordBiMonth, todayYMD } from '../utils/period';
 
 interface BiMonthlyPeriod {
@@ -18,8 +19,13 @@ interface AppContextType {
   // Navigation & UI
   activeTab: 'input' | 'riwayat' | 'laporan' | 'jadwal' | 'sinkronisasi';
   setActiveTab: (tab: 'input' | 'riwayat' | 'laporan' | 'jadwal' | 'sinkronisasi') => void;
+  /** What the teacher chose: follow the device, or always light or dark. */
+  themeMode: ThemeMode;
+  setThemeMode: (mode: ThemeMode) => void;
+  /** Whether the dark theme is showing right now, whichever way it was decided. */
   darkMode: boolean;
-  setDarkMode: React.Dispatch<React.SetStateAction<boolean>>;
+  /** Where the theme button goes next. */
+  nextThemeMode: ThemeMode;
   toast: ToastState | null;
   showToast: (message: string, type: 'success' | 'error' | 'info', action?: ToastAction) => void;
   dismissToast: () => void;
@@ -57,6 +63,15 @@ interface AppContextType {
   students: StudentRecord[];
   sessionStatusFor: (studentName: string) => StatusKey | undefined;
   setSessionStatus: (studentName: string, status: StatusKey) => void;
+  /** The reason typed for a santri marked Lainnya. */
+  sessionKeteranganFor: (studentName: string) => string;
+  setSessionKeterangan: (studentName: string, text: string) => void;
+  /** The teacher's own mark for the session; only offered when a class is picked. */
+  sessionGuruStatus: StatusKey | undefined;
+  /** Tapping the teacher's current mark takes it off, as on the register. */
+  setSessionGuruStatus: (status: StatusKey) => void;
+  sessionGuruKeterangan: string;
+  setSessionGuruKeterangan: (text: string) => void;
   handleMarkAllPresent: () => void;
   handleClearSession: () => void;
   sessionTally: StatusTally;
@@ -98,6 +113,10 @@ interface AppContextType {
   setScheduleWaktu: (val: string) => void;
   scheduleRemindMinutesBefore: number;
   setScheduleRemindMinutesBefore: (val: number) => void;
+  scheduleGuru: string;
+  setScheduleGuru: (val: string) => void;
+  /** Set or clear the teacher's name on a saved class. */
+  updateScheduleGuru: (id: number, guru: string) => Promise<void>;
   /** Save a class, placing the named santri in it at the same time. */
   handleAddSchedule: (e: React.FormEvent, memberNames?: string[]) => Promise<boolean>;
   handleDeleteSchedule: (id: number, title: string) => Promise<void>;
@@ -145,6 +164,8 @@ interface AppContextType {
   setReportText: (val: string) => void;
   reportGenerated: boolean;
   setReportGenerated: (val: boolean) => void;
+  waFormat: WaReportFormat;
+  setWaFormat: (format: WaReportFormat) => void;
   copied: boolean;
   availablePeriods: BiMonthlyPeriod[];
   currentPeriod: BiMonthlyPeriod | undefined;
@@ -172,6 +193,14 @@ interface AppContextType {
 /** Beyond this a QR stops being reliably scannable from another screen. */
 export const QR_SAFE_CHARS = 1200;
 
+export type ThemeMode = 'system' | 'light' | 'dark';
+
+const DARK_QUERY = '(prefers-color-scheme: dark)';
+const deviceIsDark = () =>
+  typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+    ? window.matchMedia(DARK_QUERY).matches
+    : false;
+
 export type ToastAction = { label: string; onAction: () => void };
 export type PendingImport = { data: any; sessions: number; schedules: number };
 
@@ -181,6 +210,9 @@ export type PendingOverwrite = {
   existingCount: number;
   peserta: string[];
   statuses: StatusMap;
+  keterangan?: Record<string, string>;
+  guruStatus?: StatusKey;
+  guruKeterangan?: string;
   scheduleId?: number;
   waktu?: string;
 };
@@ -199,10 +231,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [activeTab, setActiveTab] = useState<'input' | 'riwayat' | 'laporan' | 'jadwal' | 'sinkronisasi'>('input');
 
   // Theme states
-  const [darkMode, setDarkMode] = useState<boolean>(() => {
+  // Earlier builds stored only 'light' or 'dark'; those stay the teacher's
+  // choice. Anything else, including nothing, follows the device.
+  const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
     const saved = localStorage.getItem('theme-mode');
-    return saved === 'dark';
+    return saved === 'dark' || saved === 'light' ? saved : 'system';
   });
+  const [deviceDark, setDeviceDark] = useState<boolean>(deviceIsDark);
+  const darkMode = themeMode === 'system' ? deviceDark : themeMode === 'dark';
+  // System, then the opposite of what the device shows, then the device's own
+  // theme held fixed, then back. Every step but the last changes the screen.
+  const deviceTheme: ThemeMode = deviceDark ? 'dark' : 'light';
+  const nextThemeMode: ThemeMode =
+    themeMode === 'system'
+      ? (deviceDark ? 'light' : 'dark')
+      : themeMode === deviceTheme ? 'system' : deviceTheme;
 
   // Today's date, in local time. toISOString() is UTC, which gave the wrong
   // day to anyone west of UTC and to WIB users before 07:00.
@@ -218,6 +261,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [records, setRecords] = useState<AbsensiRecord[]>([]);
   const [students, setStudents] = useState<StudentRecord[]>([]);
   const [sessionStatuses, setSessionStatuses] = useState<StatusMap>({});
+  // Kept while a mark changes, so tapping Lainnya off and on again does not
+  // lose what was typed; only reasons still on a Lainnya mark are saved.
+  const [sessionKeterangan, setSessionKeteranganMap] = useState<Record<string, string>>({});
+  const [sessionGuruStatus, setSessionGuruStatusState] = useState<StatusKey | undefined>(undefined);
+  const [sessionGuruKeterangan, setSessionGuruKeteranganState] = useState<string>('');
   const [touchedStudents, setTouchedStudents] = useState<Set<string>>(new Set());
 
   /**
@@ -270,6 +318,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [reportScheduleFilter, setReportScheduleFilter] = useState<string>('all');
   const [reportText, setReportText] = useState<string>('');
   const [reportGenerated, setReportGenerated] = useState<boolean>(false);
+  const [waFormat, setWaFormatState] = useState<WaReportFormat>(() =>
+    localStorage.getItem('wa-report-format') === 'rapi' ? 'rapi' : 'klasik'
+  );
   const [copied, setCopied] = useState<boolean>(false);
   const [selectedPeriodKey, setSelectedPeriodKey] = useState<string>('');
 
@@ -301,6 +352,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // New Schedules Form States
   const [scheduleTitle, setScheduleTitle] = useState<string>('');
+  const [scheduleGuru, setScheduleGuru] = useState<string>('');
   const [scheduleHari, setScheduleHari] = useState<string>('Senin');
   const [scheduleWaktu, setScheduleWaktu] = useState<string>('19:00');
   const [scheduleRemindMinutesBefore, setScheduleRemindMinutesBefore] = useState<number>(15);
@@ -497,6 +549,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             if (s.id && match.id) {
               scheduleIdMap.set(s.id, match.id);
             }
+            // A teacher's name typed on this phone is kept; one only the
+            // other phone knows fills the gap.
+            if (match.id && !match.guru && typeof s.guru === 'string' && s.guru.trim()) {
+              await db.schedules.update(match.id, { guru: s.guru.trim() });
+            }
           } else {
             const { id: oldId, ...cleanSchedule } = s;
             const newId = await db.schedules.add(cleanSchedule);
@@ -560,22 +617,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           const existing = existingOfDate.find(item => item.scheduleId === localScheduleId);
 
           if (existing) {
+            const incoming = r as AbsensiRecord;
+            // The teacher's mark is taken from the other phone only when this
+            // one never recorded it.
+            const guruFields: Partial<AbsensiRecord> =
+              !existing.guruStatus && incoming.guruStatus
+                ? {
+                    guruStatus: incoming.guruStatus,
+                    ...(incoming.guruKeterangan ? { guruKeterangan: incoming.guruKeterangan } : {})
+                  }
+                : {};
             const combinedNames = Array.from(new Set([...existing.peserta, ...r.peserta]));
             if (combinedNames.length > existing.peserta.length) {
               // Statuses have to follow the names, or the history screen and
               // the report end up disagreeing about the same child.
               const mergedStatuses: StatusMap = {
                 ...(existing.statuses ?? {}),
-                ...((r as AbsensiRecord).statuses ?? {})
+                ...(incoming.statuses ?? {})
               };
               for (const name of combinedNames) {
                 mergedStatuses[nameKey(name)] = 'hadir';
               }
               await db.absensi.update(existing.id!, {
                 peserta: combinedNames,
-                statuses: mergedStatuses
+                statuses: mergedStatuses,
+                keterangan: pruneKeterangan(
+                  { ...(incoming.keterangan ?? {}), ...(existing.keterangan ?? {}) },
+                  mergedStatuses
+                ),
+                ...guruFields
               });
               mergedAbsensiCount++;
+            } else if (Object.keys(guruFields).length > 0) {
+              await db.absensi.update(existing.id!, guruFields);
             }
           } else {
             const { id, ...cleanRecord } = r;
@@ -761,14 +835,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Theme setup
   useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme-mode', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme-mode', 'light');
-    }
+    document.documentElement.classList.toggle('dark', darkMode);
   }, [darkMode]);
+
+  useEffect(() => {
+    localStorage.setItem('theme-mode', themeMode);
+  }, [themeMode]);
+
+  // While following the device, follow it live: a phone that switches to
+  // dark at sunset switches the app with it.
+  useEffect(() => {
+    if (themeMode !== 'system' || typeof window.matchMedia !== 'function') return;
+    const query = window.matchMedia(DARK_QUERY);
+    const onChange = () => setDeviceDark(query.matches);
+    onChange();
+    query.addEventListener?.('change', onChange);
+    return () => query.removeEventListener?.('change', onChange);
+  }, [themeMode]);
 
   // Available bimonthly periods
   const availablePeriods = useMemo<BiMonthlyPeriod[]>(() => {
@@ -960,6 +1043,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           setWaktuInput(existing?.waktu ?? usual);
         }
 
+        setSessionKeteranganMap(existing?.keterangan ?? {});
+        setSessionGuruStatusState(existing?.guruStatus);
+        setSessionGuruKeteranganState(existing?.guruKeterangan ?? '');
+
         if (existing?.statuses && Object.keys(existing.statuses).length > 0) {
           setSessionStatuses(existing.statuses);
           setTouchedStudents(new Set(Object.keys(existing.statuses)));
@@ -998,6 +1085,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setTouchedStudents(prev => new Set(prev).add(key));
   };
 
+  const sessionKeteranganFor = (studentName: string): string =>
+    sessionKeterangan[nameKey(studentName)] ?? '';
+
+  const setSessionKeterangan = (studentName: string, text: string) => {
+    sessionDirtyRef.current = true;
+    const key = nameKey(studentName);
+    setSessionKeteranganMap(prev => ({ ...prev, [key]: text }));
+  };
+
+  const setSessionGuruStatus = (status: StatusKey) => {
+    sessionDirtyRef.current = true;
+    setSessionGuruStatusState(prev => (prev === status ? undefined : status));
+  };
+
+  const setSessionGuruKeterangan = (text: string) => {
+    sessionDirtyRef.current = true;
+    setSessionGuruKeteranganState(text);
+  };
+
+  /** Forget everything marked on screen besides the santri statuses. */
+  const resetSessionExtras = () => {
+    setSessionKeteranganMap({});
+    setSessionGuruStatusState(undefined);
+    setSessionGuruKeteranganState('');
+  };
+
   const handleMarkAllPresent = () => {
     sessionDirtyRef.current = true;
     const next: StatusMap = { ...sessionStatuses };
@@ -1023,6 +1136,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     sessionDirtyRef.current = true;
     setSessionStatuses({});
     setTouchedStudents(new Set());
+    resetSessionExtras();
     showToast('Semua tanda dikosongkan.', 'info');
   };
 
@@ -1207,6 +1321,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return;
     }
 
+    const keterangan = pruneKeterangan(sessionKeterangan, statuses);
+    // The teacher is only marked against a class; a classless session has
+    // nobody named to mark.
+    const guruStatus = selectedScheduleId !== undefined ? sessionGuruStatus : undefined;
+    const guruKeterangan =
+      guruStatus === 'etc' ? sessionGuruKeterangan.trim() || undefined : undefined;
+
     try {
       // A date can hold more than one session when each is linked to a
       // different schedule, so match on the pair rather than the date alone.
@@ -1223,6 +1344,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           existingCount: existing.peserta?.length ?? 0,
           peserta: parsedPeserta,
           statuses,
+          keterangan,
+          guruStatus,
+          guruKeterangan,
           scheduleId: selectedScheduleId,
           waktu: waktuInput || undefined
         });
@@ -1233,6 +1357,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         tanggal: tanggalInput,
         peserta: parsedPeserta,
         statuses,
+        ...(keterangan ? { keterangan } : {}),
+        ...(guruStatus ? { guruStatus } : {}),
+        ...(guruKeterangan ? { guruKeterangan } : {}),
         scheduleId: selectedScheduleId,
         ...(waktuInput ? { waktu: waktuInput } : {}),
         createdAt: Date.now()
@@ -1245,6 +1372,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       sessionKeyRef.current = null;
       setSessionStatuses({});
       setTouchedStudents(new Set());
+      resetSessionExtras();
       setLastSaved({ tanggal: tanggalInput, tally: tally(statuses) });
       loadRecords();
       loadStudents();
@@ -1278,6 +1406,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       await db.absensi.update(staged.existingId, {
         peserta: staged.peserta,
         statuses: staged.statuses,
+        // Undefined removes the field, so a reason or a teacher's mark taken
+        // off on screen is taken off the saved session too.
+        keterangan: staged.keterangan,
+        guruStatus: staged.guruStatus,
+        guruKeterangan: staged.guruKeterangan,
         scheduleId: staged.scheduleId,
         waktu: staged.waktu,
         createdAt: Date.now()
@@ -1290,6 +1423,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       sessionKeyRef.current = null;
       setSessionStatuses({});
       setTouchedStudents(new Set());
+      resetSessionExtras();
       setLastSaved({ tanggal: staged.tanggal, tally: tally(staged.statuses) });
       loadRecords();
     } catch (err) {
@@ -1400,6 +1534,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         tanggal: editingTanggal,
         peserta: updatedPeserta,
         statuses: updatedStatuses,
+        keterangan: pruneKeterangan(existingRecord?.keterangan, updatedStatuses),
         scheduleId: editingScheduleId,
         createdAt: Date.now()
       });
@@ -1509,6 +1644,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         hari: scheduleHari,
         waktu: scheduleWaktu,
         remindMinutesBefore: scheduleRemindMinutesBefore,
+        ...(scheduleGuru.trim() ? { guru: scheduleGuru.trim() } : {}),
         notified: false,
         createdAt: Date.now()
       });
@@ -1527,6 +1663,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         'success'
       );
       setScheduleTitle('');
+      setScheduleGuru('');
       loadSchedules();
       loadStudents();
       return true;
@@ -1534,6 +1671,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       console.error("Failed to add schedule:", err);
       showToast('Tidak dapat menyimpan jadwal.', 'error');
       return false;
+    }
+  };
+
+  const updateScheduleGuru = async (id: number, guru: string) => {
+    const name = guru.trim();
+    try {
+      await db.schedules.update(id, { guru: name || undefined });
+      await loadSchedules();
+      showToast(name ? `Guru diubah menjadi ${name}.` : 'Nama guru dihapus.', 'success');
+    } catch (err) {
+      console.error('Failed to update teacher:', err);
+      showToast('Tidak dapat menyimpan nama guru.', 'error');
     }
   };
 
@@ -1842,7 +1991,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return;
     }
 
-    const compiledReport = buildWhatsAppReport({
+    const build = waFormat === 'rapi' ? buildWhatsAppReportCompact : buildWhatsAppReport;
+    const compiledReport = build({
       periodLabel: currentPeriod ? currentPeriod.label : "Mei-Juni 2026",
       weeks: bimonthlyWeeks,
       records: records.filter(r => r.id && reportSelectedRecordIds.includes(r.id)),
@@ -1850,7 +2000,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
     setReportText(compiledReport);
     setReportGenerated(true);
+    if (isTooLongForWhatsApp(compiledReport)) {
+      showToast(
+        `Laporan ${compiledReport.length} karakter, melebihi batas WhatsApp ${WHATSAPP_MAX_CHARS}. Pilih lebih sedikit sesi atau salin teksnya.`,
+        'error'
+      );
+      return;
+    }
     showToast('Laporan berhasil diproses!', 'success');
+  };
+
+  const setWaFormat = (format: WaReportFormat) => {
+    setWaFormatState(format);
+    localStorage.setItem('wa-report-format', format);
+    setReportGenerated(false);
+    setReportText('');
   };
 
   const handleCopyReport = async () => {
@@ -1932,8 +2096,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     <AppContext.Provider value={{
       activeTab,
       setActiveTab,
+      themeMode,
+      setThemeMode,
       darkMode,
-      setDarkMode,
+      nextThemeMode,
       toast,
       showToast,
       dismissToast,
@@ -1971,6 +2137,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       students,
       sessionStatusFor,
       setSessionStatus,
+      sessionKeteranganFor,
+      setSessionKeterangan,
+      sessionGuruStatus,
+      setSessionGuruStatus,
+      sessionGuruKeterangan,
+      setSessionGuruKeterangan,
       handleMarkAllPresent,
       handleClearSession,
       sessionTally,
@@ -2007,6 +2179,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setScheduleWaktu,
       scheduleRemindMinutesBefore,
       setScheduleRemindMinutesBefore,
+      scheduleGuru,
+      setScheduleGuru,
+      updateScheduleGuru,
       handleAddSchedule,
       handleDeleteSchedule,
       requestNotificationPermission,
@@ -2051,6 +2226,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setReportText,
       reportGenerated,
       setReportGenerated,
+      waFormat,
+      setWaFormat,
       copied,
       availablePeriods,
       currentPeriod,

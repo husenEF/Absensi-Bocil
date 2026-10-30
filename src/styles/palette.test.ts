@@ -106,8 +106,8 @@ describe.each(statusThemes)('%s attendance statuses', (_name, statuses, t) => {
 describe('status codes', () => {
   it('carries meaning in a letter, so colour is never the only channel (WCAG 1.4.1)', () => {
     const codes = STATUS_ORDER.map((k) => STATUS_CODE[k]);
-    expect(codes).toEqual(['H', 'S', 'I', 'A']);
-    expect(new Set(codes).size).toBe(4);
+    expect(codes).toEqual(['H', 'S', 'I', 'A', 'E']);
+    expect(new Set(codes).size).toBe(5);
   });
 
   it('labels every status in Indonesian for its accessible name', () => {
@@ -116,6 +116,7 @@ describe('status codes', () => {
       'Sakit',
       'Izin',
       'Alpa',
+      'Lainnya',
     ]);
   });
 });

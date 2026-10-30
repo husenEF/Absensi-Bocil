@@ -1,6 +1,6 @@
 import React from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { AppProvider, useApp } from "./context/AppContext";
+import { AppProvider, useApp, type ThemeMode } from "./context/AppContext";
 import { ConfirmDialog } from "./ui/ConfirmDialog";
 import { Button } from "./ui/Button";
 import { AttendanceInput } from "./pages/AttendanceInput";
@@ -16,6 +16,7 @@ import {
   Clock,
   Sun,
   Moon,
+  Monitor,
   AlertCircle,
   Info,
   X,
@@ -37,12 +38,26 @@ const TABS: Array<{
   { id: "sinkronisasi", label: "Sinkron", icon: ArrowRightLeft },
 ];
 
+/** What the theme button does, named by where it goes. */
+const THEME_ACTION: Record<ThemeMode, string> = {
+  dark: "Ganti ke tema gelap",
+  light: "Ganti ke tema terang",
+  system: "Ikuti tema perangkat",
+};
+
+const THEME_NAME: Record<ThemeMode, string> = {
+  dark: "gelap",
+  light: "terang",
+  system: "ikuti perangkat",
+};
+
 const MainAppContent: React.FC = () => {
   const {
     activeTab,
     setActiveTab,
-    darkMode,
-    setDarkMode,
+    themeMode,
+    setThemeMode,
+    nextThemeMode,
     toast,
     dismissToast,
     pendingImport,
@@ -148,16 +163,17 @@ const MainAppContent: React.FC = () => {
 
             <button
               type="button"
-              onClick={() => setDarkMode((prev) => !prev)}
+              onClick={() => setThemeMode(nextThemeMode)}
               className="cs-iconbtn"
-              aria-label={
-                darkMode ? "Ganti ke tema terang" : "Ganti ke tema gelap"
-              }
+              aria-label={THEME_ACTION[nextThemeMode]}
+              title={`Tema: ${THEME_NAME[themeMode]}`}
             >
-              {darkMode ? (
+              {nextThemeMode === "dark" ? (
+                <Moon className="cs-icon" />
+              ) : nextThemeMode === "light" ? (
                 <Sun className="cs-icon" />
               ) : (
-                <Moon className="cs-icon" />
+                <Monitor className="cs-icon" />
               )}
             </button>
           </div>

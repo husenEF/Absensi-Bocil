@@ -123,7 +123,7 @@ export function presentNames(
 export type StatusTally = Record<StatusKey, number>;
 
 export function tally(statuses: StatusMap): StatusTally {
-  const out: StatusTally = {hadir: 0, sakit: 0, izin: 0, alpa: 0};
+  const out: StatusTally = {hadir: 0, sakit: 0, izin: 0, alpa: 0, etc: 0};
   for (const status of Object.values(statuses)) {
     out[status] = (out[status] ?? 0) + 1;
   }
@@ -187,9 +187,30 @@ export function rosterFromRecords(
 export function participantLine(record: {
   peserta?: readonly string[];
   statuses?: StatusMap;
+  keterangan?: Readonly<Record<string, string>>;
 }): string {
+  const entries = markedEntries(record);
+  if (entries.length === 0) return '-';
+  return entries
+    .map((e) => {
+      const reason = e.status === 'etc' ? reasonFor(record.keterangan, e.key) : '';
+      return `${e.name} (${STATUS_CODE[e.status]}${reason ? `: ${reason}` : ''})`;
+    })
+    .join(', ');
+}
+
+export type MarkedEntry = {key: string; name: string; status: StatusKey};
+
+/**
+ * Every santri a session marked, sorted by mark and then by name, with the
+ * teacher's spelling where `peserta` has it.
+ */
+export function markedEntries(record: {
+  peserta?: readonly string[];
+  statuses?: StatusMap;
+}): MarkedEntry[] {
   const statuses = record.statuses ?? statusesFromPeserta(record.peserta ?? []);
-  const byKey = new Map<string, {name: string; status: StatusKey}>();
+  const byKey = new Map<string, MarkedEntry>();
 
   // `peserta` keeps the teacher's spelling and stays authoritative for who was
   // present, so names come from there first.
@@ -197,22 +218,46 @@ export function participantLine(record: {
     const name = raw.trim();
     const key = nameKey(name);
     if (!name || byKey.has(key)) continue;
-    byKey.set(key, {name, status: statuses[key] ?? 'hadir'});
+    byKey.set(key, {key, name, status: statuses[key] ?? 'hadir'});
   }
 
   for (const [key, status] of Object.entries(statuses)) {
     if (!key || byKey.has(key)) continue;
-    byKey.set(key, {name: capitalizeWords(key), status});
+    byKey.set(key, {key, name: capitalizeWords(key), status});
   }
 
-  const entries = [...byKey.values()].sort((a, b) => {
+  return [...byKey.values()].sort((a, b) => {
     const byStatus = STATUS_ORDER.indexOf(a.status) - STATUS_ORDER.indexOf(b.status);
     if (byStatus !== 0) return byStatus;
     return a.name.localeCompare(b.name, 'id', {sensitivity: 'base'});
   });
+}
 
-  if (entries.length === 0) return '-';
-  return entries.map((e) => `${e.name} (${STATUS_CODE[e.status]})`).join(', ');
+/** The trimmed reason saved for a santri, or '' when there is none. */
+export function reasonFor(
+  keterangan: Readonly<Record<string, string>> | undefined,
+  key: string,
+): string {
+  return (keterangan?.[key] ?? '').trim();
+}
+
+/**
+ * Keep only the reasons that still belong to a Lainnya mark, trimmed.
+ *
+ * A reason outliving its mark — the santri was changed to Hadir afterwards —
+ * would resurface in a report next to the wrong status. Returns undefined
+ * when nothing is left, so a saved record carries no empty map.
+ */
+export function pruneKeterangan(
+  keterangan: Readonly<Record<string, string>> | undefined,
+  statuses: StatusMap,
+): Record<string, string> | undefined {
+  const out: Record<string, string> = {};
+  for (const [key, text] of Object.entries(keterangan ?? {})) {
+    const reason = text.trim();
+    if (reason && statuses[key] === 'etc') out[key] = reason;
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
 }
 
 /**

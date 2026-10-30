@@ -40,7 +40,7 @@ async function seed({schedules = true}: {schedules?: boolean} = {}) {
 
   if (schedules) {
     await db.schedules.bulkAdd([
-      {title: 'Ngaji Pagi', hari: 'Senin', waktu: '07:00', remindMinutesBefore: 10, createdAt: Date.now()},
+      {title: 'Ngaji Pagi', hari: 'Senin', waktu: '07:00', remindMinutesBefore: 10, guru: 'Ust. Ahmad', createdAt: Date.now()},
       {title: 'Tahfidz Sore', hari: 'Rabu', waktu: '16:00', remindMinutesBefore: 15, createdAt: Date.now()},
     ]);
   }
@@ -599,5 +599,83 @@ describe('a class with members', () => {
 
     await waitFor(() => expect(screen.getByText(`2/${ROSTER.length} ditandai`)).toBeInTheDocument());
     expect(marksFor('Ahmad Fauzi').getByRole('radio', {name: 'Hadir'})).toBeChecked();
+  });
+});
+
+describe('Lainnya and its reason', () => {
+  it('asks for a reason only once a santri is marked Lainnya', async () => {
+    renderPage();
+    await rosterNames();
+
+    expect(screen.queryByRole('textbox', {name: 'Keterangan Budi Santoso'})).toBeNull();
+    await userEvent.click(marksFor('Budi Santoso').getByRole('radio', {name: 'Sakit'}));
+    expect(screen.queryByRole('textbox', {name: 'Keterangan Budi Santoso'})).toBeNull();
+
+    await userEvent.click(marksFor('Budi Santoso').getByRole('radio', {name: 'Lainnya'}));
+    expect(screen.getByRole('textbox', {name: 'Keterangan Budi Santoso'})).toBeInTheDocument();
+  });
+
+  it('saves the reason with the mark', async () => {
+    renderPage();
+    await rosterNames();
+
+    await userEvent.click(marksFor('Ahmad Fauzi').getByRole('radio', {name: 'Hadir'}));
+    await userEvent.click(marksFor('Budi Santoso').getByRole('radio', {name: 'Lainnya'}));
+    await userEvent.type(
+      screen.getByRole('textbox', {name: 'Keterangan Budi Santoso'}),
+      'terlambat jemputan',
+    );
+    await userEvent.click(screen.getByRole('button', {name: /Simpan presensi/}));
+
+    await waitFor(async () => expect(await db.absensi.count()).toBe(1));
+    const [record] = await db.absensi.toArray();
+    expect(record.statuses).toEqual({'ahmad fauzi': 'hadir', 'budi santoso': 'etc'});
+    expect(record.keterangan).toEqual({'budi santoso': 'terlambat jemputan'});
+    expect(record.peserta).toEqual(['Ahmad Fauzi']);
+  });
+
+  it('drops a reason whose santri was moved off Lainnya before saving', async () => {
+    renderPage();
+    await rosterNames();
+
+    await userEvent.click(marksFor('Budi Santoso').getByRole('radio', {name: 'Lainnya'}));
+    await userEvent.type(screen.getByRole('textbox', {name: 'Keterangan Budi Santoso'}), 'x');
+    await userEvent.click(marksFor('Budi Santoso').getByRole('radio', {name: 'Hadir'}));
+    await userEvent.click(screen.getByRole('button', {name: /Simpan presensi/}));
+
+    await waitFor(async () => expect(await db.absensi.count()).toBe(1));
+    const [record] = await db.absensi.toArray();
+    expect(record.statuses).toEqual({'budi santoso': 'hadir'});
+    expect(record).not.toHaveProperty('keterangan');
+  });
+});
+
+describe("the teacher's attendance", () => {
+  it('is only offered once a class is picked', async () => {
+    renderPage();
+    await rosterNames();
+
+    expect(screen.queryByText('Kehadiran guru')).toBeNull();
+    await userEvent.click(await screen.findByRole('button', {name: /Ngaji Pagi/}));
+    expect(screen.getByText('Kehadiran guru')).toBeInTheDocument();
+    expect(screen.getByText('Ust. Ahmad')).toBeInTheDocument();
+  });
+
+  it("saves the teacher's mark and reason with the session, apart from the santri", async () => {
+    renderPage();
+    await rosterNames();
+
+    await userEvent.click(await screen.findByRole('button', {name: /Ngaji Pagi/}));
+    const guru = within(screen.getByRole('radiogroup', {name: /guru Ust\. Ahmad/}));
+    await userEvent.click(guru.getByRole('radio', {name: 'Lainnya'}));
+    await userEvent.type(screen.getByRole('textbox', {name: 'Keterangan guru'}), 'rapat');
+    await userEvent.click(marksFor('Ahmad Fauzi').getByRole('radio', {name: 'Hadir'}));
+    await userEvent.click(screen.getByRole('button', {name: /Simpan presensi/}));
+
+    await waitFor(async () => expect(await db.absensi.count()).toBe(1));
+    const [record] = await db.absensi.toArray();
+    expect(record.guruStatus).toBe('etc');
+    expect(record.guruKeterangan).toBe('rapat');
+    expect(record.statuses).toEqual({'ahmad fauzi': 'hadir'});
   });
 });

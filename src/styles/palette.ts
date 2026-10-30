@@ -20,7 +20,8 @@
  * else. It is never load-bearing on its own; every yellow surface sits inside
  * an ink keyline, which is what carries the 3:1 boundary a pale fill cannot.
  *
- * **Four marks, and nothing else wears them.** Hadir, Sakit, Izin and Alpa own
+ * **Five marks, and nothing else wears them.** Hadir, Sakit, Izin, Alpa and
+ * Lainnya (any other reason, explained in a free-text note) own
  * the only other colours on screen, so a colour always answers one question:
  * was this santri here? Buttons, headings, rules and destructive actions are
  * all ink, which is also why a red "delete" never gets confused with an orange
@@ -75,7 +76,7 @@ export type ThemeColors = {
   edge: string;
 };
 
-export type StatusKey = 'hadir' | 'sakit' | 'izin' | 'alpa';
+export type StatusKey = 'hadir' | 'sakit' | 'izin' | 'alpa' | 'etc';
 
 export type StatusColors = {
   /** Soft wash, for summary chips away from the register. */
@@ -157,7 +158,7 @@ export const dark: ThemeColors = {
  * The marks.
  *
  * By day they are bright fills carrying dark ink. At night they are the same
- * four hues muted a step, so a wall of marks does not glare in a dark room,
+ * same hues muted a step, so a wall of marks does not glare in a dark room,
  * and they still carry dark ink. The letter inside the block is what the
  * teacher reads either way, and it is always the readable half of the pair.
  */
@@ -166,6 +167,7 @@ const MARK_LIGHT = {
   sakit: '#ffd966',
   izin: '#1f6ed0',
   alpa: '#ff9f43',
+  etc: '#b07ad6',
 } as const;
 
 /**
@@ -184,6 +186,7 @@ const MARK_DARK = {
   sakit: '#e5c05e',
   izin: '#5b90ce',
   alpa: '#d98943',
+  etc: '#a884cf',
 } as const;
 
 export const statusLight: Record<StatusKey, StatusColors> = {
@@ -192,6 +195,7 @@ export const statusLight: Record<StatusKey, StatusColors> = {
   // Blue is the one mark too dark for black type; its block carries paper.
   izin: {tint: '#e4eefb', ink: '#17508f', solid: MARK_LIGHT.izin, solidInk: '#fdfdfc'},
   alpa: {tint: '#fff1e4', ink: '#8a4408', solid: MARK_LIGHT.alpa, solidInk: '#1a1d1a'},
+  etc: {tint: '#f2e8fb', ink: '#6b2d8b', solid: MARK_LIGHT.etc, solidInk: '#1a1d1a'},
 };
 
 export const statusDark: Record<StatusKey, StatusColors> = {
@@ -199,6 +203,7 @@ export const statusDark: Record<StatusKey, StatusColors> = {
   sakit: {tint: '#352b12', ink: '#e8c75e', solid: MARK_DARK.sakit, solidInk: '#1e1e24'},
   izin: {tint: '#1e2c45', ink: '#9cc0ec', solid: MARK_DARK.izin, solidInk: '#1e1e24'},
   alpa: {tint: '#33210f', ink: '#e8a263', solid: MARK_DARK.alpa, solidInk: '#1e1e24'},
+  etc: {tint: '#2c2139', ink: '#c9aee8', solid: MARK_DARK.etc, solidInk: '#1e1e24'},
 };
 
 /** Teacher-facing labels. */
@@ -207,6 +212,7 @@ export const STATUS_LABEL: Record<StatusKey, string> = {
   sakit: 'Sakit',
   izin: 'Izin',
   alpa: 'Alpa',
+  etc: 'Lainnya',
 };
 
 /**
@@ -218,14 +224,16 @@ export const STATUS_REPORT_LABEL: Record<StatusKey, string> = {
   sakit: 'Sakit',
   izin: 'Izin',
   alpa: 'Tanpa keterangan',
+  etc: 'Lainnya',
 };
 
 /** The single-letter codes the official report uses. */
-export const STATUS_CODE: Record<StatusKey, 'H' | 'S' | 'I' | 'A'> = {
+export const STATUS_CODE: Record<StatusKey, 'H' | 'S' | 'I' | 'A' | 'E'> = {
   hadir: 'H',
   sakit: 'S',
   izin: 'I',
   alpa: 'A',
+  etc: 'E',
 };
 
-export const STATUS_ORDER: StatusKey[] = ['hadir', 'sakit', 'izin', 'alpa'];
+export const STATUS_ORDER: StatusKey[] = ['hadir', 'sakit', 'izin', 'alpa', 'etc'];

@@ -79,6 +79,12 @@ export const AttendanceInput: React.FC = () => {
     students,
     sessionStatusFor,
     setSessionStatus,
+    sessionKeteranganFor,
+    setSessionKeterangan,
+    sessionGuruStatus,
+    setSessionGuruStatus,
+    sessionGuruKeterangan,
+    setSessionGuruKeterangan,
     handleMarkAllPresent,
     handleClearSession,
     handleAddStudent,
@@ -146,7 +152,7 @@ export const AttendanceInput: React.FC = () => {
   /* Counts cover every santri, not just the ones the search left on screen:
      filtering is a way of looking, not a change to what gets saved. */
   const tally = useMemo(() => {
-    const counts = { hadir: 0, sakit: 0, izin: 0, alpa: 0 };
+    const counts = { hadir: 0, sakit: 0, izin: 0, alpa: 0, etc: 0 };
     let marked = 0;
     for (const name of allRegisteredStudents) {
       const status = sessionStatusFor(name);
@@ -225,6 +231,16 @@ export const AttendanceInput: React.FC = () => {
         value={sessionStatusFor(name)}
         onChange={(status) => setSessionStatus(name, status)}
       />
+      {sessionStatusFor(name) === "etc" ? (
+        <input
+          className="cs-input cs-roster__note"
+          type="text"
+          value={sessionKeteranganFor(name)}
+          onChange={(e) => setSessionKeterangan(name, e.target.value)}
+          aria-label={`Keterangan ${name}`}
+          placeholder="Alasan, contoh: terlambat jemputan"
+        />
+      ) : null}
     </li>
   );
 
@@ -408,6 +424,45 @@ export const AttendanceInput: React.FC = () => {
             </Field>
           ) : null}
         </section>
+
+        {/* The teacher is marked against the class they teach, so the card
+            only appears once a class is picked. */}
+        {linkedSchedule ? (
+          <section className="cs-card" aria-labelledby="guru_label">
+            <p className="cs-label" id="guru_label">
+              Kehadiran guru
+            </p>
+            <div className="cs-guru">
+              <span className="cs-roster__name">
+                {linkedSchedule.guru || "Guru"}
+              </span>
+              <StatusPicker
+                personName={`guru ${linkedSchedule.guru || linkedSchedule.title}`}
+                groupId={`guru-${linkedSchedule.id}`}
+                value={sessionGuruStatus}
+                onChange={setSessionGuruStatus}
+              />
+              {sessionGuruStatus === "etc" ? (
+                <input
+                  className="cs-input"
+                  type="text"
+                  value={sessionGuruKeterangan}
+                  onChange={(e) => setSessionGuruKeterangan(e.target.value)}
+                  aria-label="Keterangan guru"
+                  placeholder="Alasan, contoh: rapat"
+                />
+              ) : null}
+            </div>
+            {linkedSchedule.guru ? null : (
+              <div className="cs-row">
+                <p className="cs-muted">Nama guru kelas ini belum diisi.</p>
+                <Button variant="ghost" onClick={() => setActiveTab("jadwal")}>
+                  Isi di Jadwal
+                </Button>
+              </div>
+            )}
+          </section>
+        ) : null}
       </div>
 
       <form onSubmit={handleSaveAttendance} className="cs-col">

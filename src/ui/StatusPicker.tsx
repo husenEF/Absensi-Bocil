@@ -12,11 +12,11 @@ type Props = {
 };
 
 /**
- * Four tap targets — Hadir / Sakit / Izin / Alpa — as a radio group.
+ * Five tap targets — Hadir / Sakit / Izin / Alpa / Lainnya — as a radio group.
  *
  * Nothing is chosen until the teacher chooses it. A register that opened with
  * everyone on Hadir recorded a class nobody had looked at, so the empty state
- * here is the honest one and the four boxes start dashed and unfilled.
+ * here is the honest one and the boxes start dashed and unfilled.
  *
  * Tapping the mark a santri already carries takes it off again, which is the
  * only way back to unmarked after a mistap — a radio group cannot normally be
@@ -28,7 +28,7 @@ type Props = {
  * gesture for.
  *
  * Implemented as real radios so arrow keys work and the group announces as
- * "Status kehadiran <name>, Hadir, 1 of 4".
+ * "Status kehadiran <name>, Hadir, 1 of 5".
  */
 export const StatusPicker: React.FC<Props> = ({personName, groupId, value, onChange}) => {
   const groupName = `status-${groupId}`;
